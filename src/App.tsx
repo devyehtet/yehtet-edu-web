@@ -417,91 +417,8 @@ function AssignmentsPage() { return <SimplePage icon={UploadCloud} title="Submit
 function ResourcesPage() { return <SimplePage icon={Download} title="Lesson Resource Files" label="Resource Library" text="Download the files you need for the current lesson or assignment." />; }
 function ReportsPage() { return <SimplePage icon={BarChart3} title="Progress, Quiz & Assignment Reports" label="Admin Reports" text="Select a report type, review student activity, then export the result if needed." />; }
 function LiveMeetingPage() {
-  const jitsiContainerRef = useRef<HTMLDivElement>(null);
-  const jitsiAPIRef = useRef<any>(null);
-  const [isJitsiLoaded, setIsJitsiLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!window.JitsiMeetExternalAPI) {
-      const script = document.createElement('script');
-      script.src = 'https://meet.jitsi.com/external_api.js';
-      script.async = true;
-      script.onload = () => {
-        initializeJitsi();
-      };
-      document.body.appendChild(script);
-    } else {
-      initializeJitsi();
-    }
-
-    return () => {
-      if (jitsiAPIRef.current) {
-        jitsiAPIRef.current.dispose();
-      }
-    };
-  }, []);
-
-  const initializeJitsi = () => {
-    if (!jitsiContainerRef.current) return;
-
-    const domain = 'meet.jitsi.com';
-    const options = {
-      roomName: `YeHtetEdu-SaturdayLiveClass-${new Date().getDate()}`,
-      width: '100%',
-      height: 480,
-      parentNode: jitsiContainerRef.current,
-      userInfo: {
-        displayName: 'Digital Marketing Student',
-      },
-      configOverwrite: {
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        disableSimulcast: false,
-        enableLayerSuspension: true,
-      },
-      interfaceConfigOverwrite: {
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        TOOLBAR_BUTTONS: [
-          'microphone',
-          'camera',
-          'closedcaptions',
-          'desktop',
-          'fullscreen',
-          'forinvite',
-          'mute-everyone',
-          'chat',
-          'recording',
-          'livestreaming',
-          'etherpad',
-          'shareaudio',
-          'sharedvideo',
-          'settings',
-          'raisehand',
-          'help',
-          'toggle-camera',
-          'videoquality',
-          'filmstrip',
-          'stats',
-        ],
-      },
-    };
-
-    try {
-      const api = new (window as any).JitsiMeetExternalAPI(domain, options);
-      jitsiAPIRef.current = api;
-
-      api.addEventListener('videoConferenceJoined', () => {
-        setIsJitsiLoaded(true);
-      });
-
-      api.addEventListener('readyToClose', () => {
-        jitsiAPIRef.current = null;
-      });
-    } catch (error) {
-      console.error('Jitsi Meet initialization error:', error);
-    }
-  };
+  const roomName = `YeHtetEdu-SaturdayLiveClass-${new Date().getDate()}`;
+  const jitsiURL = `https://meet.jitsi.com/${roomName}`;
 
   return (
     <section className="space-y-6">
@@ -514,28 +431,19 @@ function LiveMeetingPage() {
           <div className="flex items-center gap-2 pt-2 text-lg font-black text-white"><Users className="h-5 w-5 text-emerald-300" /> Live now</div>
         </div>
 
-        {/* Jitsi Meet Container */}
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
-          <div
-            ref={jitsiContainerRef}
-            className="w-full"
+        {/* Jitsi Meet iframe */}
+        <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
+          <iframe
+            allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write"
+            src={jitsiURL}
             style={{
-              minHeight: '600px',
-              display: 'flex',
-              flexDirection: 'column',
+              width: '100%',
+              height: '600px',
+              border: 'none',
+              borderRadius: '16px',
             }}
+            title="Ye Htet Digital Edu - Live Class"
           />
-          {!isJitsiLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-950 to-slate-900">
-              <div className="text-center">
-                <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 text-emerald-300">
-                  <Video className="h-10 w-10 animate-pulse" />
-                </div>
-                <h3 className="font-serif text-2xl font-black text-white">Connecting to Live Class...</h3>
-                <p className="mt-3 text-slate-400">Please wait while we set up the video conference</p>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -561,7 +469,27 @@ function LiveMeetingPage() {
         <p className={ui.eyebrow}>Live Meeting Info</p>
         <h2 className="mt-4 font-serif text-3xl font-black leading-[1.02] sm:text-4xl">Class Details</h2>
         <div className="mt-7 space-y-4">
-          <Panel title="How to Join" items={['Open from any browser or device','Allow camera and microphone permissions','Click Share Screen to show your slides']} />
+          <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5">
+            <h3 className="text-lg font-black text-white mb-3">How to Join</h3>
+            <ul className="space-y-2 text-sm text-slate-300">
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-300 font-black">•</span>
+                <span>Allow camera and microphone permissions when prompted</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-300 font-black">•</span>
+                <span>Click on the video icons to enable your camera/mic</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-300 font-black">•</span>
+                <span>Use desktop icon to share your screen or slides</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-300 font-black">•</span>
+                <span>Share the room link to invite others</span>
+              </li>
+            </ul>
+          </div>
           <Panel title="Class Setup" items={['Instructor: Dr. Smith','Duration: 1.5 hours','Recording enabled automatically']} />
           <Panel title="Tech Requirements" items={['Chrome, Firefox, Safari, or Edge','Good internet connection (5+ Mbps)','Webcam and microphone enabled']} />
         </div>
