@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import DailyIframe from '@daily-co/daily-js';
 import {
   ArrowRight,
   BarChart3,
@@ -418,225 +417,153 @@ function AssignmentsPage() { return <SimplePage icon={UploadCloud} title="Submit
 function ResourcesPage() { return <SimplePage icon={Download} title="Lesson Resource Files" label="Resource Library" text="Download the files you need for the current lesson or assignment." />; }
 function ReportsPage() { return <SimplePage icon={BarChart3} title="Progress, Quiz & Assignment Reports" label="Admin Reports" text="Select a report type, review student activity, then export the result if needed." />; }
 function LiveMeetingPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const screenVideoRef = useRef<HTMLVideoElement>(null);
-  const [micEnabled, setMicEnabled] = useState(false);
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [screenSharing, setScreenSharing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string>('');
+  const jitsiContainerRef = useRef<HTMLDivElement>(null);
+  const jitsiAPIRef = useRef<any>(null);
+  const [isJitsiLoaded, setIsJitsiLoaded] = useState(false);
 
-  // Initialize camera when enabled
   useEffect(() => {
-    const initCamera = async () => {
-      try {
-        setError('');
-        if (cameraEnabled && !stream) {
-          const mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-              width: { ideal: 1280 }, 
-              height: { ideal: 720 },
-              facingMode: 'user'
-            },
-            audio: micEnabled,
-          });
-          setStream(mediaStream);
-          if (videoRef.current) {
-            videoRef.current.srcObject = mediaStream;
-            // Wait for video to be ready
-            setTimeout(() => {
-              if (videoRef.current) {
-                videoRef.current.play().catch(e => console.error('Play error:', e));
-              }
-            }, 100);
-          }
-        } else if (!cameraEnabled && stream) {
-          stream.getTracks().forEach(track => track.stop());
-          setStream(null);
-        }
-      } catch (error: any) {
-        const msg = error?.message || 'Camera access denied';
-        console.error('Camera access error:', error);
-        setError(msg);
-        setCameraEnabled(false);
-      }
-    };
+    if (!window.JitsiMeetExternalAPI) {
+      const script = document.createElement('script');
+      script.src = 'https://meet.jitsi.com/external_api.js';
+      script.async = true;
+      script.onload = () => {
+        initializeJitsi();
+      };
+      document.body.appendChild(script);
+    } else {
+      initializeJitsi();
+    }
 
-    initCamera();
     return () => {
-      if (stream && !cameraEnabled) {
-        stream.getTracks().forEach(track => track.stop());
+      if (jitsiAPIRef.current) {
+        jitsiAPIRef.current.dispose();
       }
     };
-  }, [cameraEnabled, micEnabled]);
+  }, []);
 
-  // Handle screen sharing
-  const handleScreenShare = async () => {
+  const initializeJitsi = () => {
+    if (!jitsiContainerRef.current) return;
+
+    const domain = 'meet.jitsi.com';
+    const options = {
+      roomName: `YeHtetEdu-SaturdayLiveClass-${new Date().getDate()}`,
+      width: '100%',
+      height: 480,
+      parentNode: jitsiContainerRef.current,
+      userInfo: {
+        displayName: 'Digital Marketing Student',
+      },
+      configOverwrite: {
+        startWithAudioMuted: false,
+        startWithVideoMuted: false,
+        disableSimulcast: false,
+        enableLayerSuspension: true,
+      },
+      interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        SHOW_WATERMARK_FOR_GUESTS: false,
+        TOOLBAR_BUTTONS: [
+          'microphone',
+          'camera',
+          'closedcaptions',
+          'desktop',
+          'fullscreen',
+          'forinvite',
+          'mute-everyone',
+          'chat',
+          'recording',
+          'livestreaming',
+          'etherpad',
+          'shareaudio',
+          'sharedvideo',
+          'settings',
+          'raisehand',
+          'help',
+          'toggle-camera',
+          'videoquality',
+          'filmstrip',
+          'stats',
+        ],
+      },
+    };
+
     try {
-      setError('');
-      if (!screenSharing && !screenStream) {
-        const screen = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: false,
-        });
-        setScreenStream(screen);
-        setScreenSharing(true);
+      const api = new (window as any).JitsiMeetExternalAPI(domain, options);
+      jitsiAPIRef.current = api;
 
-        if (screenVideoRef.current) {
-          screenVideoRef.current.srcObject = screen;
-          screenVideoRef.current.play().catch(e => console.error('Screen play error:', e));
-        }
+      api.addEventListener('videoConferenceJoined', () => {
+        setIsJitsiLoaded(true);
+      });
 
-        screen.getVideoTracks()[0].onended = () => {
-          setScreenSharing(false);
-          setScreenStream(null);
-        };
-      } else if (screenSharing && screenStream) {
-        screenStream.getTracks().forEach(track => track.stop());
-        setScreenStream(null);
-        setScreenSharing(false);
-      }
-    } catch (error: any) {
-      const msg = error?.message || 'Screen share cancelled';
-      console.error('Screen share error:', error);
-      setError(msg);
-      setScreenSharing(false);
+      api.addEventListener('readyToClose', () => {
+        jitsiAPIRef.current = null;
+      });
+    } catch (error) {
+      console.error('Jitsi Meet initialization error:', error);
     }
   };
 
-  const toggleCamera = () => {
-    setCameraEnabled(!cameraEnabled);
-  };
-
-  const toggleMic = () => {
-    setMicEnabled(!micEnabled);
-  };
-
   return (
-    <section className="grid gap-6 lg:grid-cols-[1fr_380px]">
+    <section className="space-y-6">
       <div className={ui.section}>
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="inline-flex rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-1.5 text-xs font-black uppercase tracking-[0.32em] text-emerald-300">Saturday Live Class</span>
             <h2 className="mt-2 font-serif text-4xl font-black leading-none sm:text-5xl md:text-6xl">7:00 PM - 8:30 PM</h2>
           </div>
-          <div className="flex items-center gap-2 pt-2 text-lg font-black text-white"><Users className="h-5 w-5 text-emerald-300" /> 5 joined</div>
+          <div className="flex items-center gap-2 pt-2 text-lg font-black text-white"><Users className="h-5 w-5 text-emerald-300" /> Live now</div>
         </div>
 
-        {/* Video Display Area */}
-        <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_20%,rgba(110,231,183,0.18),transparent_35%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(30,41,59,0.85))] p-6 sm:min-h-[520px]">
-          {cameraEnabled ? (
-            <div className="relative w-full min-h-[360px] sm:min-h-[480px] bg-black rounded-xl overflow-hidden">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className="w-full h-full object-cover" 
-              />
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-center gap-2 rounded-full border border-emerald-300/40 bg-black/60 px-4 py-2 text-xs font-bold text-emerald-300 z-10">
-                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" /> LIVE
-              </div>
-            </div>
-          ) : screenSharing ? (
-            <div className="relative w-full min-h-[360px] sm:min-h-[480px] bg-black rounded-xl overflow-hidden">
-              <video 
-                ref={screenVideoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-contain" 
-              />
-              <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 rounded-full border border-emerald-300/40 bg-black/60 px-4 py-2 text-xs font-bold text-emerald-300 z-10">
-                <span className="flex items-center gap-2"><span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" /> SCREEN SHARING</span>
-                <MonitorUp className="h-4 w-4" />
-              </div>
-            </div>
-          ) : (
-            <div className="grid min-h-[360px] sm:min-h-[480px] place-items-center">
+        {/* Jitsi Meet Container */}
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
+          <div
+            ref={jitsiContainerRef}
+            className="w-full"
+            style={{
+              minHeight: '600px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          />
+          {!isJitsiLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-950 to-slate-900">
               <div className="text-center">
-                <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 text-emerald-300 sm:h-24 sm:w-24">
-                  <Video className="h-10 w-10 sm:h-12 sm:w-12" />
+                <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 text-emerald-300">
+                  <Video className="h-10 w-10 animate-pulse" />
                 </div>
-                <h3 className="font-serif text-3xl font-black sm:text-4xl">Digital Marketing Live Class</h3>
-                <p className="mt-3 text-slate-300">Click Camera to enable your webcam or Share to show your screen</p>
+                <h3 className="font-serif text-2xl font-black text-white">Connecting to Live Class...</h3>
+                <p className="mt-3 text-slate-400">Please wait while we set up the video conference</p>
               </div>
             </div>
           )}
         </div>
 
-        {error && (
-          <div className="mt-4 rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {error}
-          </div>
-        )}
-
-        {/* Control Buttons */}
-        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:grid-cols-4">
-          <button 
-            onClick={toggleMic} 
-            className={cx('flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-black transition', micEnabled ? 'bg-emerald-300 text-slate-950' : 'border border-white/10 bg-white/5 text-slate-200')}
-          >
-            <Mic className="h-5 w-5" /> Mic
-          </button>
-          <button 
-            onClick={toggleCamera} 
-            className={cx('flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition', cameraEnabled ? 'bg-emerald-300 text-slate-950' : 'border border-white/10 bg-white/5 text-slate-200')}
-          >
-            <Video className="h-5 w-5" /> Camera
-          </button>
-          <button 
-            onClick={handleScreenShare} 
-            className={cx('flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition', screenSharing ? 'bg-emerald-300 text-slate-950' : 'border border-white/10 bg-white/5 text-slate-200')}
-          >
-            <MonitorUp className="h-5 w-5" /> Share
-          </button>
-          <button 
-            onClick={() => setIsRecording(!isRecording)} 
-            className={cx('flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition', isRecording ? 'border border-red-500 bg-red-500/20 text-red-200' : 'border border-red-400/30 bg-red-500/10 text-red-200')}
-          >
-            <Radio className="h-5 w-5" /> Record
-          </button>
+        <div className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          <InfoCard
+            icon={Video}
+            title="Camera & Microphone"
+            text="Click the icons to enable/disable your camera and microphone. Your audio and video will be shared with other participants."
+          />
+          <InfoCard
+            icon={MonitorUp}
+            title="Screen Sharing"
+            text="Click the desktop icon to share your screen with the class. Participants will see everything on your screen in real-time."
+          />
+          <InfoCard
+            icon={Users}
+            title="Multiple Users"
+            text="All participants can see and hear each other. Admin and students can join from any device to see live class."
+          />
         </div>
       </div>
 
-      {/* Sidebar Controls */}
       <aside className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-7">
-        <p className={ui.eyebrow}>Live Meeting Control</p>
-        <h2 className="mt-4 font-serif text-3xl font-black leading-[1.02] sm:text-4xl">Device Status</h2>
+        <p className={ui.eyebrow}>Live Meeting Info</p>
+        <h2 className="mt-4 font-serif text-3xl font-black leading-[1.02] sm:text-4xl">Class Details</h2>
         <div className="mt-7 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5">
-            <h3 className="text-lg font-black text-white">Active Devices</h3>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                <span className="text-sm font-bold text-slate-400">Microphone</span>
-                <span className={cx('rounded-full px-3 py-1 text-xs font-black', micEnabled ? 'bg-emerald-300 text-slate-950' : 'bg-slate-700 text-slate-300')}>
-                  {micEnabled ? 'ON' : 'OFF'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                <span className="text-sm font-bold text-slate-400">Camera</span>
-                <span className={cx('rounded-full px-3 py-1 text-xs font-black', cameraEnabled ? 'bg-emerald-300 text-slate-950' : 'bg-slate-700 text-slate-300')}>
-                  {cameraEnabled ? 'ON' : 'OFF'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                <span className="text-sm font-bold text-slate-400">Screen Share</span>
-                <span className={cx('rounded-full px-3 py-1 text-xs font-black', screenSharing ? 'bg-emerald-300 text-slate-950' : 'bg-slate-700 text-slate-300')}>
-                  {screenSharing ? 'ON' : 'OFF'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                <span className="text-sm font-bold text-slate-400">Recording</span>
-                <span className={cx('rounded-full px-3 py-1 text-xs font-black', isRecording ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-300')}>
-                  {isRecording ? 'REC' : 'OFF'}
-                </span>
-              </div>
-            </div>
-          </div>
-          <Panel title="Meeting Tips" items={['Ensure good lighting','Check microphone levels','Test before joining']} />
-          <Panel title="Class Info" items={['Instructor: Dr. Smith','Duration: 1.5 hours','Recording enabled']} />
+          <Panel title="How to Join" items={['Open from any browser or device','Allow camera and microphone permissions','Click Share Screen to show your slides']} />
+          <Panel title="Class Setup" items={['Instructor: Dr. Smith','Duration: 1.5 hours','Recording enabled automatically']} />
+          <Panel title="Tech Requirements" items={['Chrome, Firefox, Safari, or Edge','Good internet connection (5+ Mbps)','Webcam and microphone enabled']} />
         </div>
       </aside>
     </section>

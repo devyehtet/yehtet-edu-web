@@ -10,3 +10,7 @@ declare module '*.jpeg';
 declare module '*.gif';
 declare module '*.webp';
 declare module '*.svg';
+
+interface Window {
+  JitsiMeetExternalAPI?: any;
+}
