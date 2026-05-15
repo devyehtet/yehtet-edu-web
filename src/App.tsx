@@ -419,35 +419,47 @@ function ResourcesPage() { return <SimplePage icon={Download} title="Lesson Reso
 function ReportsPage() { return <SimplePage icon={BarChart3} title="Progress, Quiz & Assignment Reports" label="Admin Reports" text="Select a report type, review student activity, then export the result if needed." />; }
 function LiveMeetingPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const screenVideoRef = useRef<HTMLVideoElement>(null);
   const [micEnabled, setMicEnabled] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [error, setError] = useState<string>('');
 
   // Initialize camera when enabled
   useEffect(() => {
     const initCamera = async () => {
       try {
+        setError('');
         if (cameraEnabled && !stream) {
           const mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: { 
+              width: { ideal: 1280 }, 
+              height: { ideal: 720 },
+              facingMode: 'user'
+            },
             audio: micEnabled,
           });
           setStream(mediaStream);
           if (videoRef.current) {
             videoRef.current.srcObject = mediaStream;
-            setIsCameraReady(true);
+            // Wait for video to be ready
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.play().catch(e => console.error('Play error:', e));
+              }
+            }, 100);
           }
         } else if (!cameraEnabled && stream) {
           stream.getTracks().forEach(track => track.stop());
           setStream(null);
-          setIsCameraReady(false);
         }
-      } catch (error) {
+      } catch (error: any) {
+        const msg = error?.message || 'Camera access denied';
         console.error('Camera access error:', error);
+        setError(msg);
         setCameraEnabled(false);
       }
     };
@@ -458,11 +470,12 @@ function LiveMeetingPage() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [cameraEnabled, stream, micEnabled]);
+  }, [cameraEnabled, micEnabled]);
 
   // Handle screen sharing
   const handleScreenShare = async () => {
     try {
+      setError('');
       if (!screenSharing && !screenStream) {
         const screen = await navigator.mediaDevices.getDisplayMedia({
           video: true,
@@ -470,6 +483,11 @@ function LiveMeetingPage() {
         });
         setScreenStream(screen);
         setScreenSharing(true);
+
+        if (screenVideoRef.current) {
+          screenVideoRef.current.srcObject = screen;
+          screenVideoRef.current.play().catch(e => console.error('Screen play error:', e));
+        }
 
         screen.getVideoTracks()[0].onended = () => {
           setScreenSharing(false);
@@ -480,23 +498,19 @@ function LiveMeetingPage() {
         setScreenStream(null);
         setScreenSharing(false);
       }
-    } catch (error) {
+    } catch (error: any) {
+      const msg = error?.message || 'Screen share cancelled';
       console.error('Screen share error:', error);
+      setError(msg);
       setScreenSharing(false);
     }
   };
 
   const toggleCamera = () => {
-    if (stream) {
-      stream.getVideoTracks().forEach(track => (track.enabled = !track.enabled));
-    }
     setCameraEnabled(!cameraEnabled);
   };
 
   const toggleMic = () => {
-    if (stream) {
-      stream.getAudioTracks().forEach(track => (track.enabled = !track.enabled));
-    }
     setMicEnabled(!micEnabled);
   };
 
@@ -512,32 +526,51 @@ function LiveMeetingPage() {
         </div>
 
         {/* Video Display Area */}
-        <div className="relative grid min-h-[360px] place-items-center overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_20%,rgba(110,231,183,0.18),transparent_35%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(30,41,59,0.85))] p-6 sm:min-h-[520px]">
-          {isCameraReady && cameraEnabled ? (
-            <>
-              <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-center gap-2 rounded-full border border-emerald-300/40 bg-black/50 px-4 py-2 text-xs font-bold text-emerald-300">
+        <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_20%,rgba(110,231,183,0.18),transparent_35%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(30,41,59,0.85))] p-6 sm:min-h-[520px]">
+          {cameraEnabled ? (
+            <div className="relative w-full min-h-[360px] sm:min-h-[480px] bg-black rounded-xl overflow-hidden">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="w-full h-full object-cover" 
+              />
+              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-center gap-2 rounded-full border border-emerald-300/40 bg-black/60 px-4 py-2 text-xs font-bold text-emerald-300 z-10">
                 <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" /> LIVE
               </div>
-            </>
-          ) : screenSharing && screenStream ? (
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <MonitorUp className="h-20 w-20 text-emerald-300" />
-              <div>
-                <h3 className="font-serif text-2xl font-black text-white">Screen is Sharing</h3>
-                <p className="mt-2 text-slate-300">Your screen is visible to all participants</p>
+            </div>
+          ) : screenSharing ? (
+            <div className="relative w-full min-h-[360px] sm:min-h-[480px] bg-black rounded-xl overflow-hidden">
+              <video 
+                ref={screenVideoRef} 
+                autoPlay 
+                playsInline 
+                className="w-full h-full object-contain" 
+              />
+              <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 rounded-full border border-emerald-300/40 bg-black/60 px-4 py-2 text-xs font-bold text-emerald-300 z-10">
+                <span className="flex items-center gap-2"><span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" /> SCREEN SHARING</span>
+                <MonitorUp className="h-4 w-4" />
               </div>
             </div>
           ) : (
-            <div className="text-center">
-              <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 text-emerald-300 sm:h-24 sm:w-24">
-                <Video className="h-10 w-10 sm:h-12 sm:w-12" />
+            <div className="grid min-h-[360px] sm:min-h-[480px] place-items-center">
+              <div className="text-center">
+                <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 text-emerald-300 sm:h-24 sm:w-24">
+                  <Video className="h-10 w-10 sm:h-12 sm:w-12" />
+                </div>
+                <h3 className="font-serif text-3xl font-black sm:text-4xl">Digital Marketing Live Class</h3>
+                <p className="mt-3 text-slate-300">Click Camera to enable your webcam or Share to show your screen</p>
               </div>
-              <h3 className="font-serif text-3xl font-black sm:text-4xl">Digital Marketing Live Class</h3>
-              <p className="mt-3 text-slate-300">Click Camera to enable your webcam</p>
             </div>
           )}
         </div>
+
+        {error && (
+          <div className="mt-4 rounded-xl border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
 
         {/* Control Buttons */}
         <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 sm:grid-cols-4">
