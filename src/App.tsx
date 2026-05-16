@@ -1,31 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
+  ArrowLeft,
   BarChart3,
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Download,
-  FileText,
   GraduationCap,
   LayoutDashboard,
   Lock,
-  LogIn,
-  Mic,
   MonitorUp,
   PlayCircle,
   Plus,
-  Radio,
-  Search,
   Settings,
   ShieldCheck,
   UploadCloud,
   Users,
   Video,
 } from 'lucide-react';
+
+// =====================================================================
+// Types & routing
+// =====================================================================
 
 type PageName =
   | 'Home'
@@ -58,6 +59,43 @@ type Student = {
   quizScore: string;
 };
 
+type Role = 'admin' | 'student' | null;
+
+const pageSlugs: Record<PageName, string> = {
+  Home: '',
+  Courses: 'courses',
+  'Learning Path': 'learning-path',
+  'Course Detail': 'course-detail',
+  'Admin Panel': 'admin',
+  'Student Dashboard': 'dashboard',
+  'Lesson Player': 'lessons',
+  Quiz: 'quiz',
+  Assignments: 'assignments',
+  Resources: 'resources',
+  'Live Meeting': 'live',
+  Reports: 'reports',
+  Login: 'login',
+};
+
+const slugToPage: Record<string, PageName> = Object.entries(pageSlugs).reduce(
+  (acc, [page, slug]) => {
+    acc[slug] = page as PageName;
+    return acc;
+  },
+  {} as Record<string, PageName>,
+);
+
+const pageToHash = (page: PageName) => {
+  const slug = pageSlugs[page];
+  return slug ? `#/${slug}` : '#/';
+};
+
+const readHashPage = (): PageName => {
+  if (typeof window === 'undefined') return 'Home';
+  const raw = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  return (slugToPage[raw] as PageName) || 'Home';
+};
+
 const publicNavItems: NavItem[] = [
   { label: 'Home', target: 'Home' },
   { label: 'Courses', target: 'Courses' },
@@ -66,9 +104,15 @@ const publicNavItems: NavItem[] = [
 
 const studentNavItems: NavItem[] = [
   { label: 'Dashboard', target: 'Student Dashboard' },
-  { label: 'Resources', target: 'Resources' },
+  { label: 'Lessons', target: 'Lesson Player' },
   { label: 'Assignments', target: 'Assignments' },
+  { label: 'Resources', target: 'Resources' },
   { label: 'Live Class', target: 'Live Meeting' },
+];
+
+const adminNavItems: NavItem[] = [
+  { label: 'Admin Panel', target: 'Admin Panel' },
+  { label: 'Reports', target: 'Reports' },
 ];
 
 const protectedPages: PageName[] = [
@@ -82,10 +126,16 @@ const protectedPages: PageName[] = [
   'Admin Panel',
 ];
 
+const adminOnlyPages: PageName[] = ['Admin Panel', 'Reports'];
+
 const demoCredentials = {
   admin: { username: 'admin@dmclass.com', password: 'Admin@2026' },
   student: { username: 'student@dmclass.com', password: 'Student@2026' },
 };
+
+// =====================================================================
+// Static data
+// =====================================================================
 
 const digitalMarketingLessons = [
   'Digital Marketing: Beginner to Professional',
@@ -142,11 +192,11 @@ const courseCards = [
 ];
 
 const modules = [
-  { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed', progress: 100, lessons: digitalMarketingLessons.slice(0, 8) },
-  { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress', progress: 65, lessons: digitalMarketingLessons.slice(8, 15) },
-  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked', progress: 0, lessons: digitalMarketingLessons.slice(15, 24) },
-  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked', progress: 0, lessons: digitalMarketingLessons.slice(24, 35) },
-  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked', progress: 0, lessons: digitalMarketingLessons.slice(35, 45) },
+  { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 8) },
+  { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(8, 15) },
+  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(15, 24) },
+  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(24, 35) },
+  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(35, 45) },
 ];
 
 const adminStats: Array<{ label: string; value: string; icon: IconType }> = [
@@ -177,196 +227,964 @@ const demoStudents: Student[] = [
   { id: 'STU-004', name: 'Thiri Mon', email: 'thiri@example.com', course: 'Digital Marketing Beginner to Professional', progress: 94, status: 'Active', lastActive: 'Today, 01:45 PM', joined: 'Dec 28, 2025', assignments: '6 / 6 submitted', quizScore: '92% avg' },
 ];
 
+// =====================================================================
+// Design tokens (minimal & clean)
+// =====================================================================
+//
+// One restrained system used everywhere:
+//   - Flat surfaces, subtle borders, no nested gradients
+//   - Generous spacing (gap-8 / py-10 / py-12)
+//   - Single emerald accent for primary actions/state
+//   - Bold serif for headlines only; everything else is sans
+
 const ui = {
-  section: 'rounded-[1.5rem] border border-white/10 bg-[#11183d]/90 p-5 shadow-2xl shadow-black/25 sm:rounded-[1.75rem] sm:p-7 lg:p-8',
-  sectionSoft: 'rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 shadow-xl shadow-black/10 sm:p-6',
-  eyebrow: 'text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300 sm:text-xs',
-  h2: 'font-serif text-3xl font-black leading-tight text-white sm:text-4xl',
-  button: 'inline-flex items-center justify-center gap-2.5 rounded-full px-5 py-3 text-sm font-black transition sm:px-6 sm:py-3.5',
-};
+  page: 'space-y-12 sm:space-y-16',
+  card: 'rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8',
+  cardSolid: 'rounded-2xl border border-white/[0.08] bg-[#0f1638] p-6 sm:p-8',
+  cardSubtle: 'rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 sm:p-6',
+  eyebrow: 'text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-300',
+  h1: 'font-serif text-4xl font-bold leading-[1.05] text-white sm:text-5xl',
+  h2: 'font-serif text-3xl font-bold leading-tight text-white sm:text-4xl',
+  h3: 'text-xl font-bold text-white',
+  body: 'text-base leading-7 text-slate-300',
+  bodySm: 'text-sm leading-6 text-slate-400',
+  btnPrimary:
+    'inline-flex items-center justify-center gap-2 rounded-full bg-emerald-300 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200',
+  btnGhost:
+    'inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/[0.08]',
+  btnSubtle:
+    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.06]',
+  chip: 'inline-flex items-center gap-1.5 rounded-full bg-emerald-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300',
+  chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-slate-300',
+  divider: 'border-t border-white/[0.06]',
+} as const;
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
-function getNextPage(page: PageName, isLoggedIn: boolean): PageName {
-  return !isLoggedIn && protectedPages.includes(page) ? 'Login' : page;
+function getNextPage(page: PageName, isLoggedIn: boolean, role: Role): PageName {
+  if (!isLoggedIn && protectedPages.includes(page)) return 'Login';
+  if (isLoggedIn && role === 'student' && adminOnlyPages.includes(page)) return 'Student Dashboard';
+  return page;
 }
 
+// =====================================================================
+// Brand mark
+// =====================================================================
+
 function LogoMark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const boxSize = size === 'lg' ? 'h-16 w-20' : size === 'sm' ? 'h-9 w-11' : 'h-11 w-14';
-  const playSize = size === 'lg' ? 'h-9 w-9' : size === 'sm' ? 'h-5 w-5' : 'h-7 w-7';
-  const middleSize = playSize;
-  const barSize = size === 'lg' ? 'h-9 w-3' : size === 'sm' ? 'h-5 w-2' : 'h-7 w-2.5';
+  const boxSize = size === 'lg' ? 'h-14 w-16' : size === 'sm' ? 'h-8 w-9' : 'h-10 w-12';
+  const bar = size === 'lg' ? 'h-7 w-2.5' : size === 'sm' ? 'h-4 w-1.5' : 'h-5 w-2';
+  const tri = size === 'lg' ? 'h-7 w-7' : size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
   return (
-    <div className={cx('relative shrink-0 overflow-hidden rounded-xl border border-emerald-300/25 bg-gradient-to-b from-[#302783] via-[#2f3487] to-[#3b7890] shadow-lg shadow-emerald-950/20', boxSize)}>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-18%,#302783_0%,#302783_46%,transparent_47%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#3d7c91] to-transparent" />
-      <div className="absolute inset-0 flex items-center justify-center gap-0.5 px-2">
-        <span className={cx('block bg-emerald-300', playSize)} style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-        <span className={cx('block bg-emerald-300', middleSize)} style={{ clipPath: 'polygon(0 0, 70% 0, 100% 50%, 70% 100%, 0 100%, 30% 50%)' }} />
-        <span className={cx('block bg-emerald-300', barSize)} />
+    <div className={cx('relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-emerald-300/10 ring-1 ring-emerald-300/20', boxSize)}>
+      <div className="flex items-center gap-0.5">
+        <span className={cx('block bg-emerald-300', tri)} style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+        <span className={cx('block bg-emerald-300', bar)} />
       </div>
     </div>
   );
 }
 
-function Shell({ children, active, setActive, isLoggedIn, setIsLoggedIn }: { children: React.ReactNode; active: PageName; setActive: (v: PageName) => void; isLoggedIn: boolean; setIsLoggedIn: (v: boolean) => void }) {
+// =====================================================================
+// Shell + Top nav
+// =====================================================================
+
+function Shell({
+  children,
+  active,
+  go,
+  isLoggedIn,
+  role,
+  onLogout,
+}: {
+  children: React.ReactNode;
+  active: PageName;
+  go: (v: PageName) => void;
+  isLoggedIn: boolean;
+  role: Role;
+  onLogout: () => void;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const visibleNav = isLoggedIn ? [...publicNavItems, ...studentNavItems] : publicNavItems;
-  const go = (page: PageName) => {
-    setActive(page);
+  const visibleNav: NavItem[] = !isLoggedIn
+    ? publicNavItems
+    : role === 'admin'
+    ? adminNavItems
+    : studentNavItems;
+
+  const handleGo = (page: PageName) => {
+    go(page);
     setMobileOpen(false);
   };
+
+  const homeTarget: PageName = isLoggedIn ? (role === 'admin' ? 'Admin Panel' : 'Student Dashboard') : 'Home';
+  const roleBadge = isLoggedIn ? (role === 'admin' ? 'Admin' : 'Student') : null;
+
   return (
-    <main className="min-h-screen overflow-hidden bg-[#070a2a] text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(78,116,204,0.45),transparent_35%),radial-gradient(circle_at_18%_78%,rgba(22,163,158,0.22),transparent_32%)]" />
-      <div className="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10">
-        <header className="mb-6 rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-3 backdrop-blur sm:mb-8 sm:rounded-2xl sm:px-4 sm:py-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <button onClick={() => go('Home')} className="flex min-w-0 items-center gap-3">
+    <main className="min-h-screen bg-[#070a22] text-white">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(94,234,212,0.08),transparent_50%)]" />
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 -mx-4 mb-10 border-b border-white/[0.06] bg-[#070a22]/85 px-4 py-4 backdrop-blur-lg sm:-mx-6 sm:px-6 sm:py-5 lg:-mx-8 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <button onClick={() => handleGo(homeTarget)} className="flex min-w-0 items-center gap-3">
               <LogoMark size="sm" />
               <div className="min-w-0 text-left">
-                <p className="font-serif text-lg font-black leading-none text-emerald-300 sm:text-[1.35rem]">Ye Htet</p>
-                <p className="truncate text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 sm:text-xs sm:tracking-[0.2em]">Digital Edu</p>
+                <p className="font-serif text-base font-bold leading-none text-white sm:text-lg">Ye Htet</p>
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">Digital Edu</p>
               </div>
             </button>
-            <nav className="hidden flex-wrap items-center gap-2 rounded-full border border-white/10 bg-slate-950/20 p-1 lg:flex">
+
+            <nav className="hidden items-center gap-1 lg:flex">
               {visibleNav.map((item) => (
-                <button key={item.label} onClick={() => go(getNextPage(item.target, isLoggedIn))} className={cx('rounded-full px-4 py-2 text-[13px] font-bold transition', active === item.target ? 'bg-emerald-300 text-slate-950' : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10')}>
+                <button
+                  key={item.label}
+                  onClick={() => handleGo(item.target)}
+                  className={cx(
+                    'rounded-full px-4 py-2 text-sm font-medium transition',
+                    active === item.target
+                      ? 'bg-white/[0.08] text-white'
+                      : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
+                  )}
+                >
                   {item.label}
                 </button>
               ))}
             </nav>
-            <div className="flex items-center gap-2">
-              {isLoggedIn ? (
-                <button onClick={() => { setIsLoggedIn(false); go('Home'); }} className="rounded-full border border-white/10 bg-slate-950/40 px-4 py-2 text-sm font-black text-slate-200">Logout</button>
-              ) : (
-                <button onClick={() => go('Login')} className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-black text-emerald-300">Login</button>
+
+            <div className="flex items-center gap-3">
+              {roleBadge && (
+                <span className="hidden rounded-full bg-emerald-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300 sm:inline-flex">
+                  {roleBadge}
+                </span>
               )}
-              <button onClick={() => setMobileOpen(!mobileOpen)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 lg:hidden" aria-label="Toggle menu">
-                <span className="text-xl leading-none">{mobileOpen ? '×' : '☰'}</span>
+              {isLoggedIn ? (
+                <button onClick={onLogout} className="rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.06] hover:text-white">
+                  Logout
+                </button>
+              ) : (
+                <button onClick={() => handleGo('Login')} className="rounded-full bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200">
+                  Sign in
+                </button>
+              )}
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-slate-200 lg:hidden"
+                aria-label="Toggle menu"
+              >
+                <span className="text-lg leading-none">{mobileOpen ? '×' : '☰'}</span>
               </button>
             </div>
           </div>
+
           {mobileOpen && (
-            <motion.nav initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mt-3 grid gap-2 rounded-[1.25rem] border border-white/10 bg-slate-950/50 p-3 lg:hidden">
+            <motion.nav
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 grid gap-1 rounded-2xl border border-white/[0.06] bg-[#0c1130] p-2 lg:hidden"
+            >
               {visibleNav.map((item) => (
-                <button key={item.label} onClick={() => go(getNextPage(item.target, isLoggedIn))} className={cx('flex items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-bold', active === item.target ? 'bg-emerald-300 text-slate-950' : 'bg-white/5 text-slate-300')}>
-                  {item.label}<ChevronRight className="h-4 w-4" />
+                <button
+                  key={item.label}
+                  onClick={() => handleGo(item.target)}
+                  className={cx(
+                    'flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-medium transition',
+                    active === item.target ? 'bg-white/[0.08] text-white' : 'text-slate-300 hover:bg-white/[0.04]',
+                  )}
+                >
+                  {item.label}
+                  <ChevronRight className="h-4 w-4 opacity-60" />
                 </button>
               ))}
             </motion.nav>
           )}
         </header>
-        {children}
+
+        <div className="pb-16">{children}</div>
       </div>
     </main>
   );
 }
 
-function HomeStatCard({ stat }: { stat: (typeof homeStats)[number] }) {
-  const Icon = stat.icon;
+// =====================================================================
+// Shared building blocks
+// =====================================================================
+
+function PageHeader({
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300/25 hover:bg-slate-950/35">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10 text-emerald-300"><Icon className="h-4 w-4" /></div>
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/70" />
+    <div className="grid gap-6 sm:flex sm:items-end sm:justify-between">
+      <div className="max-w-3xl">
+        {eyebrow && <p className={ui.eyebrow}>{eyebrow}</p>}
+        <h1 className={cx(ui.h1, eyebrow && 'mt-3')}>{title}</h1>
+        {description && <p className={cx(ui.body, 'mt-4')}>{description}</p>}
       </div>
-      <p className="min-h-[28px] text-[1.15rem] font-black leading-tight text-white sm:text-[1.25rem] lg:text-[1.35rem]">{stat.value}</p>
-      <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{stat.label}</p>
+      {actions && <div className="flex flex-wrap gap-3">{actions}</div>}
     </div>
   );
 }
 
-function HomePage({ setActive }: { setActive: (v: PageName) => void }) {
-  const heroLessons = digitalMarketingLessons.slice(0, 5);
+function StatRow({ stats }: { stats: Array<{ label: string; value: string; icon: IconType }> }) {
   return (
-    <div className="space-y-8 sm:space-y-10">
-      <motion.section initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }} className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#121a3f] via-[#18265b] to-[#0b102f] p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-7 lg:p-8 xl:p-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(94,234,212,0.2),transparent_26%),radial-gradient(circle_at_18%_82%,rgba(59,130,246,0.2),transparent_30%)]" />
-        <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center xl:gap-10">
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300 sm:text-xs"><LogoMark size="sm" /> Ye Htet - Digital Edu</span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[11px] font-bold text-slate-300 sm:text-xs">45 lessons · weekly live class</span>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {stats.map((stat) => {
+        const Icon = stat.icon;
+        return (
+          <div key={stat.label} className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+              <Icon className="h-5 w-5" />
             </div>
-            <h1 className="mt-6 font-serif text-[2.65rem] font-black leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-[4.6rem]">Become a practical <span className="text-emerald-300">Digital Marketer</span></h1>
-            <p className="mt-5 max-w-2xl text-[15px] leading-7 text-slate-300 sm:text-[17px] sm:leading-8">Start your assigned course, watch each lesson in order, complete quizzes, submit assignments, and join the weekly live class.</p>
-            <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
-              <button onClick={() => setActive('Courses')} className={cx(ui.button, 'bg-emerald-300 text-slate-950 hover:-translate-y-1 hover:bg-emerald-200')}>Explore Course <ArrowRight className="h-5 w-5" /></button>
-              <button onClick={() => setActive('Learning Path')} className={cx(ui.button, 'border border-white/15 bg-white/5 text-white hover:-translate-y-1 hover:bg-white/10')}>View Roadmap <BookOpen className="h-5 w-5" /></button>
+            <div>
+              <p className="text-lg font-bold leading-tight text-white">{stat.value}</p>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{stat.label}</p>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">{homeStats.map((stat) => <HomeStatCard key={stat.label} stat={stat} />)}</div>
           </div>
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-[2rem] bg-emerald-300/10 blur-2xl" />
-            <div className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/55 p-4 shadow-2xl shadow-black/30 backdrop-blur sm:p-5 lg:p-6">
-              <div className="flex items-start justify-between gap-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4">
-                <div><p className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300 sm:text-xs">Start learning</p><h2 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl">Digital Marketing Beginner to Professional</h2></div>
-                <LogoMark size="md" />
+        );
+      })}
+    </div>
+  );
+}
+
+function ProgressBar({ value, height = 'sm' }: { value: number; height?: 'sm' | 'md' }) {
+  const h = height === 'md' ? 'h-2' : 'h-1.5';
+  return (
+    <div className={cx('w-full overflow-hidden rounded-full bg-white/[0.06]', h)}>
+      <div className="h-full rounded-full bg-emerald-300 transition-[width]" style={{ width: `${value}%` }} />
+    </div>
+  );
+}
+
+function BackLink({ go, to, label }: { go: (v: PageName) => void; to: PageName; label: string }) {
+  return (
+    <button onClick={() => go(to)} className="inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white">
+      <ArrowLeft className="h-4 w-4" /> {label}
+    </button>
+  );
+}
+
+// =====================================================================
+// Home page
+// =====================================================================
+
+function HomePage({ go }: { go: (v: PageName) => void }) {
+  return (
+    <div className={ui.page}>
+      {/* Hero — one focused message */}
+      <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <span className={ui.chip}>
+            <LogoMark size="sm" /> Ye Htet · Digital Edu
+          </span>
+          <h1 className={cx(ui.h1, 'mt-6 sm:text-6xl')}>
+            Become a practical <span className="text-emerald-300">Digital Marketer</span>.
+          </h1>
+          <p className={cx(ui.body, 'mt-5 max-w-xl')}>
+            Start your assigned course, watch each lesson in order, complete quizzes and assignments, and join the weekly live class.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button onClick={() => go('Courses')} className={ui.btnPrimary}>
+              Explore courses <ArrowRight className="h-4 w-4" />
+            </button>
+            <button onClick={() => go('Learning Path')} className={ui.btnGhost}>
+              View roadmap
+            </button>
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className={cx(ui.cardSolid, 'space-y-5')}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className={ui.eyebrow}>Featured course</p>
+              <h2 className="mt-2 text-xl font-bold text-white">Digital Marketing — Beginner to Professional</h2>
+              <p className="mt-2 text-sm text-slate-400">45 lessons · 8 modules · Capstone project</p>
+            </div>
+            <LogoMark size="md" />
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-400">Course progress</p>
+              <p className="text-sm font-semibold text-white">Start</p>
+            </div>
+            <ProgressBar value={0} height="md" />
+          </div>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button onClick={() => go('Login')} className={ui.btnPrimary}>
+              Student login
+            </button>
+            <button onClick={() => go('Course Detail')} className={ui.btnGhost}>
+              Course detail
+            </button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Stats — clean horizontal row, no decoration */}
+      <section>
+        <StatRow stats={homeStats} />
+      </section>
+
+      {/* Courses */}
+      <section>
+        <PageHeader eyebrow="Courses" title="Three programs to build your career." description="Pick the right starting point — from foundation to capstone — and follow the lessons assigned to your account." />
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {courseCards.map((course) => (
+            <CourseCard key={course.title} course={course} go={go} />
+          ))}
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <section>
+        <PageHeader eyebrow="Why this platform" title="Everything you need to learn end-to-end." />
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {homeBenefits.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className={ui.card}>
+                <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className={ui.h3}>{item.title}</h3>
+                <p className={cx(ui.bodySm, 'mt-2')}>{item.text}</p>
               </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">{[['45','Lessons'],['8+','Modules'],['95%','Unlock rule']].map(([value,label]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="font-serif text-3xl font-black leading-none text-white">{value}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p></div>)}</div>
-              <div className="mt-4 rounded-2xl border border-white/10 bg-[#0b102f]/80 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3"><p className="text-base font-black text-white">Continue from here</p><span className="rounded-full bg-emerald-300 px-3 py-1 text-[11px] font-black text-slate-950">Start</span></div>
-                <div className="space-y-2">{heroLessons.map((lesson, index) => <div key={lesson} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[13px] leading-5 text-slate-300"><span className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-black', index < 2 ? 'bg-emerald-300 text-slate-950' : 'bg-slate-700 text-slate-300')}>{index < 2 ? <CheckCircle2 className="h-4 w-4" /> : index + 1}</span><span className="line-clamp-1">{lesson}</span></div>)}</div>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2"><button onClick={() => setActive('Login')} className={cx(ui.button, 'bg-emerald-300 text-slate-950 hover:bg-emerald-200')}>Student Login</button><button onClick={() => setActive('Course Detail')} className={cx(ui.button, 'border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10')}>Course Detail</button></div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Study steps */}
+      <section>
+        <PageHeader eyebrow="How to study" title="Four steps, in order." />
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { n: '01', t: 'Log in', d: 'Use the account provided by the admin.' },
+            { n: '02', t: 'Watch the lesson', d: 'Reach the required progress before moving on.' },
+            { n: '03', t: 'Complete the task', d: 'Pass the quiz or submit the assignment.' },
+            { n: '04', t: 'Join live class', d: 'Ask questions and review the recording later.' },
+          ].map((step) => (
+            <div key={step.n} className={ui.card}>
+              <p className="text-3xl font-bold text-emerald-300">{step.n}</p>
+              <h3 className={cx(ui.h3, 'mt-3')}>{step.t}</h3>
+              <p className={cx(ui.bodySm, 'mt-2')}>{step.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Closing CTA — restrained, single message */}
+      <section className="rounded-2xl border border-emerald-300/30 bg-emerald-300/5 p-8 sm:p-10">
+        <div className="grid gap-6 lg:flex lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <h2 className={ui.h2}>Ready to start?</h2>
+            <p className={cx(ui.body, 'mt-3')}>Open your course, continue the next lesson, and complete today's task.</p>
+          </div>
+          <button onClick={() => go('Courses')} className={ui.btnPrimary}>
+            Go to courses <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function CourseCard({ course, go }: { course: (typeof courseCards)[number]; go: (v: PageName) => void }) {
+  return (
+    <div className={cx(ui.card, 'flex h-full flex-col')}>
+      <div className="flex items-center justify-between">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+          <BookOpen className="h-5 w-5" />
+        </div>
+        <span className="text-xs font-medium text-slate-500">{course.lessons}</span>
+      </div>
+      <h3 className={cx(ui.h3, 'mt-5')}>{course.title}</h3>
+      <p className={cx(ui.bodySm, 'mt-2')}>{course.level}</p>
+      <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
+      <button onClick={() => go('Course Detail')} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-300 transition hover:text-emerald-200">
+        View detail <ArrowRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// =====================================================================
+// Learning Path
+// =====================================================================
+
+function LearningPathPage({ go }: { go: (v: PageName) => void }) {
+  const items = [
+    'Digital Marketing Beginner to Professional',
+    'Digital Marketing Foundation & Ecosystem',
+    'Marketing Funnel, Metrics & Customer Psychology',
+    'Content Strategy and Social Media in 2025',
+    'Meta Ads Campaign Structure, Budget, Bidding & Targeting',
+    'TikTok Ads, Google Ads, SEO, GA4 & Tracking',
+    'Full-Funnel Budget Allocation and Advanced Optimization',
+    'Career Path, Portfolio Building and Capstone Project',
+    'Next Class: Digital Media Planning & Buying',
+  ];
+  return (
+    <div className={ui.page}>
+      <PageHeader
+        eyebrow="Learning path"
+        title="A step-by-step roadmap."
+        description="Review the course order, start with Module 1, and follow each module step by step."
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:gap-10">
+        <ol className="space-y-3">
+          {items.map((item, index) => (
+            <li key={item} className={cx(ui.card, 'flex items-center gap-5')}>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-300/10 font-bold text-emerald-300">
+                {index + 1}
+              </span>
+              <p className="text-base font-medium text-slate-200">{item}</p>
+            </li>
+          ))}
+        </ol>
+
+        <aside className="space-y-4">
+          <RuleCard title="1. Watch" items={['Open the video lesson', 'Watch progress is saved', 'Do not skip ahead']} />
+          <RuleCard title="2. Complete" items={['Watch the required percentage', 'Take the quiz if shown', 'Submit the assignment if shown']} />
+          <RuleCard title="3. Unlock" items={['Next lesson becomes available', 'Progress updates automatically', 'Your coach can review your progress']} />
+          <button onClick={() => go('Courses')} className={cx(ui.btnPrimary, 'w-full')}>
+            View courses <ArrowRight className="h-4 w-4" />
+          </button>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function RuleCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className={ui.cardSubtle}>
+      <h3 className="text-base font-bold text-white">{title}</h3>
+      <ul className="mt-3 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2 text-sm text-slate-400">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// =====================================================================
+// Courses listing
+// =====================================================================
+
+function CoursesPage({ go }: { go: (v: PageName) => void }) {
+  return (
+    <div className={ui.page}>
+      <PageHeader
+        eyebrow="Courses"
+        title="Available digital marketing courses."
+        description="Choose a course, review the details, then log in to access the lessons assigned to your account."
+      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {courseCards.map((course) => (
+          <CourseCard key={course.title} course={course} go={go} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// Course detail
+// =====================================================================
+
+function CourseDetailPage({ go }: { go: (v: PageName) => void }) {
+  return (
+    <div className={ui.page}>
+      <PageHeader
+        eyebrow="Course detail"
+        title="Digital Marketing — Beginner to Professional."
+        description="Start with foundation, continue through paid ads, SEO, analytics, optimization, and finish with your portfolio project."
+        actions={
+          <button onClick={() => go('Login')} className={ui.btnPrimary}>
+            Login to continue <ArrowRight className="h-4 w-4" />
+          </button>
+        }
+      />
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <Metric icon={BookOpen} label="Modules" value="8+" detail="Structured roadmap" />
+        <Metric icon={PlayCircle} label="Video lessons" value="45" detail="Vimeo + progress tracking" />
+        <Metric icon={CalendarDays} label="Next course" value="Media Buying" detail="Continue the path" />
+      </section>
+
+      <section>
+        <PageHeader eyebrow="Curriculum" title="Course modules and lessons." description="Complete each module to unlock the next. Click a module to expand its lesson list." />
+        <div className="mt-8 space-y-3">
+          {modules.map((module, index) => (
+            <ModuleAccordion key={module.title} module={module} index={index} />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <RuleCard title="Access rule" items={['Log in with your student account', 'Use an enrolled course account', 'Make sure your access is still active']} />
+        <RuleCard title="Learning rule" items={['Watch the video first', 'Pass the quiz if required', 'Submit the assignment if required']} />
+      </section>
+    </div>
+  );
+}
+
+function Metric({ icon: Icon, label, value, detail }: { icon: IconType; label: string; value: string; detail: string }) {
+  return (
+    <div className={ui.card}>
+      <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="font-serif text-3xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-sm font-bold text-white">{label}</p>
+      <p className="mt-1 text-sm text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+function ModuleAccordion({ module, index }: { module: (typeof modules)[number]; index: number }) {
+  const [open, setOpen] = useState(index === 1); // open the in-progress module
+  const isLocked = module.status === 'Locked';
+  const statusTone =
+    module.status === 'Completed' ? 'bg-emerald-300/15 text-emerald-300' : module.status === 'In progress' ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-slate-400';
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left transition hover:bg-white/[0.03] sm:px-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{module.title}</span>
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-bold text-white sm:text-lg">{module.name}</h3>
+            <p className="mt-1 text-xs text-slate-500">{module.progress}% · {module.lessons.length} lessons</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={cx('hidden rounded-full px-3 py-1 text-[11px] font-semibold sm:inline-flex', statusTone)}>{module.status}</span>
+          <ChevronDown className={cx('h-5 w-5 text-slate-500 transition', open && 'rotate-180')} />
+        </div>
+      </button>
+
+      <div className="px-5 pb-2 sm:px-6">
+        <ProgressBar value={module.progress} />
+      </div>
+
+      {open && (
+        <div className="space-y-1 px-3 pb-4 pt-3 sm:px-4">
+          {module.lessons.map((lesson, i) => (
+            <div key={lesson} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-white/[0.03]">
+              {isLocked ? <Lock className="h-4 w-4 shrink-0 text-slate-600" /> : <PlayCircle className="h-4 w-4 shrink-0 text-emerald-300" />}
+              <span className="text-xs font-semibold text-slate-500">{String(i + 1).padStart(2, '0')}</span>
+              <span className="truncate">{lesson}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// =====================================================================
+// Student Dashboard
+// =====================================================================
+
+function StudentDashboardPage({ go }: { go: (v: PageName) => void }) {
+  const currentCourse = courseCards[0];
+  const currentModule = modules[1];
+  const nextLesson = currentModule.lessons[2] || currentModule.lessons[0];
+  const overallProgress = 38;
+
+  const quickActions: Array<{ icon: IconType; label: string; target: PageName }> = [
+    { icon: ClipboardCheck, label: 'Assignments', target: 'Assignments' },
+    { icon: Download, label: 'Resources', target: 'Resources' },
+    { icon: Video, label: 'Live class', target: 'Live Meeting' },
+    { icon: BookOpen, label: 'Course detail', target: 'Course Detail' },
+  ];
+
+  return (
+    <div className={ui.page}>
+      <PageHeader
+        eyebrow="Welcome back"
+        title="Pick up where you left off."
+        description={`You're on ${currentModule.title} — ${currentModule.name}. Keep watching to unlock the next lesson.`}
+        actions={
+          <button onClick={() => go('Lesson Player')} className={ui.btnPrimary}>
+            Continue lesson <ArrowRight className="h-4 w-4" />
+          </button>
+        }
+      />
+
+      {/* Hero progress + next lesson */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className={cx(ui.card, 'md:col-span-2')}>
+          <p className={ui.eyebrow}>Up next</p>
+          <h2 className={cx(ui.h2, 'mt-3 text-2xl sm:text-3xl')}>{nextLesson}</h2>
+          <p className={cx(ui.bodySm, 'mt-3')}>From {currentCourse.title}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button onClick={() => go('Lesson Player')} className={ui.btnPrimary}>
+              <PlayCircle className="h-4 w-4" /> Resume
+            </button>
+            <button onClick={() => go('Quiz')} className={ui.btnGhost}>
+              Take quiz
+            </button>
+          </div>
+        </div>
+        <div className={ui.card}>
+          <p className={ui.eyebrow}>Course progress</p>
+          <p className="mt-3 font-serif text-5xl font-bold text-white">{overallProgress}%</p>
+          <div className="mt-4">
+            <ProgressBar value={overallProgress} height="md" />
+          </div>
+          <p className={cx(ui.bodySm, 'mt-3')}>{currentModule.title} · {currentModule.name}</p>
+        </div>
+      </section>
+
+      {/* Quick actions — single clean row */}
+      <section>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.label}
+                onClick={() => go(action.target)}
+                className={cx(ui.card, 'group flex items-center gap-4 text-left transition hover:border-emerald-300/30 hover:bg-white/[0.05]')}
+              >
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span className="flex-1 text-base font-bold text-white">{action.label}</span>
+                <ChevronRight className="h-4 w-4 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-emerald-300" />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Modules — restful list */}
+      <section>
+        <PageHeader eyebrow="Your course" title={currentCourse.title} description={`${currentCourse.modules} · ${currentCourse.lessons}`} actions={
+          <button onClick={() => go('Course Detail')} className={ui.btnSubtle}>
+            View detail
+          </button>
+        } />
+        <div className="mt-8 space-y-3">
+          {modules.map((module) => (
+            <ModuleListRow key={module.title} module={module} onOpen={() => go('Lesson Player')} />
+          ))}
+        </div>
+      </section>
+
+      {/* Info row */}
+      <section className="grid gap-3 md:grid-cols-2">
+        <InfoCard icon={CalendarDays} title="Upcoming live class" text="Saturday · 7:00 PM – 8:30 PM" />
+        <InfoCard icon={ClipboardCheck} title="Pending assignment" text="Marketing funnel worksheet — due before the next module." />
+      </section>
+    </div>
+  );
+}
+
+function ModuleListRow({ module, onOpen }: { module: (typeof modules)[number]; onOpen: () => void }) {
+  const isLocked = module.status === 'Locked';
+  const isCurrent = module.status === 'In progress';
+  const isDone = module.status === 'Completed';
+  const Icon = isDone ? CheckCircle2 : isLocked ? Lock : PlayCircle;
+  const iconTone = isDone ? 'text-emerald-300' : isLocked ? 'text-slate-600' : 'text-emerald-300';
+
+  return (
+    <div className={cx('flex flex-wrap items-center gap-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-5 sm:px-6', isCurrent && 'border-emerald-300/30 bg-emerald-300/[0.04]')}>
+      <div className={cx('grid h-10 w-10 shrink-0 place-items-center rounded-xl', isCurrent ? 'bg-emerald-300/15' : 'bg-white/[0.04]')}>
+        <Icon className={cx('h-5 w-5', iconTone)} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{module.title}</p>
+        <h3 className="mt-1 text-base font-bold text-white sm:text-lg">{module.name}</h3>
+        <div className="mt-3 max-w-md">
+          <ProgressBar value={module.progress} />
+          <p className="mt-2 text-xs text-slate-500">{module.progress}% · {module.lessons.length} lessons</p>
+        </div>
+      </div>
+      <button
+        onClick={onOpen}
+        disabled={isLocked}
+        className={cx(
+          isLocked ? 'cursor-not-allowed opacity-50' : '',
+          isCurrent ? ui.btnPrimary : ui.btnSubtle,
+        )}
+      >
+        {isLocked ? 'Locked' : isDone ? 'Review' : 'Continue'}
+      </button>
+    </div>
+  );
+}
+
+function InfoCard({ icon: Icon, title, text }: { icon: IconType; title: string; text: string }) {
+  return (
+    <div className={ui.card}>
+      <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+        <Icon className="h-5 w-5" />
+      </div>
+      <h3 className={ui.h3}>{title}</h3>
+      <p className={cx(ui.bodySm, 'mt-2')}>{text}</p>
+    </div>
+  );
+}
+
+// =====================================================================
+// Lesson Player
+// =====================================================================
+
+function LessonPreview({ lessonTitle, progress }: { lessonTitle: string; progress: number }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950">
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3 text-[11px] text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-300 text-slate-950">
+            <PlayCircle className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate font-semibold text-slate-200">Now watching · {lessonTitle}</span>
+        </div>
+        <span className="shrink-0 rounded-full bg-emerald-300/10 px-3 py-1 font-semibold text-emerald-300">{progress}% watched</span>
+      </div>
+      <div className="grid min-h-[320px] place-items-center bg-[radial-gradient(circle_at_50%_40%,rgba(94,234,212,0.08),transparent_60%)] p-8 sm:min-h-[420px]">
+        <div className="text-center">
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-300/10 text-emerald-300">
+            <PlayCircle className="h-10 w-10" />
+          </div>
+          <h3 className="mt-5 text-xl font-bold text-white">{lessonTitle}</h3>
+          <p className="mt-2 max-w-sm text-sm text-slate-400">Watch the lesson, then complete the tasks to unlock the next step.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LessonPlayerPage({ go }: { go: (v: PageName) => void }) {
+  const [activeModuleIndex, setActiveModuleIndex] = useState(1);
+  const [activeLessonIndex, setActiveLessonIndex] = useState(0);
+  const activeModule = modules[activeModuleIndex];
+  const activeLesson = activeModule.lessons[activeLessonIndex];
+  const watchedProgress = Math.round(((activeLessonIndex + 1) / activeModule.lessons.length) * 100);
+
+  return (
+    <div className={ui.page}>
+      <div className="flex items-center justify-between gap-4">
+        <BackLink go={go} to="Student Dashboard" label="Back to dashboard" />
+        <span className={ui.chipMuted}>
+          Step {activeLessonIndex + 1} / {activeModule.lessons.length}
+        </span>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
+        {/* Main */}
+        <div className="space-y-8">
+          <div>
+            <p className={ui.eyebrow}>{activeModule.title} · {activeModule.name}</p>
+            <h1 className={cx(ui.h2, 'mt-3')}>{activeLesson}</h1>
+          </div>
+
+          <LessonPreview lessonTitle={activeLesson} progress={watchedProgress} />
+
+          <div className="flex flex-wrap gap-3">
+            <button onClick={() => go('Quiz')} className={ui.btnPrimary}>
+              Take quiz
+            </button>
+            <button onClick={() => go('Assignments')} className={ui.btnGhost}>
+              Submit assignment
+            </button>
+            <button onClick={() => go('Resources')} className={ui.btnGhost}>
+              Download resources
+            </button>
+          </div>
+
+          {/* Lessons in this module */}
+          <div>
+            <h2 className="text-base font-bold uppercase tracking-[0.18em] text-slate-500">Lessons in this module</h2>
+            <div className="mt-4 space-y-2">
+              {activeModule.lessons.map((lesson, index) => {
+                const isActive = activeLessonIndex === index;
+                return (
+                  <button
+                    key={lesson}
+                    onClick={() => setActiveLessonIndex(index)}
+                    className={cx(
+                      'flex w-full items-center gap-4 rounded-xl border px-4 py-3 text-left text-sm transition',
+                      isActive
+                        ? 'border-emerald-300/30 bg-emerald-300/[0.06] text-white'
+                        : 'border-white/[0.06] bg-white/[0.02] text-slate-300 hover:border-emerald-300/20 hover:bg-white/[0.04]',
+                    )}
+                  >
+                    <span className={cx('grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold', isActive ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-slate-400')}>
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="truncate font-medium">{lesson}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
-      </motion.section>
-      <section className="grid gap-4 md:grid-cols-3">{courseCards.map((course) => <CourseCard key={course.title} course={course} setActive={setActive} />)}</section>
-      <section className="grid gap-6 lg:grid-cols-[1fr_1fr]"><Benefits /><StudySteps /></section>
-      <section className="rounded-[1.5rem] border border-emerald-300/20 bg-emerald-300 p-5 text-slate-950 shadow-2xl shadow-black/20 sm:p-7"><div className="grid gap-5 lg:flex lg:items-center lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.28em] text-slate-700">Ready to start</p><h2 className="mt-2 font-serif text-2xl font-black leading-tight sm:text-4xl">Open your course, continue the next lesson, and complete today's task.</h2></div><button onClick={() => setActive('Courses')} className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-slate-950 px-6 py-3.5 text-sm font-black text-white transition hover:-translate-y-1 sm:w-auto">Go to Courses <ArrowRight className="h-5 w-5" /></button></div></section>
+
+        {/* Sidebar — module picker only */}
+        <aside className="space-y-2">
+          <p className={cx(ui.eyebrow, 'mb-3 px-1')}>All modules</p>
+          {modules.map((module, index) => {
+            const isCurrent = index === activeModuleIndex;
+            const isLocked = module.status === 'Locked';
+            return (
+              <button
+                key={module.title}
+                onClick={() => {
+                  if (!isLocked) {
+                    setActiveModuleIndex(index);
+                    setActiveLessonIndex(0);
+                  }
+                }}
+                disabled={isLocked}
+                className={cx(
+                  'w-full rounded-xl border px-4 py-4 text-left transition',
+                  isCurrent
+                    ? 'border-emerald-300/30 bg-emerald-300/[0.06]'
+                    : isLocked
+                    ? 'border-white/[0.06] bg-white/[0.02] opacity-60'
+                    : 'border-white/[0.06] bg-white/[0.02] hover:border-emerald-300/20 hover:bg-white/[0.04]',
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{module.title}</p>
+                  {isLocked && <Lock className="h-3.5 w-3.5 text-slate-600" />}
+                </div>
+                <h3 className="mt-1.5 text-sm font-bold text-white">{module.name}</h3>
+                <div className="mt-3">
+                  <ProgressBar value={module.progress} />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">{module.progress}% · {module.lessons.length} lessons</p>
+              </button>
+            );
+          })}
+        </aside>
+      </div>
     </div>
   );
 }
 
-function CourseCard({ course, setActive }: { course: (typeof courseCards)[number]; setActive: (v: PageName) => void }) {
+// =====================================================================
+// Simple inner pages (Quiz / Assignments / Resources / Reports)
+// =====================================================================
+
+function SimplePage({
+  icon: Icon,
+  title,
+  eyebrow,
+  text,
+  backTarget,
+  go,
+}: {
+  icon: IconType;
+  title: string;
+  eyebrow: string;
+  text: string;
+  backTarget: PageName;
+  go: (v: PageName) => void;
+}) {
   return (
-    <div className={ui.sectionSoft}>
-      <div className="mb-5 flex items-center justify-between"><div className="grid h-12 w-12 place-items-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-300"><BookOpen className="h-6 w-6" /></div><span className="rounded-full border border-white/10 bg-slate-950/35 px-3 py-1 text-xs font-bold text-slate-300">{course.lessons}</span></div>
-      <h3 className="text-lg font-black leading-snug text-white sm:text-xl">{course.title}</h3><p className="mt-2 text-sm leading-6 text-slate-300">{course.level}</p><p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">{course.modules}</p>
-      <button onClick={() => setActive('Course Detail')} className="mt-5 rounded-full bg-emerald-300 px-4 py-2 text-sm font-black text-slate-950">View Detail</button>
+    <div className={ui.page}>
+      <BackLink go={go} to={backTarget} label={`Back to ${backTarget}`} />
+      <PageHeader eyebrow={eyebrow} title={title} description={text} />
+      <section className="grid gap-3 md:grid-cols-3">
+        <InfoCard icon={Icon} title="Open" text="Start the selected item and follow the instructions." />
+        <InfoCard icon={CheckCircle2} title="Complete" text="Finish the required step before continuing." />
+        <InfoCard icon={ArrowRight} title="Continue" text="Move to the next available lesson or task." />
+      </section>
     </div>
   );
 }
 
-function Benefits() {
-  return <div className={ui.section}><p className={ui.eyebrow}>Your learning tools</p><h2 className={cx(ui.h2, 'mt-3')}>Complete each step to unlock the next lesson</h2><div className="mt-6 grid gap-3 sm:grid-cols-2">{homeBenefits.map((item) => { const Icon = item.icon; return <div key={item.title} className="rounded-2xl border border-white/10 bg-slate-950/30 p-4"><Icon className="mb-3 h-6 w-6 text-emerald-300" /><h3 className="text-base font-black text-white">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p></div>; })}</div></div>;
+function QuizPage({ go }: { go: (v: PageName) => void }) {
+  return <SimplePage icon={ClipboardCheck} title="Lesson quiz." eyebrow="Quiz" text="Answer each question, submit the quiz, and reach the passing score to unlock the next lesson." backTarget="Lesson Player" go={go} />;
+}
+function AssignmentsPage({ go }: { go: (v: PageName) => void }) {
+  return <SimplePage icon={UploadCloud} title="Submit your assignment." eyebrow="Assignments" text="Upload your file, paste your link, or write your answer, then submit it for review." backTarget="Student Dashboard" go={go} />;
+}
+function ResourcesPage({ go }: { go: (v: PageName) => void }) {
+  return <SimplePage icon={Download} title="Lesson resource files." eyebrow="Resources" text="Download the files you need for the current lesson or assignment." backTarget="Student Dashboard" go={go} />;
+}
+function ReportsPage({ go }: { go: (v: PageName) => void }) {
+  return <SimplePage icon={BarChart3} title="Progress, quiz & assignment reports." eyebrow="Reports" text="Select a report type, review student activity, then export the result if needed." backTarget="Admin Panel" go={go} />;
 }
 
-function StudySteps() {
-  const steps = [['1','Log in to your account','Use the account provided by the admin'],['2','Watch the current lesson','Watch until the required progress is reached'],['3','Complete the required task','Pass the quiz or submit the assignment'],['4','Join the live class','Ask questions and review the recording later']];
-  return <div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/25 sm:rounded-[1.75rem] sm:p-7 lg:p-8"><p className={ui.eyebrow}>How to study</p><h2 className={cx(ui.h2, 'mt-3')}>Follow these steps in order</h2><div className="mt-6 space-y-3">{steps.map(([n,t,d]) => <div key={t} className="flex gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-300 text-sm font-black text-slate-950">{n}</div><div><h3 className="text-base font-black text-white">{t}</h3><p className="mt-1 text-sm leading-6 text-slate-300">{d}</p></div></div>)}</div></div>;
+// =====================================================================
+// Live Meeting
+// =====================================================================
+
+function LiveMeetingPage({ go }: { go: (v: PageName) => void }) {
+  const roomName = `YeHtetEdu-SaturdayLiveClass-${new Date().getDate()}`;
+  const jitsiURL = `https://meet.jit.si/${roomName}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+
+  return (
+    <div className={ui.page}>
+      <BackLink go={go} to="Student Dashboard" label="Back to dashboard" />
+      <PageHeader
+        eyebrow="Saturday live class"
+        title="7:00 PM – 8:30 PM."
+        description="Join the live session from any device. Use Chrome or Firefox for best results."
+        actions={
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-300/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" /> Live now
+          </span>
+        }
+      />
+
+      <section className={ui.card}>
+        <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px' }}>
+          <iframe
+            src={jitsiURL}
+            allow="camera; microphone; display-capture; fullscreen; autoplay; clipboard-read; clipboard-write"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', borderRadius: '12px' }}
+            title="Ye Htet Digital Edu — Live Class"
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <InfoCard icon={Video} title="Camera & mic" text="Use the toolbar in the video to toggle your camera and microphone." />
+        <InfoCard icon={MonitorUp} title="Screen sharing" text="Share your screen with the class from the toolbar buttons." />
+        <InfoCard icon={Users} title="Multiple users" text="All participants can join from any device with browser support." />
+      </section>
+    </div>
+  );
 }
 
-function LearningPathPage({ setActive }: { setActive: (v: PageName) => void }) {
-  return <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"><div className={ui.section}><p className={ui.eyebrow}>Learning Path</p><h1 className="mt-3 font-serif text-4xl font-black sm:text-5xl">Step-by-step Digital Marketing Roadmap</h1><p className="mt-4 leading-7 text-slate-300">Review the course order, start with Module 1, and follow each module step by step.</p><div className="mt-7 space-y-3">{['Digital Marketing Beginner to Professional','Digital Marketing Foundation & Ecosystem','Marketing Funnel, Metrics & Customer Psychology','Content Strategy and Social Media in 2025','Meta Ads Campaign Structure, Budget, Bidding & Targeting','TikTok Ads, Google Ads, SEO, GA4 & Tracking','Full-Funnel Budget Allocation and Advanced Optimization','Career Path, Portfolio Building and Capstone Project','Next Class: Digital Media Planning & Buying'].map((item,index) => <div key={item} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-300 font-black text-slate-950">{index+1}</div><p className="font-bold text-slate-200">{item}</p></div>)}</div></div><aside className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-7"><p className={ui.eyebrow}>Study Rules</p><h2 className="mt-4 font-serif text-3xl font-black sm:text-4xl">How to unlock lessons</h2><div className="mt-6 space-y-4"><Panel title="1. Watch" items={['Open the video lesson','Watch progress is saved','Do not skip ahead']} /><Panel title="2. Complete" items={['Watch the required percentage','Take the quiz if shown','Submit the assignment if shown']} /><Panel title="3. Unlock" items={['Next lesson becomes available','Your progress updates automatically','Your coach can review your progress']} /></div><button onClick={() => setActive('Courses')} className="mt-6 w-full rounded-full bg-emerald-300 px-5 py-4 font-black text-slate-950">View Courses</button></aside></section>;
-}
+// =====================================================================
+// Admin Panel (kept compact, refreshed styling)
+// =====================================================================
 
-function CoursesPage({ setActive }: { setActive: (v: PageName) => void }) {
-  return <section className="space-y-6"><div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-slate-800/90 via-[#16234c]/90 to-[#263b78]/80 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-8"><p className={ui.eyebrow}>Public Courses Page</p><h1 className="mt-3 font-serif text-4xl font-black text-white sm:text-5xl">Available Digital Marketing Courses</h1><p className="mt-3 max-w-3xl leading-7 text-slate-300">Choose a course, review the details, then log in to access the lessons assigned to your account.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{courseCards.map((course) => <CourseCard key={course.title} course={course} setActive={setActive} />)}</div></section>;
-}
-
-function CourseDetailPage({ setActive }: { setActive: (v: PageName) => void }) {
-  return <section className="space-y-6"><div className="grid gap-6 lg:grid-cols-[1fr_360px]"><div className={ui.section}><p className={ui.eyebrow}>Course Detail Page</p><h1 className="mt-3 max-w-4xl font-serif text-4xl font-black leading-[1.02] sm:text-5xl lg:text-6xl">Digital Marketing Beginner to Professional</h1><p className="mt-4 max-w-3xl leading-7 text-slate-300">Start with the foundation modules, continue through paid ads, SEO, analytics, optimization, and finish with your portfolio project.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><Metric icon={BookOpen} label="Modules" value="8+" detail="Structured roadmap" /><Metric icon={PlayCircle} label="Video Lessons" value="45" detail="Vimeo + progress" /><Metric icon={CalendarDays} label="Next Course" value="Media Buying" detail="Planning path" /></div></div><aside className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-6"><p className={ui.eyebrow}>Course Access</p><h2 className="mt-3 font-serif text-3xl font-black leading-tight sm:text-4xl">Login required to start</h2><div className="mt-5 space-y-3"><AccessRuleCard title="Access Rule" items={['Log in with your student account','Use an enrolled course account','Make sure your access is still active']} /><AccessRuleCard title="Learning Rule" items={['Watch the video first','Pass the quiz if required','Submit the assignment if required']} /></div><button onClick={() => setActive('Login')} className="mt-5 w-full rounded-full bg-emerald-300 px-5 py-4 font-black text-slate-950">Login to Continue</button></aside></div><div className={ui.section}><div className="grid gap-4 border-b border-white/10 pb-5 lg:flex lg:items-end lg:justify-between"><div><p className={ui.eyebrow}>Curriculum</p><h2 className="mt-3 font-serif text-3xl font-black sm:text-4xl">Course modules and lessons</h2><p className="mt-2 max-w-3xl text-slate-300">Choose the current module, complete the visible lessons, and unlock the next section.</p></div><div className="flex flex-wrap gap-2"><span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-bold text-emerald-300">45 lessons</span><span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300">Quiz + Assignment</span></div></div><div className="mt-5 space-y-4">{modules.map((module,index) => <CourseModuleRow key={module.title} module={module} index={index} />)}</div></div></section>;
-}
-
-function Metric({ icon: Icon, label, value, detail }: { icon: IconType; label: string; value: string; detail: string }) { return <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-300"><Icon className="h-5 w-5" /></div><p className="font-serif text-3xl font-black text-white">{value}</p><p className="mt-1 text-sm font-black text-white">{label}</p><p className="mt-1 text-sm text-slate-400">{detail}</p></div>; }
-function AccessRuleCard({ title, items }: { title: string; items: string[] }) { return <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><h3 className="text-lg font-black text-white">{title}</h3><div className="mt-3 space-y-2.5">{items.map((item) => <div key={item} className="flex items-start gap-2 text-sm text-slate-300"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /><span>{item}</span></div>)}</div></div>; }
-
-function CourseModuleRow({ module, index }: { module: (typeof modules)[number]; index: number }) {
-  const isLocked = module.status === 'Locked';
-  const visible = module.lessons.slice(0, 4);
-  return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 transition hover:border-emerald-300/30 hover:bg-slate-950/45"><div className="grid gap-4 lg:grid-cols-[230px_1fr_140px] lg:items-start"><div><div className="flex items-center gap-2"><span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300">{module.title}</span><span className={cx('rounded-full px-3 py-1 text-[11px] font-black', isLocked ? 'bg-slate-700 text-slate-300' : 'bg-emerald-300 text-slate-950')}>{module.status}</span></div><h3 className="mt-3 text-xl font-black leading-tight text-white">{module.name}</h3><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${module.progress}%` }} /></div><p className="mt-2 text-sm text-slate-400">{module.progress}% completed · {module.lessons.length} lessons</p></div><div className="grid gap-2 sm:grid-cols-2">{visible.map((lesson, i) => <div key={lesson} className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-slate-300">{isLocked ? <Lock className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" /> : <PlayCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />}<span><span className="text-slate-500">{String(i + 1).padStart(2, '0')}.</span> {lesson}</span></div>)}{module.lessons.length > 4 && <div className="flex items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-3 py-2.5 text-sm font-bold text-emerald-300">+{module.lessons.length - 4} more lessons</div>}</div><div className="flex lg:justify-end"><button className={cx('w-full rounded-full px-4 py-3 text-sm font-black lg:w-auto', isLocked ? 'bg-slate-700 text-slate-300' : 'bg-emerald-300 text-slate-950')}>{isLocked ? 'Locked' : module.status === 'Completed' ? 'Review' : 'Continue'}</button></div></div></motion.div>;
-}
-
-function StatCard({ item }: { item: (typeof adminStats)[number] }) { const Icon = item.icon; return <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-xl shadow-black/10"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-300"><Icon className="h-5 w-5" /></div><p className="font-serif text-3xl font-black text-white sm:text-4xl">{item.value}</p><p className="mt-1 text-sm font-semibold text-slate-300">{item.label}</p></div>; }
+const adminContent: Record<string, { title: string; description: string; primaryAction: string; cards: Array<{ title: string; items: string[] }> }> = {
+  Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Reports', items: ['Student progress percentage', 'Video watch history', 'Quiz score report', 'Assignment review status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
+  Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
+  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '45 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
+  Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
+  Lessons: { title: 'Lesson Manager', description: 'Add Vimeo video lessons and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
+  Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
+  Assignments: { title: 'Assignment Review', description: 'Create assignments and review submissions.', primaryAction: 'Create Assignment', cards: [{ title: 'Submission Types', items: ['Text answer', 'File upload', 'External link', 'Google Sheet link'] }] },
+  Meetings: { title: 'Live Class Meetings', description: 'Schedule live classes and track attendance.', primaryAction: 'Schedule Meeting', cards: [{ title: 'Meeting Setup', items: ['Title', 'Date and time', 'Meeting room', 'Student access'] }] },
+  Reports: { title: 'Reports & Analytics', description: 'Review progress and export reports.', primaryAction: 'Export Report', cards: [{ title: 'Progress Report', items: ['Course completion', 'Lesson completion', 'Watch percentage', 'Last activity'] }] },
+  Settings: { title: 'Platform Settings', description: 'Configure branding, roles, permissions, and notifications.', primaryAction: 'Save Settings', cards: [{ title: 'Branding', items: ['Ye Htet - Digital Edu', 'Logo', 'Theme color', 'Course display'] }] },
+};
 
 function AdminPanelPage() {
-  const adminMenu = ['Dashboard','Students','Courses','Modules','Lessons','Quizzes','Assignments','Meetings','Reports','Settings'];
+  const adminMenu = ['Dashboard', 'Students', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
@@ -374,139 +1192,477 @@ function AdminPanelPage() {
   const current = adminContent[adminActive] || adminContent.Dashboard;
   const selectedStudent = demoStudents.find((s) => s.id === selectedStudentId) || demoStudents[0];
   const openAction = (name: string) => { setActiveAction(name); setSavedMessage(''); };
-  return <section className="grid gap-6 lg:grid-cols-[270px_1fr]"><aside className="rounded-[1.5rem] border border-white/10 bg-slate-950/35 p-5 shadow-2xl shadow-black/20 sm:rounded-[1.75rem]"><p className="px-3 text-xs font-black uppercase tracking-[0.35em] text-emerald-300">Admin Panel</p><div className="mt-5 grid grid-cols-2 gap-2 lg:block lg:space-y-2">{adminMenu.map((item) => <button key={item} onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(demoStudents[0].id); }} className={cx('flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold transition sm:text-base', adminActive === item ? 'bg-emerald-300 text-slate-950' : 'text-slate-300 hover:bg-white/10')}>{item === 'Dashboard' ? <LayoutDashboard className="h-5 w-5" /> : item === 'Settings' ? <Settings className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}{item}</button>)}</div></aside><div className="space-y-6"><div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-7"><div className="grid gap-4 lg:flex lg:items-center lg:justify-between"><div><p className={ui.eyebrow}>{adminActive} Overview</p><h1 className="mt-3 font-serif text-4xl font-black sm:text-5xl">{current.title}</h1><p className="mt-3 text-slate-300">{current.description}</p></div><button onClick={() => openAction(current.primaryAction)} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-300 px-5 py-3 font-black text-slate-950 sm:w-auto"><Plus className="h-5 w-5" /> {current.primaryAction}</button></div></div>{savedMessage && <div className="rounded-2xl border border-emerald-300/30 bg-emerald-300/10 px-5 py-4 font-bold text-emerald-200">{savedMessage}</div>}{activeAction && <AdminActionPanel section={adminActive} actionName={activeAction} onCancel={() => setActiveAction(null)} onSave={() => { setSavedMessage(`${activeAction} saved successfully.`); setActiveAction(null); }} />}{adminActive === 'Students' ? <StudentDirectory students={demoStudents} selectedStudent={selectedStudent} onSelectStudent={(id) => { setSelectedStudentId(id); setActiveAction(null); }} onCreateStudent={() => openAction('Add Student')} onEditStudent={() => openAction(`Edit ${selectedStudent.name}`)} /> : <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{adminStats.map((item) => <StatCard key={item.label} item={item} />)}</div><div className="grid gap-4 lg:grid-cols-2">{current.cards.map((card) => <Panel key={card.title} title={card.title} items={card.items} onAction={() => openAction(card.title)} />)}</div></>}</div></section>;
-}
-
-const adminContent: Record<string, { title: string; description: string; primaryAction: string; cards: Array<{ title: string; items: string[] }> }> = {
-  Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account','Assign one or multiple courses','Set start date and expiry date','Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules','Add Vimeo video lessons','Attach quiz, resource, and assignment','Set lesson unlock rules'] }, { title: 'Reports', items: ['Student progress percentage','Video watch history','Quiz score report','Assignment review status'] }, { title: 'Meeting Control', items: ['Create live class','Control screen sharing','Start or stop recording','Check attendance history'] }] },
-  Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
-  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional','45 lessons','8+ modules','Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying','Planning framework','Buying strategy','Campaign workflow'] }] },
-  Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title','Lesson order','Progress percentage','Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required','Quiz pass required','Assignment required','Admin override'] }] },
-  Lessons: { title: 'Lesson Manager', description: 'Add Vimeo video lessons and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL','Watch progress rule','No skipping','Resume playback'] }, { title: 'Tracking', items: ['Watch time','Last position','Completed date','Device history'] }] },
-  Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score','Max attempts','Show answers','Randomize questions'] }] },
-  Assignments: { title: 'Assignment Review', description: 'Create assignments and review submissions.', primaryAction: 'Create Assignment', cards: [{ title: 'Submission Types', items: ['Text answer','File upload','External link','Google Sheet link'] }] },
-  Meetings: { title: 'Live Class Meetings', description: 'Schedule live classes and track attendance.', primaryAction: 'Schedule Meeting', cards: [{ title: 'Meeting Setup', items: ['Title','Date and time','Meeting room','Student access'] }] },
-  Reports: { title: 'Reports & Analytics', description: 'Review progress and export reports.', primaryAction: 'Export Report', cards: [{ title: 'Progress Report', items: ['Course completion','Lesson completion','Watch percentage','Last activity'] }] },
-  Settings: { title: 'Platform Settings', description: 'Configure branding, roles, permissions, and notifications.', primaryAction: 'Save Settings', cards: [{ title: 'Branding', items: ['Ye Htet - Digital Edu','Logo','Theme color','Course display'] }] },
-};
-
-function StudentDirectory({ students, selectedStudent, onSelectStudent, onCreateStudent, onEditStudent }: { students: Student[]; selectedStudent: Student; onSelectStudent: (id: string) => void; onCreateStudent: () => void; onEditStudent: () => void }) {
-  const [showProgress, setShowProgress] = useState(false);
-  const progressRows = [
-    { label: 'Completed lessons', value: `${Math.round((selectedStudent.progress / 100) * 45)} / 45` },
-    { label: 'Average quiz score', value: selectedStudent.quizScore },
-    { label: 'Assignments', value: selectedStudent.assignments },
-    { label: 'Watch progress', value: `${selectedStudent.progress}%` },
-    { label: 'Last activity', value: selectedStudent.lastActive },
-  ];
-  return <div className="grid gap-5 xl:grid-cols-[1fr_420px]"><div className={ui.sectionSoft}><div className="grid gap-4 border-b border-white/10 pb-5 sm:flex sm:items-center sm:justify-between"><div><p className={ui.eyebrow}>Student List</p><h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">All Students</h2><p className="mt-2 text-sm leading-6 text-slate-300">Select a student to open their profile, progress, assignments, and quiz summary.</p></div><button onClick={onCreateStudent} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-300 px-5 py-3 text-sm font-black text-slate-950"><Plus className="h-4 w-4" /> Add Student</button></div><div className="mt-5 overflow-x-auto rounded-2xl border border-white/10"><table className="min-w-[780px] w-full border-collapse text-left text-sm"><thead className="bg-slate-950/45 text-xs uppercase tracking-[0.16em] text-slate-400"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Course</th><th className="px-4 py-3">Progress</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Last Active</th><th className="px-4 py-3">Action</th></tr></thead><tbody>{students.map((student) => <tr key={student.id} onClick={() => { onSelectStudent(student.id); setShowProgress(false); }} className={cx('cursor-pointer border-t border-white/10 transition hover:bg-white/[0.05]', student.id === selectedStudent.id ? 'bg-emerald-300/10' : 'bg-transparent')}><td className="px-4 py-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-300 font-black text-slate-950">{student.name.slice(0,1)}</div><div><p className="font-black text-white">{student.name}</p><p className="text-xs text-slate-400">{student.email}</p></div></div></td><td className="px-4 py-4 text-slate-300">{student.course}</td><td className="px-4 py-4"><div className="flex items-center gap-3"><div className="h-2 w-24 overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${student.progress}%` }} /></div><span className="font-bold text-slate-300">{student.progress}%</span></div></td><td className="px-4 py-4"><span className={cx('rounded-full px-3 py-1 text-xs font-black', student.status === 'Active' ? 'bg-emerald-300 text-slate-950' : 'bg-amber-300/20 text-amber-200')}>{student.status}</span></td><td className="px-4 py-4 text-slate-300">{student.lastActive}</td><td className="px-4 py-4"><button className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-black text-emerald-300 hover:bg-emerald-300 hover:text-slate-950">View</button></td></tr>)}</tbody></table></div></div><aside className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/25 sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className={ui.eyebrow}>Student Profile</p><h2 className="mt-2 text-3xl font-black text-white">{selectedStudent.name}</h2><p className="mt-1 text-sm text-slate-400">{selectedStudent.email}</p></div><button onClick={onEditStudent} className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-xs font-black text-emerald-300">Edit</button></div><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1"><ProfileField label="Student ID" value={selectedStudent.id} /><ProfileField label="Joined" value={selectedStudent.joined} /><ProfileField label="Assigned Course" value={selectedStudent.course} /><ProfileField label="Status" value={selectedStudent.status} /><ProfileField label="Assignments" value={selectedStudent.assignments} /><ProfileField label="Quiz Score" value={selectedStudent.quizScore} /></div><div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/35 p-4"><div className="flex items-center justify-between gap-4"><p className="font-black text-white">Course Progress</p><p className="font-black text-emerald-300">{selectedStudent.progress}%</p></div><div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${selectedStudent.progress}%` }} /></div><p className="mt-3 text-sm text-slate-400">Last active: {selectedStudent.lastActive}</p></div><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1"><button onClick={() => setShowProgress(!showProgress)} className="rounded-full bg-emerald-300 px-5 py-3 text-sm font-black text-slate-950">{showProgress ? 'Hide Full Progress' : 'View Full Progress'}</button><button className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-slate-300">Reset Password</button></div>{showProgress && <div className="mt-5 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-4"><div className="mb-4 flex items-center justify-between gap-3"><div><p className={ui.eyebrow}>Full Progress</p><h3 className="mt-1 text-xl font-black text-white">{selectedStudent.name}</h3></div><span className="rounded-full bg-emerald-300 px-3 py-1 text-xs font-black text-slate-950">{selectedStudent.progress}%</span></div><div className="grid gap-3">{progressRows.map((row) => <div key={row.label} className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-slate-950/30 px-3 py-3"><span className="text-sm font-bold text-slate-400">{row.label}</span><span className="text-right text-sm font-black text-white">{row.value}</span></div>)}</div></div>}</aside></div>;
-}
-
-function ProfileField({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{label}</p><p className="mt-1 text-sm font-bold text-slate-200">{value}</p></div>; }
-function AdminActionPanel({ section, actionName, onCancel, onSave }: { section: string; actionName: string; onCancel: () => void; onSave: () => void }) { const fields = { Students: ['Student name','Email address','Temporary password','Assigned course'], Courses: ['Course title','Level','Short description','Publish status'], Modules: ['Module title','Course','Sort order','Unlock rule'], Lessons: ['Lesson title','Vimeo embed URL','Required watch percentage','Attached resource'], Quizzes: ['Quiz title','Passing score','Max attempts','Question type'], Assignments: ['Assignment title','Due date','Submission type','Unlock behavior'], Meetings: ['Meeting title','Date and time','Host','Recording access'], Reports: ['Report type','Date range','Student group','Export format'], Settings: ['Platform name','Theme color','Default pass score','Default watch percentage'], Dashboard: ['Student name','Email address','Assigned course','Access expiry date'] }[section] || ['Title','Description','Status','Owner']; return <div className="rounded-[1.5rem] border border-emerald-300/25 bg-slate-950/45 p-5 shadow-2xl shadow-black/25 sm:rounded-[1.75rem] sm:p-6"><div className="grid gap-4 lg:flex lg:items-start lg:justify-between"><div><p className={ui.eyebrow}>Action Panel</p><h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">{actionName}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Fill in the fields, then save the preview action.</p></div><button onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300">Close</button></div><div className="mt-5 grid gap-4 sm:grid-cols-2">{fields.map((field) => <label key={field} className="block"><span className="text-sm font-bold text-slate-300">{field}</span><input className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/60" placeholder={`Enter ${field.toLowerCase()}`} /></label>)}</div><div className="mt-5 flex flex-wrap gap-3"><button onClick={onSave} className="rounded-full bg-emerald-300 px-6 py-3 text-sm font-black text-slate-950">Save Preview</button><button onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-slate-300">Cancel</button></div></div>; }
-function Panel({ title, items, onAction }: { title: string; items: string[]; onAction?: () => void }) { return <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><h3 className="text-xl font-black text-white sm:text-2xl">{title}</h3>{onAction && <button onClick={onAction} className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-black text-emerald-300">Open</button>}</div><div className="mt-5 space-y-3">{items.map((item) => <button key={item} onClick={onAction} className="flex w-full items-center gap-3 rounded-xl px-1 py-1 text-left text-slate-300 hover:bg-white/5"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" /><span>{item}</span></button>)}</div></div>; }
-
-function StudentDashboardPage({ setActive }: { setActive: (v: PageName) => void }) { return <section className="space-y-6"><div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-slate-800/90 via-[#16234c]/90 to-[#263b78]/80 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-8"><p className={ui.eyebrow}>Student Dashboard</p><h1 className="mt-3 font-serif text-4xl font-black text-white sm:text-5xl">My Courses & Progress</h1><p className="mt-3 max-w-3xl leading-7 text-slate-300">Open your assigned course, continue the next available lesson, and complete the pending task.</p></div><div className="grid gap-6 lg:grid-cols-[1fr_360px]"><div className={ui.section}><div className="mb-5 grid gap-4 sm:flex sm:items-center sm:justify-between"><h2 className="font-serif text-3xl font-black sm:text-4xl">Assigned Courses</h2><button className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-bold text-slate-300"><Search className="mr-2 inline h-4 w-4" />Search</button></div><div className="mb-5 flex flex-wrap gap-3"><button onClick={() => setActive('Lesson Player')} className="rounded-full bg-emerald-300 px-4 py-2 font-black text-slate-950">Continue Lesson</button><button onClick={() => setActive('Assignments')} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-bold text-slate-300">Assignments</button><button onClick={() => setActive('Resources')} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-bold text-slate-300">Resources</button><button onClick={() => setActive('Quiz')} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 font-bold text-slate-300">Quiz</button></div><div className="space-y-4">{courseCards.map((course, idx) => <div key={course.title} className="rounded-2xl border border-white/10 bg-slate-950/35 p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div><h3 className="text-xl font-black text-white">{course.title}</h3><p className="mt-1 text-sm text-slate-400">Course progress: {idx === 0 ? 38 : 0}%</p></div><span className={cx('rounded-full px-4 py-2 text-sm font-black', idx === 0 ? 'bg-emerald-300 text-slate-950' : 'bg-slate-700 text-slate-300')}>{idx === 0 ? 'Continue' : 'Locked'}</span></div><div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${idx === 0 ? 38 : 0}%` }} /></div></div>)}</div></div><aside className="space-y-4"><InfoCard icon={CalendarDays} title="Upcoming Meeting" text="Digital Marketing Live Class - 7:00 PM - 8:30 PM" /><InfoCard icon={ClipboardCheck} title="Pending Assignment" text="Marketing funnel worksheet must be submitted before the next module." /></aside></div></section>; }
-function InfoCard({ icon: Icon, title, text }: { icon: IconType; title: string; text: string }) { return <div className={ui.sectionSoft}><div className="mb-5 grid h-14 w-14 place-items-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-300"><Icon className="h-7 w-7" /></div><h3 className="text-xl font-black text-white sm:text-2xl">{title}</h3><p className="mt-3 leading-7 text-slate-300">{text}</p></div>; }
-function LessonPreview({ lessonTitle, progress }: { lessonTitle: string; progress: number }) { return <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-slate-100 shadow-2xl"><div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-600"><div className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-white"><PlayCircle className="h-4 w-4" /></span><span className="font-bold text-slate-800">Now watching - {lessonTitle}</span></div><span className="rounded-full bg-emerald-100 px-3 py-1 font-bold text-emerald-700">{progress}% watched</span></div><div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 sm:p-5"><div className="grid min-h-[220px] place-items-center rounded-xl border border-white/10 bg-[radial-gradient(circle_at_50%_30%,rgba(110,231,183,0.22),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(30,41,59,0.8))] sm:min-h-[300px]"><div className="text-center"><div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 text-emerald-300 shadow-2xl shadow-emerald-950/60 sm:h-24 sm:w-24"><PlayCircle className="h-10 w-10 sm:h-12 sm:w-12" /></div><h3 className="text-xl font-black text-white sm:text-2xl">{lessonTitle}</h3><p className="mt-2 text-slate-300">Watch the lesson, then complete the tasks to unlock the next step.</p></div></div></div></div>; }
-function ModuleCard({ module, active }: { module: (typeof modules)[number]; active: boolean }) { return <div className={cx('rounded-2xl border p-5 shadow-lg shadow-black/10 transition', active ? 'border-emerald-300/60 bg-emerald-300/10' : 'border-white/10 bg-slate-950/35')}><p className={ui.eyebrow}>{module.title}</p><h3 className="mt-2 text-xl font-black text-white">{module.name}</h3><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${module.progress}%` }} /></div><p className="mt-2 text-sm text-slate-400">{module.progress}% completed</p></div>; }
-function LessonPlayerPage() { const [activeModuleIndex, setActiveModuleIndex] = useState(0); const [activeLessonIndex, setActiveLessonIndex] = useState(0); const activeModule = modules[activeModuleIndex]; const activeLesson = activeModule.lessons[activeLessonIndex]; const watchedProgress = Math.round(((activeLessonIndex + 1) / activeModule.lessons.length) * 100); return <section className="grid gap-6 lg:grid-cols-[1fr_410px]"><div className={ui.section}><div className="mb-5 flex flex-wrap items-start justify-between gap-4"><div><span className="inline-flex rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-1.5 text-xs font-black uppercase tracking-[0.32em] text-emerald-300">Student Lesson Player</span><h2 className="mt-2 font-serif text-4xl font-black leading-none sm:text-5xl md:text-6xl">Digital Marketing Beginner to Professional</h2></div><div className="flex items-center gap-2 pt-2 text-lg font-black text-white"><Users className="h-5 w-5 text-emerald-300" /> 5 joined live</div></div><LessonPreview lessonTitle={activeLesson} progress={watchedProgress} /><div className="mt-5 rounded-3xl border border-white/10 bg-slate-950/30 p-5"><div className="flex items-center justify-between gap-4"><div><p className={ui.eyebrow}>Current lesson</p><h3 className="mt-2 text-2xl font-black text-white">{activeLesson}</h3></div><span className="rounded-full bg-emerald-300 px-3 py-1.5 text-sm font-black text-slate-950">Step {activeLessonIndex + 1} / {activeModule.lessons.length}</span></div><div className="mt-5 grid gap-2">{activeModule.lessons.slice(0, 6).map((lesson,index) => <button key={lesson} onClick={() => setActiveLessonIndex(index)} className={cx('flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition', activeLessonIndex === index ? 'border-emerald-300 bg-emerald-300/10 text-white shadow-[0_0_0_1px_rgba(52,211,153,0.35)]' : 'border-white/10 bg-white/5 text-slate-300 hover:border-emerald-300/30 hover:bg-white/10')}><span className={cx('grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black', activeLessonIndex === index ? 'bg-emerald-300 text-slate-950' : 'bg-slate-700 text-slate-300')}>{String(index + 1).padStart(2,'0')}</span><div><p className="font-black">{lesson}</p><p className="mt-1 text-xs text-slate-400">Watch this lesson to move to the next step.</p></div></button>)}</div></div><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{modules.map((module,index) => <button key={module.title} onClick={() => { setActiveModuleIndex(index); setActiveLessonIndex(0); }} className="text-left"><ModuleCard module={module} active={index === activeModuleIndex} /></button>)}</div></div><aside className="space-y-6"><div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-7"><p className={ui.eyebrow}>Selected Module</p><h2 className="mt-4 font-serif text-3xl font-black leading-[1.05] text-white sm:text-4xl">{activeModule.name}</h2><p className="mt-3 text-sm leading-6 text-slate-300">Open each lesson, watch the required progress, then complete the required task.</p><div className="mt-5 space-y-2">{activeModule.lessons.slice(0,6).map((lesson,index) => <button key={lesson} onClick={() => setActiveLessonIndex(index)} className={cx('flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition', activeLessonIndex === index ? 'border-emerald-300 bg-emerald-300/10 text-white' : 'border-white/10 bg-white/[0.05] text-slate-300 hover:border-emerald-300/30 hover:bg-white/10')}><PlayCircle className="h-4 w-4 shrink-0 text-emerald-300" /><span>{String(index + 1).padStart(2,'0')}. {lesson}</span></button>)}</div></div></aside></section>; }
-
-function QuizPage() { return <SimplePage icon={ClipboardCheck} title="Lesson Quiz" label="Quiz Page" text="Answer each question, submit the quiz, and reach the passing score to unlock the next lesson." />; }
-function AssignmentsPage() { return <SimplePage icon={UploadCloud} title="Submit Campaign Homework" label="Assignments Page" text="Upload your file, paste your link, or write your answer, then submit it for review." />; }
-function ResourcesPage() { return <SimplePage icon={Download} title="Lesson Resource Files" label="Resource Library" text="Download the files you need for the current lesson or assignment." />; }
-function ReportsPage() { return <SimplePage icon={BarChart3} title="Progress, Quiz & Assignment Reports" label="Admin Reports" text="Select a report type, review student activity, then export the result if needed." />; }
-function LiveMeetingPage() {
-  const roomName = `YeHtetEdu-SaturdayLiveClass-${new Date().getDate()}`;
-  const jitsiURL = `https://meet.jitsi.com/${roomName}`;
 
   return (
-    <section className="space-y-6">
-      <div className={ui.section}>
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+    <div className={ui.page}>
+      <div className="grid gap-6 lg:grid-cols-[240px_1fr] lg:gap-10">
+        <aside className="space-y-1">
+          <p className={cx(ui.eyebrow, 'px-3 pb-2')}>Admin panel</p>
+          {adminMenu.map((item) => (
+            <button
+              key={item}
+              onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(demoStudents[0].id); }}
+              className={cx(
+                'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
+                adminActive === item ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
+              )}
+            >
+              {item === 'Dashboard' ? (
+                <LayoutDashboard className="h-4 w-4" />
+              ) : item === 'Settings' ? (
+                <Settings className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4 opacity-60" />
+              )}
+              {item}
+            </button>
+          ))}
+        </aside>
+
+        <div className={ui.page}>
+          <PageHeader
+            eyebrow={`${adminActive}`}
+            title={current.title}
+            description={current.description}
+            actions={
+              <button onClick={() => openAction(current.primaryAction)} className={ui.btnPrimary}>
+                <Plus className="h-4 w-4" /> {current.primaryAction}
+              </button>
+            }
+          />
+
+          {savedMessage && (
+            <div className="rounded-xl border border-emerald-300/30 bg-emerald-300/5 px-4 py-3 text-sm font-medium text-emerald-200">
+              {savedMessage}
+            </div>
+          )}
+
+          {activeAction && (
+            <AdminActionPanel
+              // Remount the form whenever the section/action/student changes so
+              // defaultValue inputs reflect the freshly selected record.
+              key={`${adminActive}:${activeAction}:${selectedStudent.id}`}
+              section={adminActive}
+              actionName={activeAction}
+              initialValues={
+                adminActive === 'Students' && activeAction.toLowerCase().startsWith('edit')
+                  ? {
+                      'Student name': selectedStudent.name,
+                      'Email address': selectedStudent.email,
+                      'Temporary password': '',
+                      'Assigned course': selectedStudent.course,
+                    }
+                  : undefined
+              }
+              onCancel={() => setActiveAction(null)}
+              onSave={() => { setSavedMessage(`${activeAction} saved successfully.`); setActiveAction(null); }}
+            />
+          )}
+
+          {adminActive === 'Students' ? (
+            <StudentDirectory
+              students={demoStudents}
+              selectedStudent={selectedStudent}
+              onSelectStudent={(id) => { setSelectedStudentId(id); setActiveAction(null); }}
+              onCreateStudent={() => openAction('Add Student')}
+              onEditStudent={() => openAction(`Edit ${selectedStudent.name}`)}
+            />
+          ) : (
+            <>
+              <StatRow stats={adminStats} />
+              <div className="grid gap-4 lg:grid-cols-2">
+                {current.cards.map((card) => (
+                  <Panel key={card.title} title={card.title} items={card.items} onAction={() => openAction(card.title)} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentDirectory({
+  students,
+  selectedStudent,
+  onSelectStudent,
+  onCreateStudent,
+  onEditStudent,
+}: {
+  students: Student[];
+  selectedStudent: Student;
+  onSelectStudent: (id: string) => void;
+  onCreateStudent: () => void;
+  onEditStudent: () => void;
+}) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
+      <div className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="inline-flex rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-1.5 text-xs font-black uppercase tracking-[0.32em] text-emerald-300">Saturday Live Class</span>
-            <h2 className="mt-2 font-serif text-4xl font-black leading-none sm:text-5xl md:text-6xl">7:00 PM - 8:30 PM</h2>
+            <p className={ui.eyebrow}>All students</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>{students.length} students</h2>
           </div>
-          <div className="flex items-center gap-2 pt-2 text-lg font-black text-white"><Users className="h-5 w-5 text-emerald-300" /> Live now</div>
+          <button onClick={onCreateStudent} className={ui.btnPrimary}>
+            <Plus className="h-4 w-4" /> Add student
+          </button>
         </div>
-
-        {/* Jitsi Meet iframe */}
-        <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
-          <iframe
-            allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write"
-            src={jitsiURL}
-            style={{
-              width: '100%',
-              height: '600px',
-              border: 'none',
-              borderRadius: '16px',
-            }}
-            title="Ye Htet Digital Edu - Live Class"
-          />
-        </div>
-
-        <div className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-6 sm:grid-cols-2 lg:grid-cols-3">
-          <InfoCard
-            icon={Video}
-            title="Camera & Microphone"
-            text="Click the icons to enable/disable your camera and microphone. Your audio and video will be shared with other participants."
-          />
-          <InfoCard
-            icon={MonitorUp}
-            title="Screen Sharing"
-            text="Click the desktop icon to share your screen with the class. Participants will see everything on your screen in real-time."
-          />
-          <InfoCard
-            icon={Users}
-            title="Multiple Users"
-            text="All participants can see and hear each other. Admin and students can join from any device to see live class."
-          />
+        <div className="overflow-x-auto">
+          <table className="min-w-[640px] w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                <th className="py-3 pr-4 font-medium">Student</th>
+                <th className="py-3 pr-4 font-medium">Progress</th>
+                <th className="py-3 pr-4 font-medium">Status</th>
+                <th className="py-3 pr-4 font-medium">Last active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((student) => {
+                const isSelected = student.id === selectedStudent.id;
+                return (
+                  <tr
+                    key={student.id}
+                    onClick={() => onSelectStudent(student.id)}
+                    className={cx('cursor-pointer border-b border-white/[0.04] transition hover:bg-white/[0.03]', isSelected && 'bg-emerald-300/[0.04]')}
+                  >
+                    <td className="py-4 pr-4">
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-9 w-9 place-items-center rounded-full bg-emerald-300/10 text-sm font-bold text-emerald-300">{student.name.slice(0, 1)}</div>
+                        <div>
+                          <p className="font-medium text-white">{student.name}</p>
+                          <p className="text-xs text-slate-500">{student.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 pr-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-20"><ProgressBar value={student.progress} /></div>
+                        <span className="text-xs font-medium text-slate-400">{student.progress}%</span>
+                      </div>
+                    </td>
+                    <td className="py-4 pr-4">
+                      <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', student.status === 'Active' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300')}>
+                        {student.status}
+                      </span>
+                    </td>
+                    <td className="py-4 pr-4 text-slate-400">{student.lastActive}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <aside className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-[#1d2d63]/95 to-[#101538]/95 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-7">
-        <p className={ui.eyebrow}>Live Meeting Info</p>
-        <h2 className="mt-4 font-serif text-3xl font-black leading-[1.02] sm:text-4xl">Class Details</h2>
-        <div className="mt-7 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5">
-            <h3 className="text-lg font-black text-white mb-3">How to Join</h3>
-            <ul className="space-y-2 text-sm text-slate-300">
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-300 font-black">•</span>
-                <span>Allow camera and microphone permissions when prompted</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-300 font-black">•</span>
-                <span>Click on the video icons to enable your camera/mic</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-300 font-black">•</span>
-                <span>Use desktop icon to share your screen or slides</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-300 font-black">•</span>
-                <span>Share the room link to invite others</span>
-              </li>
-            </ul>
+      <aside className={ui.card}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={ui.eyebrow}>Profile</p>
+            <h2 className={cx(ui.h2, 'mt-2 text-2xl sm:text-2xl')}>{selectedStudent.name}</h2>
+            <p className={cx(ui.bodySm, 'mt-1')}>{selectedStudent.email}</p>
           </div>
-          <Panel title="Class Setup" items={['Instructor: Dr. Smith','Duration: 1.5 hours','Recording enabled automatically']} />
-          <Panel title="Tech Requirements" items={['Chrome, Firefox, Safari, or Edge','Good internet connection (5+ Mbps)','Webcam and microphone enabled']} />
+          <button onClick={onEditStudent} className={ui.btnSubtle}>Edit</button>
+        </div>
+
+        <div className="mt-6 space-y-2">
+          <ProfileField label="Student ID" value={selectedStudent.id} />
+          <ProfileField label="Joined" value={selectedStudent.joined} />
+          <ProfileField label="Assigned course" value={selectedStudent.course} />
+          <ProfileField label="Status" value={selectedStudent.status} />
+          <ProfileField label="Assignments" value={selectedStudent.assignments} />
+          <ProfileField label="Quiz score" value={selectedStudent.quizScore} />
+        </div>
+
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-400">Course progress</p>
+            <p className="text-sm font-bold text-white">{selectedStudent.progress}%</p>
+          </div>
+          <div className="mt-2">
+            <ProgressBar value={selectedStudent.progress} height="md" />
+          </div>
+          <p className="mt-3 text-xs text-slate-500">Last active: {selectedStudent.lastActive}</p>
         </div>
       </aside>
-    </section>
+    </div>
   );
 }
-function SimplePage({ icon: Icon, title, label, text }: { icon: IconType; title: string; label: string; text: string }) { return <section className="space-y-6"><div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-slate-800/90 via-[#16234c]/90 to-[#263b78]/80 p-5 shadow-2xl shadow-black/30 sm:rounded-[1.75rem] sm:p-8"><p className={ui.eyebrow}>{label}</p><h1 className="mt-3 font-serif text-4xl font-black sm:text-5xl">{title}</h1><p className="mt-3 max-w-3xl leading-7 text-slate-300">{text}</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><InfoCard icon={Icon} title="Open" text="Start the selected item and follow the instructions." /><InfoCard icon={CheckCircle2} title="Complete" text="Finish the required step before continuing." /><InfoCard icon={ArrowRight} title="Continue" text="Move to the next available lesson or task." /></div></section>; }
 
-function LoginPage({ setActive, setIsLoggedIn }: { setActive: (v: PageName) => void; setIsLoggedIn: (v: boolean) => void }) { const login = (target: PageName) => { setIsLoggedIn(true); setActive(target); }; return <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-slate-800/90 via-[#16234c]/90 to-[#263b78]/80 p-4 shadow-2xl shadow-black/30 sm:rounded-[2rem] sm:p-6 md:p-8"><div className="relative grid gap-6 lg:grid-cols-[1fr_460px] lg:items-stretch"><div className="flex flex-col justify-between rounded-[1.5rem] border border-white/10 bg-slate-950/25 p-5 sm:rounded-[1.75rem] sm:p-7"><div><p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300 sm:text-xs"><LogoMark size="sm" /> Ye Htet - Digital Edu Login</p><h1 className="mt-5 max-w-xl font-serif text-4xl font-black leading-[0.96] text-white sm:text-5xl md:text-7xl">Sign in to your learning space</h1><p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">Choose your role, sign in, and continue to your dashboard.</p></div><div className="mt-8 grid gap-4 sm:grid-cols-3"><InfoMini icon={BookOpen} title="Assigned Courses" text="Only enrolled classes" /><InfoMini icon={PlayCircle} title="Progress Tracking" text="Watch & unlock" /><InfoMini icon={Video} title="Live Class" text="Meetings & records" /></div></div><div className="rounded-[1.5rem] border border-white/10 bg-slate-950/45 p-5 shadow-2xl shadow-black/30 backdrop-blur sm:rounded-[1.75rem] sm:p-6"><div className="mb-6 text-center"><div className="mx-auto mb-4 flex justify-center"><LogoMark size="lg" /></div><h2 className="font-serif text-3xl font-black text-white sm:text-4xl">Welcome back</h2><p className="mt-2 text-slate-400">Choose a role to continue.</p></div><div className="grid gap-3"><RoleButton role="Student" title="Continue learning" text="Open your dashboard and continue today's lesson." icon={GraduationCap} primary onClick={() => login('Student Dashboard')} /><RoleButton role="Admin" title="Manage platform" text="Open the admin dashboard to manage classes and students." icon={ShieldCheck} onClick={() => login('Admin Panel')} /></div><div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.25em] text-slate-500"><span className="h-px flex-1 bg-white/10" />Demo credentials<span className="h-px flex-1 bg-white/10" /></div><div className="grid gap-3 sm:grid-cols-2"><CredentialCard title="Admin Account" username={demoCredentials.admin.username} password={demoCredentials.admin.password} /><CredentialCard title="Student Account" username={demoCredentials.student.username} password={demoCredentials.student.password} /></div><button onClick={() => setActive('Courses')} className="mt-5 w-full rounded-full border border-white/10 bg-white/5 px-5 py-3 font-bold text-slate-300">Browse public courses</button></div></div></section>; }
-function InfoMini({ icon: Icon, title, text }: { icon: IconType; title: string; text: string }) { return <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><Icon className="mb-3 h-7 w-7 text-emerald-300" /><p className="font-black text-white">{title}</p><p className="mt-1 text-sm text-slate-400">{text}</p></div>; }
-function RoleButton({ role, title, text, icon: Icon, primary, onClick }: { role: string; title: string; text: string; icon: IconType; primary?: boolean; onClick: () => void }) { return <button onClick={onClick} className={cx('group flex items-center gap-4 rounded-2xl border p-4 text-left transition', primary ? 'border-emerald-300/40 bg-emerald-300 text-slate-950' : 'border-white/10 bg-white/[0.06] text-white hover:border-emerald-300/40')}><div className={cx('grid h-12 w-12 shrink-0 place-items-center rounded-2xl', primary ? 'bg-slate-950 text-emerald-300' : 'bg-emerald-300/10 text-emerald-300')}><Icon className="h-6 w-6" /></div><div className="min-w-0 flex-1"><p className="text-lg font-black">{role}</p><p className={cx('text-sm font-bold', primary ? 'text-slate-800' : 'text-slate-300')}>{title}</p><p className={cx('mt-1 text-xs leading-5', primary ? 'text-slate-700' : 'text-slate-400')}>{text}</p></div><ArrowRight className={cx('h-5 w-5 shrink-0 transition group-hover:translate-x-1', primary ? 'text-slate-950' : 'text-emerald-300')} /></button>; }
-function CredentialCard({ title, username, password }: { title: string; username: string; password: string }) { return <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="mb-3 font-black text-white">{title}</p><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Username</p><p className="mt-1 break-all font-mono text-sm font-bold text-white">{username}</p><p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Password</p><p className="mt-1 font-mono text-sm font-bold text-emerald-300">{password}</p></div>; }
+function ProfileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.04] py-2.5 last:border-b-0">
+      <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{label}</span>
+      <span className="text-right text-sm font-medium text-slate-200">{value}</span>
+    </div>
+  );
+}
+
+function AdminActionPanel({
+  section,
+  actionName,
+  initialValues,
+  onCancel,
+  onSave,
+}: {
+  section: string;
+  actionName: string;
+  initialValues?: Record<string, string>;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const fields =
+    ({
+      Students: ['Student name', 'Email address', 'Temporary password', 'Assigned course'],
+      Courses: ['Course title', 'Level', 'Short description', 'Publish status'],
+      Modules: ['Module title', 'Course', 'Sort order', 'Unlock rule'],
+      Lessons: ['Lesson title', 'Vimeo embed URL', 'Required watch percentage', 'Attached resource'],
+      Quizzes: ['Quiz title', 'Passing score', 'Max attempts', 'Question type'],
+      Assignments: ['Assignment title', 'Due date', 'Submission type', 'Unlock behavior'],
+      Meetings: ['Meeting title', 'Date and time', 'Host', 'Recording access'],
+      Reports: ['Report type', 'Date range', 'Student group', 'Export format'],
+      Settings: ['Platform name', 'Theme color', 'Default pass score', 'Default watch percentage'],
+      Dashboard: ['Student name', 'Email address', 'Assigned course', 'Access expiry date'],
+    } as Record<string, string[]>)[section] || ['Title', 'Description', 'Status', 'Owner'];
+
+  const isEditing = actionName.toLowerCase().startsWith('edit');
+
+  return (
+    <div className={cx(ui.card, 'border-emerald-300/20')}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className={ui.eyebrow}>{isEditing ? 'Edit' : 'Create'}</p>
+          <h2 className={cx(ui.h3, 'mt-2')}>{actionName}</h2>
+        </div>
+        <button onClick={onCancel} className={ui.btnSubtle}>Close</button>
+      </div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {fields.map((field) => {
+          const isPassword = field.toLowerCase().includes('password');
+          const preset = initialValues?.[field] ?? '';
+          return (
+            <label key={field} className="block">
+              <span className="text-xs font-semibold text-slate-400">{field}</span>
+              <input
+                type={isPassword ? 'password' : 'text'}
+                defaultValue={preset}
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+                placeholder={
+                  isEditing && isPassword
+                    ? 'Leave blank to keep current'
+                    : `Enter ${field.toLowerCase()}`
+                }
+              />
+            </label>
+          );
+        })}
+      </div>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button onClick={onSave} className={ui.btnPrimary}>
+          {isEditing ? 'Save changes' : 'Save preview'}
+        </button>
+        <button onClick={onCancel} className={ui.btnGhost}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ title, items, onAction }: { title: string; items: string[]; onAction?: () => void }) {
+  return (
+    <div className={ui.card}>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className={ui.h3}>{title}</h3>
+        {onAction && (
+          <button onClick={onAction} className={ui.btnSubtle}>Open</button>
+        )}
+      </div>
+      <ul className="mt-4 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2 text-sm text-slate-300">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// =====================================================================
+// Login
+// =====================================================================
+
+function LoginPage({ login }: { login: (role: 'admin' | 'student') => void }) {
+  return (
+    <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Brand + headline */}
+        <div className="mb-10 text-center">
+          <div className="mb-6 flex justify-center">
+            <LogoMark size="md" />
+          </div>
+          <h1 className="font-serif text-3xl font-bold leading-tight text-white sm:text-4xl">
+            Sign in to your learning space
+          </h1>
+          <p className="mt-3 text-sm text-slate-400">
+            Choose a role to continue to your dashboard.
+          </p>
+        </div>
+
+        {/* Role buttons with inline demo credentials */}
+        <div className="space-y-3">
+          <RoleSignInCard
+            role="Student"
+            tagline="Continue learning"
+            icon={GraduationCap}
+            primary
+            username={demoCredentials.student.username}
+            password={demoCredentials.student.password}
+            onClick={() => login('student')}
+          />
+          <RoleSignInCard
+            role="Admin"
+            tagline="Manage platform"
+            icon={ShieldCheck}
+            username={demoCredentials.admin.username}
+            password={demoCredentials.admin.password}
+            onClick={() => login('admin')}
+          />
+        </div>
+
+        <p className="mt-8 text-center text-xs text-slate-500">
+          Demo accounts — click any role to sign in instantly.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RoleSignInCard({
+  role,
+  tagline,
+  icon: Icon,
+  primary,
+  username,
+  password,
+  onClick,
+}: {
+  role: string;
+  tagline: string;
+  icon: IconType;
+  primary?: boolean;
+  username: string;
+  password: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        'group block w-full rounded-2xl border p-5 text-left transition',
+        primary
+          ? 'border-emerald-300/40 bg-emerald-300/[0.06] hover:border-emerald-300/60 hover:bg-emerald-300/[0.1]'
+          : 'border-white/[0.08] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]',
+      )}
+    >
+      {/* Header row */}
+      <div className="flex items-center gap-4">
+        <div
+          className={cx(
+            'grid h-11 w-11 shrink-0 place-items-center rounded-xl',
+            primary ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-emerald-300',
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-bold text-white">{role}</p>
+          <p className="text-sm text-slate-400">{tagline}</p>
+        </div>
+        <ArrowRight
+          className={cx(
+            'h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5',
+            primary && 'text-emerald-300',
+          )}
+        />
+      </div>
+
+      {/* Inline demo credentials */}
+      <div className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-black/20 px-3 py-2.5 font-mono text-[11px]">
+        <span className="text-slate-500">user</span>
+        <span className="truncate text-slate-200">{username}</span>
+        <span className="text-slate-500">pass</span>
+        <span className="text-emerald-300">{password}</span>
+      </div>
+    </button>
+  );
+}
+
+// =====================================================================
+// Root App
+// =====================================================================
 
 export default function App() {
-  const [active, setActive] = useState<PageName>('Home');
+  const [active, setActive] = useState<PageName>(() => readHashPage());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const goToPage = (page: PageName) => setActive(getNextPage(page, isLoggedIn));
-  return <Shell active={active} setActive={goToPage} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn}>{active === 'Home' && <HomePage setActive={goToPage} />}{active === 'Courses' && <CoursesPage setActive={goToPage} />}{active === 'Learning Path' && <LearningPathPage setActive={goToPage} />}{active === 'Course Detail' && <CourseDetailPage setActive={goToPage} />}{active === 'Admin Panel' && <AdminPanelPage />}{active === 'Student Dashboard' && <StudentDashboardPage setActive={goToPage} />}{active === 'Lesson Player' && <LessonPlayerPage />}{active === 'Quiz' && <QuizPage />}{active === 'Assignments' && <AssignmentsPage />}{active === 'Resources' && <ResourcesPage />}{active === 'Reports' && <ReportsPage />}{active === 'Live Meeting' && <LiveMeetingPage />}{active === 'Login' && <LoginPage setActive={setActive} setIsLoggedIn={setIsLoggedIn} />}</Shell>;
+  const [role, setRole] = useState<Role>(null);
+
+  useEffect(() => {
+    const desired = pageToHash(active);
+    if (window.location.hash !== desired) {
+      window.history.pushState(null, '', desired);
+    }
+    // Scroll to top on page change so users don't land mid-page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [active]);
+
+  useEffect(() => {
+    const sync = () => {
+      const next = readHashPage();
+      const resolved = getNextPage(next, isLoggedIn, role);
+      setActive(resolved);
+    };
+    window.addEventListener('hashchange', sync);
+    window.addEventListener('popstate', sync);
+    return () => {
+      window.removeEventListener('hashchange', sync);
+      window.removeEventListener('popstate', sync);
+    };
+  }, [isLoggedIn, role]);
+
+  const go = (page: PageName) => {
+    const next = getNextPage(page, isLoggedIn, role);
+    setActive(next);
+  };
+
+  const login = (loginRole: 'admin' | 'student') => {
+    setIsLoggedIn(true);
+    setRole(loginRole);
+    setActive(loginRole === 'admin' ? 'Admin Panel' : 'Student Dashboard');
+  };
+
+  const logout = () => {
+    setIsLoggedIn(false);
+    setRole(null);
+    setActive('Home');
+  };
+
+  return (
+    <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout}>
+      {active === 'Home' && <HomePage go={go} />}
+      {active === 'Courses' && <CoursesPage go={go} />}
+      {active === 'Learning Path' && <LearningPathPage go={go} />}
+      {active === 'Course Detail' && <CourseDetailPage go={go} />}
+      {active === 'Admin Panel' && <AdminPanelPage />}
+      {active === 'Student Dashboard' && <StudentDashboardPage go={go} />}
+      {active === 'Lesson Player' && <LessonPlayerPage go={go} />}
+      {active === 'Quiz' && <QuizPage go={go} />}
+      {active === 'Assignments' && <AssignmentsPage go={go} />}
+      {active === 'Resources' && <ResourcesPage go={go} />}
+      {active === 'Reports' && <ReportsPage go={go} />}
+      {active === 'Live Meeting' && <LiveMeetingPage go={go} />}
+      {active === 'Login' && <LoginPage login={login} />}
+    </Shell>
+  );
 }
