@@ -1189,9 +1189,30 @@ function AdminPanelPage() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState(demoStudents[0].id);
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [meetingDateTime, setMeetingDateTime] = useState('');
+  const [meetingHost, setMeetingHost] = useState('');
+  const [meetingRecordingAccess, setMeetingRecordingAccess] = useState('Public');
+  const [scheduledMeetings, setScheduledMeetings] = useState<Array<{ id: string; title: string; dateTime: string; host: string; recordingAccess: string }>>([]);
   const current = adminContent[adminActive] || adminContent.Dashboard;
   const selectedStudent = demoStudents.find((s) => s.id === selectedStudentId) || demoStudents[0];
   const openAction = (name: string) => { setActiveAction(name); setSavedMessage(''); };
+  const scheduleMeeting = () => {
+    if (!meetingTitle || !meetingDateTime || !meetingHost) {
+      setSavedMessage('Please fill all required meeting fields.');
+      return;
+    }
+    setScheduledMeetings((prev) => [
+      { id: `${Date.now()}`, title: meetingTitle, dateTime: meetingDateTime, host: meetingHost, recordingAccess: meetingRecordingAccess },
+      ...prev,
+    ]);
+    setMeetingTitle('');
+    setMeetingDateTime('');
+    setMeetingHost('');
+    setMeetingRecordingAccess('Public');
+    setSavedMessage('Live meeting scheduled successfully.');
+    setActiveAction(null);
+  };
 
   return (
     <div className={ui.page}>
@@ -1267,6 +1288,70 @@ function AdminPanelPage() {
               onCreateStudent={() => openAction('Add Student')}
               onEditStudent={() => openAction(`Edit ${selectedStudent.name}`)}
             />
+          ) : adminActive === 'Meetings' ? (
+            <div className="space-y-6">
+              <div className={ui.card}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className={ui.eyebrow}>Meeting Setup</p>
+                    <h2 className={cx(ui.h3, 'mt-2')}>Schedule a new live class</h2>
+                    <p className="mt-2 text-sm text-slate-400">Enter meeting details and save a preview of the scheduled class.</p>
+                  </div>
+                  <button onClick={() => setSavedMessage('')} className={ui.btnSubtle}>Close</button>
+                </div>
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Meeting title</span>
+                    <input value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} placeholder="Enter meeting title" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Date and time</span>
+                    <input value={meetingDateTime} onChange={(e) => setMeetingDateTime(e.target.value)} type="datetime-local" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Host</span>
+                    <input value={meetingHost} onChange={(e) => setMeetingHost(e.target.value)} placeholder="Enter host name" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Recording access</span>
+                    <select value={meetingRecordingAccess} onChange={(e) => setMeetingRecordingAccess(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                      <option value="Public">Public</option>
+                      <option value="Private">Private</option>
+                      <option value="Invite only">Invite only</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button onClick={scheduleMeeting} className={ui.btnPrimary}>Save preview</button>
+                  <button onClick={() => { setMeetingTitle(''); setMeetingDateTime(''); setMeetingHost(''); setMeetingRecordingAccess('Public'); setSavedMessage(''); }} className={ui.btnGhost}>Cancel</button>
+                </div>
+              </div>
+
+              {scheduledMeetings.length > 0 && (
+                <div className={ui.card}>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className={ui.h3}>Scheduled live classes</h3>
+                    <span className="rounded-full bg-emerald-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">{scheduledMeetings.length} scheduled</span>
+                  </div>
+                  <div className="mt-5 space-y-4">
+                    {scheduledMeetings.map((meeting) => (
+                      <div key={meeting.id} className="rounded-3xl border border-white/10 bg-slate-950/40 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm text-slate-400">{meeting.dateTime}</p>
+                            <h3 className="mt-1 text-lg font-black text-white">{meeting.title}</h3>
+                          </div>
+                          <div className="space-y-2 text-right text-sm text-slate-300">
+                            <p>Host: {meeting.host}</p>
+                            <p>Recording: {meeting.recordingAccess}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <StatRow stats={adminStats} />
