@@ -5,18 +5,22 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Download,
+  ExternalLink,
   GraduationCap,
   LayoutDashboard,
   Lock,
-  MonitorUp,
+  Mic,
   PlayCircle,
   Plus,
+  Radio,
+  ScreenShare,
   Settings,
   ShieldCheck,
   UploadCloud,
@@ -60,6 +64,36 @@ type Student = {
 };
 
 type Role = 'admin' | 'student' | null;
+type MeetingDay = 'Saturday' | 'Sunday';
+type MeetingScheduleDay = MeetingDay | 'Instant';
+type RecordingAccess = 'Admin only' | 'Students after class' | 'Private';
+type LiveClassMeeting = {
+  id: string;
+  title: string;
+  day: MeetingScheduleDay;
+  startTime: string;
+  endTime: string;
+  host: string;
+  recordingAccess: RecordingAccess;
+  isInstant?: boolean;
+};
+type LearningProgress = {
+  completedLessonIds: string[];
+  currentLessonId: string;
+};
+type LessonRecord = {
+  id: string;
+  title: string;
+  moduleTitle: string;
+  moduleName: string;
+  moduleIndex: number;
+  lessonIndex: number;
+  globalIndex: number;
+  duration: string;
+  outcome: string;
+  practice: string;
+  resource: string;
+};
 
 const pageSlugs: Record<PageName, string> = {
   Home: '',
@@ -133,6 +167,89 @@ const demoCredentials = {
   student: { username: 'student@dmclass.com', password: 'Student@2026' },
 };
 
+const meetingStorageKey = 'ye-htet-live-class-meetings';
+const learningStorageKey = 'ye-htet-digital-marketing-progress';
+const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
+const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
+const recordingAccessOptions: RecordingAccess[] = ['Students after class', 'Admin only', 'Private'];
+
+const defaultLiveMeetings: LiveClassMeeting[] = [
+  {
+    id: 'weekly-saturday',
+    title: 'Digital Marketing Live Class',
+    day: 'Saturday',
+    startTime: '19:00',
+    endTime: '20:30',
+    host: 'Ye Htet',
+    recordingAccess: 'Students after class',
+  },
+  {
+    id: 'weekly-sunday',
+    title: 'Campaign Practice Live Class',
+    day: 'Sunday',
+    startTime: '19:00',
+    endTime: '20:30',
+    host: 'Ye Htet',
+    recordingAccess: 'Students after class',
+  },
+];
+
+function readStoredMeetings(): LiveClassMeeting[] {
+  if (typeof window === 'undefined') return defaultLiveMeetings;
+  try {
+    const stored = window.localStorage.getItem(meetingStorageKey);
+    if (!stored) return defaultLiveMeetings;
+    const parsed = JSON.parse(stored) as LiveClassMeeting[];
+    return Array.isArray(parsed) && parsed.length > 0 && parsed.every(isLiveClassMeeting) ? parsed : defaultLiveMeetings;
+  } catch {
+    return defaultLiveMeetings;
+  }
+}
+
+function isLiveClassMeeting(value: unknown): value is LiveClassMeeting {
+  const meeting = value as LiveClassMeeting;
+  return (
+    typeof meeting?.id === 'string'
+    && typeof meeting.title === 'string'
+    && meetingScheduleDays.includes(meeting.day)
+    && typeof meeting.startTime === 'string'
+    && typeof meeting.endTime === 'string'
+    && typeof meeting.host === 'string'
+    && recordingAccessOptions.includes(meeting.recordingAccess)
+  );
+}
+
+function formatMeetingWindow(meeting: LiveClassMeeting) {
+  if (meeting.isInstant) return 'Open now';
+  return `Every ${meeting.day} · ${meeting.startTime} – ${meeting.endTime}`;
+}
+
+function formatLocalTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function slugifyRoomPart(value: string) {
+  return value
+    .trim()
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 72) || 'LiveClass';
+}
+
+function getJitsiRoomName(meeting: LiveClassMeeting) {
+  return `YeHtetDigitalEdu-${slugifyRoomPart(meeting.id)}`;
+}
+
+function getJitsiMeetingUrl(meeting: LiveClassMeeting) {
+  const params = new URLSearchParams({
+    'config.prejoinConfig.enabled': 'true',
+    'config.startWithAudioMuted': 'false',
+    'config.startWithVideoMuted': 'false',
+    'config.disableDeepLinking': 'true',
+  });
+  return `https://meet.jit.si/${encodeURIComponent(getJitsiRoomName(meeting))}#${params.toString()}`;
+}
+
 // =====================================================================
 // Static data
 // =====================================================================
@@ -198,6 +315,102 @@ const modules = [
   { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(24, 35) },
   { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(35, 45) },
 ];
+
+const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
+  module.lessons.map((title, lessonIndex) => {
+    const globalIndex = modules.slice(0, moduleIndex).reduce((total, item) => total + item.lessons.length, 0) + lessonIndex;
+    return {
+      id: `m${moduleIndex + 1}-l${lessonIndex + 1}`,
+      title,
+      moduleTitle: module.title,
+      moduleName: module.name,
+      moduleIndex,
+      lessonIndex,
+      globalIndex,
+      duration: `${10 + ((globalIndex * 3) % 13)} min`,
+      outcome: getLessonOutcome(title),
+      practice: getLessonPractice(title),
+      resource: `${module.name} checklist`,
+    };
+  }),
+);
+
+function getLessonEmbedUrl(lesson: LessonRecord) {
+  return `https://player.vimeo.com/video/${100000000 + lesson.globalIndex}`;
+}
+
+const defaultLearningProgress: LearningProgress = {
+  completedLessonIds: [],
+  currentLessonId: lessonCatalog[0]?.id || '',
+};
+
+function getLessonOutcome(title: string) {
+  if (title.toLowerCase().includes('ads')) return 'Understand the campaign decision, setup step, and optimization habit behind this advertising lesson.';
+  if (title.toLowerCase().includes('seo')) return 'Learn how search visibility works and how to plan actions that improve organic discovery.';
+  if (title.toLowerCase().includes('analytics') || title.toLowerCase().includes('metrics')) return 'Read key performance signals and connect numbers to better marketing decisions.';
+  if (title.toLowerCase().includes('portfolio') || title.toLowerCase().includes('capstone')) return 'Turn the lesson into a portfolio-ready proof of work.';
+  return 'Build a practical digital marketing foundation you can apply in real campaigns.';
+}
+
+function getLessonPractice(title: string) {
+  if (title.toLowerCase().includes('funnel')) return 'Sketch a simple funnel for one product and write the goal for each stage.';
+  if (title.toLowerCase().includes('creative')) return 'Draft three ad creative angles and match each one to a customer problem.';
+  if (title.toLowerCase().includes('budget')) return 'Split a sample campaign budget across awareness, traffic, and conversion.';
+  if (title.toLowerCase().includes('career')) return 'Write one role you want and the first skill proof you will build for it.';
+  return `Write three notes from "${title}" and one action you can try this week.`;
+}
+
+function readStoredLearningProgress(): LearningProgress {
+  if (typeof window === 'undefined') return defaultLearningProgress;
+  try {
+    const stored = window.localStorage.getItem(learningStorageKey);
+    if (!stored) return defaultLearningProgress;
+    const parsed = JSON.parse(stored) as LearningProgress;
+    const validIds = new Set(lessonCatalog.map((lesson) => lesson.id));
+    const completedLessonIds = Array.isArray(parsed.completedLessonIds)
+      ? parsed.completedLessonIds.filter((id) => validIds.has(id))
+      : [];
+    const currentLessonId = validIds.has(parsed.currentLessonId) ? parsed.currentLessonId : getNextLessonId(completedLessonIds);
+    return { completedLessonIds, currentLessonId };
+  } catch {
+    return defaultLearningProgress;
+  }
+}
+
+function getCompletedSet(progress: LearningProgress) {
+  return new Set(progress.completedLessonIds);
+}
+
+function getNextLessonId(completedLessonIds: string[]) {
+  const completed = new Set(completedLessonIds);
+  return lessonCatalog.find((lesson) => !completed.has(lesson.id))?.id || lessonCatalog[lessonCatalog.length - 1]?.id || '';
+}
+
+function getCurrentLesson(progress: LearningProgress) {
+  const current = lessonCatalog.find((lesson) => lesson.id === progress.currentLessonId);
+  return current || lessonCatalog.find((lesson) => !getCompletedSet(progress).has(lesson.id)) || lessonCatalog[0];
+}
+
+function getCourseProgressPercent(progress: LearningProgress) {
+  if (lessonCatalog.length === 0) return 0;
+  return Math.round((getCompletedSet(progress).size / lessonCatalog.length) * 100);
+}
+
+function isLessonUnlocked(lesson: LessonRecord, progress: LearningProgress) {
+  const completed = getCompletedSet(progress);
+  const firstIncomplete = lessonCatalog.find((item) => !completed.has(item.id)) || lessonCatalog[lessonCatalog.length - 1];
+  return completed.has(lesson.id) || lesson.globalIndex <= firstIncomplete.globalIndex;
+}
+
+function getModuleLearningState(moduleIndex: number, progress: LearningProgress) {
+  const moduleLessons = lessonCatalog.filter((lesson) => lesson.moduleIndex === moduleIndex);
+  const completed = getCompletedSet(progress);
+  const completedCount = moduleLessons.filter((lesson) => completed.has(lesson.id)).length;
+  const progressValue = moduleLessons.length ? Math.round((completedCount / moduleLessons.length) * 100) : 0;
+  const unlocked = moduleLessons.some((lesson) => isLessonUnlocked(lesson, progress));
+  const status = completedCount === moduleLessons.length ? 'Completed' : unlocked ? 'In progress' : 'Locked';
+  return { completedCount, progressValue, status };
+}
 
 const adminStats: Array<{ label: string; value: string; icon: IconType }> = [
   { label: 'Total Students', value: '128', icon: Users },
@@ -799,28 +1012,28 @@ function ModuleAccordion({ module, index }: { module: (typeof modules)[number]; 
 // Student Dashboard
 // =====================================================================
 
-function StudentDashboardPage({ go }: { go: (v: PageName) => void }) {
+function StudentDashboardPage({ go, learningProgress }: { go: (v: PageName) => void; learningProgress: LearningProgress }) {
   const currentCourse = courseCards[0];
-  const currentModule = modules[1];
-  const nextLesson = currentModule.lessons[2] || currentModule.lessons[0];
-  const overallProgress = 38;
+  const currentLesson = getCurrentLesson(learningProgress);
+  const overallProgress = getCourseProgressPercent(learningProgress);
+  const completedCount = getCompletedSet(learningProgress).size;
 
   const quickActions: Array<{ icon: IconType; label: string; target: PageName }> = [
+    { icon: PlayCircle, label: 'Continue learning', target: 'Lesson Player' },
     { icon: ClipboardCheck, label: 'Assignments', target: 'Assignments' },
-    { icon: Download, label: 'Resources', target: 'Resources' },
     { icon: Video, label: 'Live class', target: 'Live Meeting' },
-    { icon: BookOpen, label: 'Course detail', target: 'Course Detail' },
+    { icon: Download, label: 'Resources', target: 'Resources' },
   ];
 
   return (
     <div className={ui.page}>
       <PageHeader
-        eyebrow="Welcome back"
-        title="Pick up where you left off."
-        description={`You're on ${currentModule.title} — ${currentModule.name}. Keep watching to unlock the next lesson.`}
+        eyebrow="Auto-enrolled course"
+        title="Digital Marketing Beginner to Professional."
+        description="Your account is ready. Start the first video, complete lessons in order, and keep moving through the full course path."
         actions={
           <button onClick={() => go('Lesson Player')} className={ui.btnPrimary}>
-            Continue lesson <ArrowRight className="h-4 w-4" />
+            Continue learning <ArrowRight className="h-4 w-4" />
           </button>
         }
       />
@@ -828,15 +1041,15 @@ function StudentDashboardPage({ go }: { go: (v: PageName) => void }) {
       {/* Hero progress + next lesson */}
       <section className="grid gap-4 md:grid-cols-3">
         <div className={cx(ui.card, 'md:col-span-2')}>
-          <p className={ui.eyebrow}>Up next</p>
-          <h2 className={cx(ui.h2, 'mt-3 text-2xl sm:text-3xl')}>{nextLesson}</h2>
-          <p className={cx(ui.bodySm, 'mt-3')}>From {currentCourse.title}</p>
+          <p className={ui.eyebrow}>Current lesson</p>
+          <h2 className={cx(ui.h2, 'mt-3 text-2xl sm:text-3xl')}>{currentLesson.title}</h2>
+          <p className={cx(ui.bodySm, 'mt-3')}>{currentLesson.moduleTitle} · {currentLesson.moduleName} · {currentLesson.duration}</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button onClick={() => go('Lesson Player')} className={ui.btnPrimary}>
-              <PlayCircle className="h-4 w-4" /> Resume
+              <PlayCircle className="h-4 w-4" /> Start lesson
             </button>
-            <button onClick={() => go('Quiz')} className={ui.btnGhost}>
-              Take quiz
+            <button onClick={() => go('Course Detail')} className={ui.btnGhost}>
+              View curriculum
             </button>
           </div>
         </div>
@@ -846,8 +1059,14 @@ function StudentDashboardPage({ go }: { go: (v: PageName) => void }) {
           <div className="mt-4">
             <ProgressBar value={overallProgress} height="md" />
           </div>
-          <p className={cx(ui.bodySm, 'mt-3')}>{currentModule.title} · {currentModule.name}</p>
+          <p className={cx(ui.bodySm, 'mt-3')}>{completedCount} / {lessonCatalog.length} lessons completed</p>
         </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <InfoCard icon={BookOpen} title={currentCourse.title} text="Automatically assigned to every student account." />
+        <InfoCard icon={PlayCircle} title="One lesson at a time" text="Complete the current video to unlock the next class." />
+        <InfoCard icon={CheckCircle2} title="Saved progress" text="Your current lesson and completed lessons stay saved in this browser." />
       </section>
 
       {/* Quick actions — single clean row */}
@@ -880,25 +1099,42 @@ function StudentDashboardPage({ go }: { go: (v: PageName) => void }) {
           </button>
         } />
         <div className="mt-8 space-y-3">
-          {modules.map((module) => (
-            <ModuleListRow key={module.title} module={module} onOpen={() => go('Lesson Player')} />
+          {modules.map((module, moduleIndex) => (
+            <ModuleListRow key={module.title} module={module} moduleIndex={moduleIndex} learningProgress={learningProgress} onOpen={() => go('Lesson Player')} />
           ))}
         </div>
       </section>
 
       {/* Info row */}
       <section className="grid gap-3 md:grid-cols-2">
-        <InfoCard icon={CalendarDays} title="Upcoming live class" text="Saturday · 7:00 PM – 8:30 PM" />
+        <InfoCard icon={CalendarDays} title="Upcoming live class" text="Saturday & Sunday · 7:00 PM – 8:30 PM" />
         <InfoCard icon={ClipboardCheck} title="Pending assignment" text="Marketing funnel worksheet — due before the next module." />
       </section>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button onClick={() => go('Live Meeting')} className={ui.btnPrimary}>
+          Join meeting now
+        </button>
+        <p className="text-sm text-slate-400">Camera, mic, screen share, and recording are available inside the meeting room.</p>
+      </div>
     </div>
   );
 }
 
-function ModuleListRow({ module, onOpen }: { module: (typeof modules)[number]; onOpen: () => void }) {
-  const isLocked = module.status === 'Locked';
-  const isCurrent = module.status === 'In progress';
-  const isDone = module.status === 'Completed';
+function ModuleListRow({
+  module,
+  moduleIndex,
+  learningProgress,
+  onOpen,
+}: {
+  module: (typeof modules)[number];
+  moduleIndex: number;
+  learningProgress: LearningProgress;
+  onOpen: () => void;
+}) {
+  const moduleState = getModuleLearningState(moduleIndex, learningProgress);
+  const isLocked = moduleState.status === 'Locked';
+  const isCurrent = moduleState.status === 'In progress';
+  const isDone = moduleState.status === 'Completed';
   const Icon = isDone ? CheckCircle2 : isLocked ? Lock : PlayCircle;
   const iconTone = isDone ? 'text-emerald-300' : isLocked ? 'text-slate-600' : 'text-emerald-300';
 
@@ -911,8 +1147,8 @@ function ModuleListRow({ module, onOpen }: { module: (typeof modules)[number]; o
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{module.title}</p>
         <h3 className="mt-1 text-base font-bold text-white sm:text-lg">{module.name}</h3>
         <div className="mt-3 max-w-md">
-          <ProgressBar value={module.progress} />
-          <p className="mt-2 text-xs text-slate-500">{module.progress}% · {module.lessons.length} lessons</p>
+          <ProgressBar value={moduleState.progressValue} />
+          <p className="mt-2 text-xs text-slate-500">{moduleState.completedCount} / {module.lessons.length} lessons · {moduleState.status}</p>
         </div>
       </div>
       <button
@@ -945,132 +1181,214 @@ function InfoCard({ icon: Icon, title, text }: { icon: IconType; title: string; 
 // Lesson Player
 // =====================================================================
 
-function LessonPreview({ lessonTitle, progress }: { lessonTitle: string; progress: number }) {
+function LessonVideoStage({
+  lesson,
+  courseProgress,
+  isCompleted,
+  onComplete,
+}: {
+  lesson: LessonRecord;
+  courseProgress: number;
+  isCompleted: boolean;
+  onComplete: () => void;
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950">
-      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3 text-[11px] text-slate-400">
-        <div className="flex items-center gap-2">
-          <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-300 text-slate-950">
-            <PlayCircle className="h-3.5 w-3.5" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-300 text-slate-950">
+            <PlayCircle className="h-4 w-4" />
           </span>
-          <span className="truncate font-semibold text-slate-200">Now watching · {lessonTitle}</span>
-        </div>
-        <span className="shrink-0 rounded-full bg-emerald-300/10 px-3 py-1 font-semibold text-emerald-300">{progress}% watched</span>
-      </div>
-      <div className="grid min-h-[320px] place-items-center bg-[radial-gradient(circle_at_50%_40%,rgba(94,234,212,0.08),transparent_60%)] p-8 sm:min-h-[420px]">
-        <div className="text-center">
-          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-300/10 text-emerald-300">
-            <PlayCircle className="h-10 w-10" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-white">{lesson.title}</p>
+            <p className="text-xs text-slate-500">{lesson.duration} · {lesson.moduleTitle}</p>
           </div>
-          <h3 className="mt-5 text-xl font-bold text-white">{lessonTitle}</h3>
-          <p className="mt-2 max-w-sm text-sm text-slate-400">Watch the lesson, then complete the tasks to unlock the next step.</p>
         </div>
+        <span className="rounded-full bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-300">{courseProgress}% course progress</span>
+      </div>
+
+      <div className="grid min-h-[340px] place-items-center bg-black p-3 sm:min-h-[430px]">
+        <video
+          controls
+          className="h-full max-h-[520px] w-full rounded-xl bg-black"
+          poster="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.jpg"
+        >
+          <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <p className="text-sm text-slate-400">{isCompleted ? 'Lesson completed. You can review it anytime.' : 'Watch the video, then complete the lesson to unlock the next class.'}</p>
+        <button onClick={onComplete} disabled={isCompleted} className={cx(ui.btnPrimary, isCompleted && 'cursor-default opacity-70')}>
+          <CheckCircle2 className="h-4 w-4" /> {isCompleted ? 'Completed' : 'Complete lesson'}
+        </button>
       </div>
     </div>
   );
 }
 
-function LessonPlayerPage({ go }: { go: (v: PageName) => void }) {
-  const [activeModuleIndex, setActiveModuleIndex] = useState(1);
-  const [activeLessonIndex, setActiveLessonIndex] = useState(0);
-  const activeModule = modules[activeModuleIndex];
-  const activeLesson = activeModule.lessons[activeLessonIndex];
-  const watchedProgress = Math.round(((activeLessonIndex + 1) / activeModule.lessons.length) * 100);
+function LessonPlayerPage({
+  go,
+  learningProgress,
+  setLearningProgress,
+}: {
+  go: (v: PageName) => void;
+  learningProgress: LearningProgress;
+  setLearningProgress: React.Dispatch<React.SetStateAction<LearningProgress>>;
+}) {
+  const [activeLessonId, setActiveLessonId] = useState(getCurrentLesson(learningProgress).id);
+  const [savedMessage, setSavedMessage] = useState('');
+  const activeLesson = lessonCatalog.find((lesson) => lesson.id === activeLessonId) || getCurrentLesson(learningProgress);
+  const completed = getCompletedSet(learningProgress);
+  const isCompleted = completed.has(activeLesson.id);
+  const courseProgress = getCourseProgressPercent(learningProgress);
+  const previousLesson = lessonCatalog[activeLesson.globalIndex - 1];
+  const nextLesson = lessonCatalog[activeLesson.globalIndex + 1];
+
+  useEffect(() => {
+    if (!lessonCatalog.some((lesson) => lesson.id === activeLessonId)) {
+      setActiveLessonId(getCurrentLesson(learningProgress).id);
+    }
+  }, [activeLessonId, learningProgress]);
+
+  const selectLesson = (lesson: LessonRecord) => {
+    if (!isLessonUnlocked(lesson, learningProgress)) return;
+    setActiveLessonId(lesson.id);
+    setSavedMessage('');
+    setLearningProgress((prev) => (
+      prev.completedLessonIds.includes(lesson.id) ? prev : { ...prev, currentLessonId: lesson.id }
+    ));
+  };
+
+  const completeLesson = () => {
+    setLearningProgress((prev) => {
+      const completedLessonIds = Array.from(new Set([...prev.completedLessonIds, activeLesson.id]));
+      const nextLessonId = lessonCatalog[activeLesson.globalIndex + 1]?.id || activeLesson.id;
+      return { completedLessonIds, currentLessonId: nextLessonId };
+    });
+    const unlocked = lessonCatalog[activeLesson.globalIndex + 1];
+    if (unlocked) setActiveLessonId(unlocked.id);
+    setSavedMessage(unlocked ? 'Lesson completed. Next lesson is unlocked.' : 'Course completed. Great work.');
+  };
 
   return (
     <div className={ui.page}>
       <div className="flex items-center justify-between gap-4">
         <BackLink go={go} to="Student Dashboard" label="Back to dashboard" />
         <span className={ui.chipMuted}>
-          Step {activeLessonIndex + 1} / {activeModule.lessons.length}
+          Lesson {activeLesson.globalIndex + 1} / {lessonCatalog.length}
         </span>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
+      <div className="grid gap-8 xl:grid-cols-[1fr_380px] xl:gap-10">
         {/* Main */}
         <div className="space-y-8">
           <div>
-            <p className={ui.eyebrow}>{activeModule.title} · {activeModule.name}</p>
-            <h1 className={cx(ui.h2, 'mt-3')}>{activeLesson}</h1>
+            <p className={ui.eyebrow}>{activeLesson.moduleTitle} · {activeLesson.moduleName}</p>
+            <h1 className={cx(ui.h2, 'mt-3')}>{activeLesson.title}</h1>
+            <p className={cx(ui.bodySm, 'mt-3')}>Complete lessons in order. The next video opens only after this one is marked complete.</p>
           </div>
 
-          <LessonPreview lessonTitle={activeLesson} progress={watchedProgress} />
+          <LessonVideoStage lesson={activeLesson} courseProgress={courseProgress} isCompleted={isCompleted} onComplete={completeLesson} />
 
-          <div className="flex flex-wrap gap-3">
-            <button onClick={() => go('Quiz')} className={ui.btnPrimary}>
-              Take quiz
-            </button>
-            <button onClick={() => go('Assignments')} className={ui.btnGhost}>
+          {savedMessage && (
+            <div className="rounded-xl border border-emerald-300/30 bg-emerald-300/5 px-4 py-3 text-sm font-medium text-emerald-200">
+              {savedMessage}
+            </div>
+          )}
+
+          <section className="grid gap-4 lg:grid-cols-3">
+            <div className={ui.cardSubtle}>
+              <p className={ui.eyebrow}>Outcome</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{activeLesson.outcome}</p>
+            </div>
+            <div className={ui.cardSubtle}>
+              <p className={ui.eyebrow}>Practice</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{activeLesson.practice}</p>
+            </div>
+            <div className={ui.cardSubtle}>
+              <p className={ui.eyebrow}>Resource</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{activeLesson.resource}</p>
+            </div>
+          </section>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-3">
+              <button onClick={() => previousLesson && selectLesson(previousLesson)} disabled={!previousLesson} className={cx(ui.btnGhost, !previousLesson && 'cursor-not-allowed opacity-50')}>
+                <ArrowLeft className="h-4 w-4" /> Previous
+              </button>
+              <button onClick={() => nextLesson && selectLesson(nextLesson)} disabled={!nextLesson || !isLessonUnlocked(nextLesson, learningProgress)} className={cx(ui.btnPrimary, (!nextLesson || !isLessonUnlocked(nextLesson, learningProgress)) && 'cursor-not-allowed opacity-50')}>
+                Next lesson <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+            <button onClick={() => go('Assignments')} className={ui.btnSubtle}>
               Submit assignment
             </button>
-            <button onClick={() => go('Resources')} className={ui.btnGhost}>
-              Download resources
-            </button>
-          </div>
-
-          {/* Lessons in this module */}
-          <div>
-            <h2 className="text-base font-bold uppercase tracking-[0.18em] text-slate-500">Lessons in this module</h2>
-            <div className="mt-4 space-y-2">
-              {activeModule.lessons.map((lesson, index) => {
-                const isActive = activeLessonIndex === index;
-                return (
-                  <button
-                    key={lesson}
-                    onClick={() => setActiveLessonIndex(index)}
-                    className={cx(
-                      'flex w-full items-center gap-4 rounded-xl border px-4 py-3 text-left text-sm transition',
-                      isActive
-                        ? 'border-emerald-300/30 bg-emerald-300/[0.06] text-white'
-                        : 'border-white/[0.06] bg-white/[0.02] text-slate-300 hover:border-emerald-300/20 hover:bg-white/[0.04]',
-                    )}
-                  >
-                    <span className={cx('grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold', isActive ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-slate-400')}>
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span className="truncate font-medium">{lesson}</span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
 
-        {/* Sidebar — module picker only */}
-        <aside className="space-y-2">
-          <p className={cx(ui.eyebrow, 'mb-3 px-1')}>All modules</p>
+        {/* Sidebar — Coursera-style curriculum */}
+        <aside className="space-y-3">
+          <div className={ui.cardSubtle}>
+            <p className={ui.eyebrow}>Course</p>
+            <h2 className="mt-2 text-lg font-bold text-white">Digital Marketing Beginner to Professional</h2>
+            <div className="mt-4">
+              <ProgressBar value={courseProgress} height="md" />
+            </div>
+            <p className="mt-3 text-sm text-slate-400">{completed.size} / {lessonCatalog.length} lessons completed</p>
+          </div>
+
+          <p className={cx(ui.eyebrow, 'px-1 pt-2')}>Curriculum</p>
           {modules.map((module, index) => {
-            const isCurrent = index === activeModuleIndex;
-            const isLocked = module.status === 'Locked';
+            const moduleState = getModuleLearningState(index, learningProgress);
+            const isCurrent = index === activeLesson.moduleIndex;
+            const moduleLessons = lessonCatalog.filter((lesson) => lesson.moduleIndex === index);
             return (
-              <button
+              <div
                 key={module.title}
-                onClick={() => {
-                  if (!isLocked) {
-                    setActiveModuleIndex(index);
-                    setActiveLessonIndex(0);
-                  }
-                }}
-                disabled={isLocked}
                 className={cx(
-                  'w-full rounded-xl border px-4 py-4 text-left transition',
-                  isCurrent
-                    ? 'border-emerald-300/30 bg-emerald-300/[0.06]'
-                    : isLocked
-                    ? 'border-white/[0.06] bg-white/[0.02] opacity-60'
-                    : 'border-white/[0.06] bg-white/[0.02] hover:border-emerald-300/20 hover:bg-white/[0.04]',
+                  'rounded-2xl border p-4',
+                  isCurrent ? 'border-emerald-300/30 bg-emerald-300/[0.04]' : 'border-white/[0.06] bg-white/[0.02]',
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{module.title}</p>
-                  {isLocked && <Lock className="h-3.5 w-3.5 text-slate-600" />}
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{moduleState.status}</span>
                 </div>
                 <h3 className="mt-1.5 text-sm font-bold text-white">{module.name}</h3>
                 <div className="mt-3">
-                  <ProgressBar value={module.progress} />
+                  <ProgressBar value={moduleState.progressValue} />
                 </div>
-                <p className="mt-2 text-xs text-slate-500">{module.progress}% · {module.lessons.length} lessons</p>
-              </button>
+                <div className="mt-3 space-y-1">
+                  {moduleLessons.map((lesson) => {
+                    const lessonCompleted = completed.has(lesson.id);
+                    const lessonUnlocked = isLessonUnlocked(lesson, learningProgress);
+                    const lessonActive = lesson.id === activeLesson.id;
+                    return (
+                      <button
+                        key={lesson.id}
+                        onClick={() => selectLesson(lesson)}
+                        disabled={!lessonUnlocked}
+                        className={cx(
+                          'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition',
+                          lessonActive
+                            ? 'bg-emerald-300 text-slate-950'
+                            : lessonUnlocked
+                            ? 'text-slate-300 hover:bg-white/[0.05] hover:text-white'
+                            : 'cursor-not-allowed text-slate-600',
+                        )}
+                      >
+                        <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full', lessonActive ? 'bg-slate-950/10' : lessonCompleted ? 'bg-emerald-300/10 text-emerald-300' : 'bg-white/[0.04]')}>
+                          {lessonCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : lessonUnlocked ? <PlayCircle className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                        <span className="shrink-0 text-[10px] opacity-70">{lesson.duration}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </aside>
@@ -1128,39 +1446,110 @@ function ReportsPage({ go }: { go: (v: PageName) => void }) {
 // Live Meeting
 // =====================================================================
 
-function LiveMeetingPage({ go }: { go: (v: PageName) => void }) {
-  const roomName = `YeHtetEdu-SaturdayLiveClass-${new Date().getDate()}`;
-  const jitsiURL = `https://meet.jit.si/${roomName}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+function LiveMeetingPage({
+  go,
+  meetings,
+  initialMeetingId,
+}: {
+  go: (v: PageName) => void;
+  meetings: LiveClassMeeting[];
+  initialMeetingId: string | null;
+}) {
+  const firstMeeting = meetings.find((meeting) => meeting.isInstant) || meetings[0] || defaultLiveMeetings[0];
+  const initialMeeting = meetings.find((meeting) => meeting.id === initialMeetingId) || firstMeeting;
+  const [selectedMeetingId, setSelectedMeetingId] = useState(initialMeeting.id);
+  const selectedMeeting = meetings.find((meeting) => meeting.id === selectedMeetingId) || firstMeeting;
+  const roomName = getJitsiRoomName(selectedMeeting);
+  const jitsiURL = getJitsiMeetingUrl(selectedMeeting);
+
+  useEffect(() => {
+    if (initialMeetingId && meetings.some((meeting) => meeting.id === initialMeetingId)) {
+      setSelectedMeetingId(initialMeetingId);
+    }
+  }, [initialMeetingId, meetings]);
+
+  useEffect(() => {
+    if (!meetings.some((meeting) => meeting.id === selectedMeetingId)) {
+      setSelectedMeetingId(firstMeeting.id);
+    }
+  }, [firstMeeting.id, meetings, selectedMeetingId]);
 
   return (
     <div className={ui.page}>
       <BackLink go={go} to="Student Dashboard" label="Back to dashboard" />
       <PageHeader
-        eyebrow="Saturday live class"
-        title="7:00 PM – 8:30 PM."
-        description="Join the live session from any device. Use Chrome or Firefox for best results."
+        eyebrow={selectedMeeting.isInstant ? 'Instant live meeting' : 'Weekly live class'}
+        title={selectedMeeting.title}
+        description={`${formatMeetingWindow(selectedMeeting)} · Host: ${selectedMeeting.host}`}
         actions={
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald-300/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" /> Live now
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" /> {selectedMeeting.isInstant ? 'Live now' : 'Ready'}
           </span>
         }
       />
 
-      <section className={ui.card}>
-        <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px' }}>
-          <iframe
-            src={jitsiURL}
-            allow="camera; microphone; display-capture; fullscreen; autoplay; clipboard-read; clipboard-write"
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', borderRadius: '12px' }}
-            title="Ye Htet Digital Edu — Live Class"
-          />
+      <section className={cx(ui.card, 'overflow-hidden p-0')}>
+        <div className="grid gap-0 lg:grid-cols-[1fr_320px]">
+          <div className="min-h-[520px] bg-slate-950 p-3 sm:p-4">
+            <div className="h-[68vh] min-h-[480px] overflow-hidden rounded-2xl border border-white/10 bg-black">
+              <iframe
+                key={selectedMeeting.id}
+                src={jitsiURL}
+                allow="camera; microphone; display-capture; fullscreen; autoplay; clipboard-read; clipboard-write"
+                allowFullScreen
+                title={`${selectedMeeting.title} Jitsi meeting`}
+                className="h-full w-full border-0"
+              />
+            </div>
+          </div>
+
+          <aside className="border-t border-white/[0.08] bg-white/[0.02] p-5 lg:border-l lg:border-t-0">
+            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-4">
+              <p className={ui.eyebrow}>Jitsi room</p>
+              <h2 className="mt-2 break-words text-lg font-bold text-white">{roomName}</h2>
+              <p className="mt-2 text-sm text-slate-400">Camera, microphone, screen share, chat, participants, and recording controls run inside Jitsi.</p>
+              <a href={jitsiURL} target="_blank" rel="noreferrer" className={cx(ui.btnPrimary, 'mt-4 w-full')}>
+                <ExternalLink className="h-4 w-4" /> Open in new tab
+              </a>
+            </div>
+
+            <div>
+              <p className={cx(ui.eyebrow, 'mt-6')}>Live schedule</p>
+              <div className="mt-4 space-y-3">
+                {meetings.map((meeting) => (
+                  <button
+                    key={meeting.id}
+                    onClick={() => setSelectedMeetingId(meeting.id)}
+                    className={cx(
+                      'w-full rounded-2xl border p-4 text-left transition',
+                      selectedMeeting.id === meeting.id ? 'border-emerald-300/40 bg-emerald-300/[0.08]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]',
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">{meeting.title}</p>
+                        <p className="mt-1 text-xs text-slate-400">{formatMeetingWindow(meeting)}</p>
+                      </div>
+                      {meeting.isInstant ? <Radio className="h-4 w-4 text-emerald-300" /> : <CalendarClock className="h-4 w-4 text-slate-500" />}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/[0.06] pt-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recording access</p>
+              <p className="mt-2 text-sm font-medium text-slate-200">{selectedMeeting.recordingAccess}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Public Jitsi recording availability depends on the Jitsi server. For guaranteed saved recordings, use JaaS or a self-hosted Jibri setup.</p>
+            </div>
+          </aside>
         </div>
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <InfoCard icon={Video} title="Camera & mic" text="Use the toolbar in the video to toggle your camera and microphone." />
-        <InfoCard icon={MonitorUp} title="Screen sharing" text="Share your screen with the class from the toolbar buttons." />
-        <InfoCard icon={Users} title="Multiple users" text="All participants can join from any device with browser support." />
+        <InfoCard icon={Video} title="Multi-user video" text="All students and the admin join the same Jitsi room." />
+        <InfoCard icon={Mic} title="Camera & mic" text="Jitsi handles device permissions, mute, and unmute controls." />
+        <InfoCard icon={ScreenShare} title="Screen share & record" text="Screen sharing is built in. Recording depends on the Jitsi server plan." />
       </section>
     </div>
   );
@@ -1175,43 +1564,103 @@ const adminContent: Record<string, { title: string; description: string; primary
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
   Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '45 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
-  Lessons: { title: 'Lesson Manager', description: 'Add Vimeo video lessons and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
+  Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
   Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
   Assignments: { title: 'Assignment Review', description: 'Create assignments and review submissions.', primaryAction: 'Create Assignment', cards: [{ title: 'Submission Types', items: ['Text answer', 'File upload', 'External link', 'Google Sheet link'] }] },
-  Meetings: { title: 'Live Class Meetings', description: 'Schedule live classes and track attendance.', primaryAction: 'Schedule Meeting', cards: [{ title: 'Meeting Setup', items: ['Title', 'Date and time', 'Meeting room', 'Student access'] }] },
+  Meetings: { title: 'Live Class Meetings', description: 'Start instant classes or keep weekly Saturday and Sunday rooms ready for students.', primaryAction: 'Schedule Weekly', cards: [{ title: 'Meeting Setup', items: ['Saturday class', 'Sunday class', 'Instant room', 'Recording access'] }] },
   Reports: { title: 'Reports & Analytics', description: 'Review progress and export reports.', primaryAction: 'Export Report', cards: [{ title: 'Progress Report', items: ['Course completion', 'Lesson completion', 'Watch percentage', 'Last activity'] }] },
   Settings: { title: 'Platform Settings', description: 'Configure branding, roles, permissions, and notifications.', primaryAction: 'Save Settings', cards: [{ title: 'Branding', items: ['Ye Htet - Digital Edu', 'Logo', 'Theme color', 'Course display'] }] },
 };
 
-function AdminPanelPage() {
+function AdminPanelPage({
+  go,
+  meetings,
+  setMeetings,
+  onJoinMeeting,
+}: {
+  go: (v: PageName) => void;
+  meetings: LiveClassMeeting[];
+  setMeetings: React.Dispatch<React.SetStateAction<LiveClassMeeting[]>>;
+  onJoinMeeting: (meetingId: string) => void;
+}) {
   const adminMenu = ['Dashboard', 'Students', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState(demoStudents[0].id);
-  const [meetingTitle, setMeetingTitle] = useState('');
-  const [meetingDateTime, setMeetingDateTime] = useState('');
-  const [meetingHost, setMeetingHost] = useState('');
-  const [meetingRecordingAccess, setMeetingRecordingAccess] = useState('Public');
-  const [scheduledMeetings, setScheduledMeetings] = useState<Array<{ id: string; title: string; dateTime: string; host: string; recordingAccess: string }>>([]);
+  const [selectedLessonId, setSelectedLessonId] = useState(lessonCatalog[0]?.id || '');
+  const [meetingTitle, setMeetingTitle] = useState('Digital Marketing Live Class');
+  const [meetingDays, setMeetingDays] = useState<MeetingDay[]>(weeklyMeetingDays);
+  const [meetingStartTime, setMeetingStartTime] = useState('19:00');
+  const [meetingEndTime, setMeetingEndTime] = useState('20:30');
+  const [meetingHost, setMeetingHost] = useState('Ye Htet');
+  const [meetingRecordingAccess, setMeetingRecordingAccess] = useState<RecordingAccess>('Students after class');
+  const scheduledMeetings = meetings;
   const current = adminContent[adminActive] || adminContent.Dashboard;
   const selectedStudent = demoStudents.find((s) => s.id === selectedStudentId) || demoStudents[0];
+  const selectedLesson = lessonCatalog.find((lesson) => lesson.id === selectedLessonId) || lessonCatalog[0];
+  const isMeetingSetupOpen = adminActive === 'Meetings' && activeAction === current.primaryAction;
   const openAction = (name: string) => { setActiveAction(name); setSavedMessage(''); };
+  const isEditingAction = Boolean(activeAction?.toLowerCase().startsWith('edit'));
+  const actionInitialValues: Record<string, string> | undefined =
+    adminActive === 'Students' && isEditingAction
+      ? {
+          'Student name': selectedStudent.name,
+          'Email address': selectedStudent.email,
+          'Temporary password': '',
+          'Assigned course': selectedStudent.course,
+        }
+      : adminActive === 'Lessons' && isEditingAction && selectedLesson
+      ? {
+          'Lesson title': selectedLesson.title,
+          'Vimeo embed URL': getLessonEmbedUrl(selectedLesson),
+          'Required watch percentage': '80',
+          'Attached resource': selectedLesson.resource,
+        }
+      : undefined;
+  const toggleMeetingDay = (day: MeetingDay) => {
+    setMeetingDays((prev) => prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]);
+  };
   const scheduleMeeting = () => {
-    if (!meetingTitle || !meetingDateTime || !meetingHost) {
-      setSavedMessage('Please fill all required meeting fields.');
+    if (!meetingTitle || meetingDays.length === 0 || !meetingStartTime || !meetingEndTime || !meetingHost) {
+      setSavedMessage('Please fill all required weekly meeting fields.');
       return;
     }
-    setScheduledMeetings((prev) => [
-      { id: `${Date.now()}`, title: meetingTitle, dateTime: meetingDateTime, host: meetingHost, recordingAccess: meetingRecordingAccess },
-      ...prev,
+    const createdAt = Date.now();
+    const newMeetings = meetingDays.map((day) => ({
+      id: `weekly-${day.toLowerCase()}-${createdAt}`,
+      title: meetingTitle,
+      day,
+      startTime: meetingStartTime,
+      endTime: meetingEndTime,
+      host: meetingHost,
+      recordingAccess: meetingRecordingAccess,
+    }));
+    setMeetings((prev) => [
+      ...prev.filter((meeting) => meeting.isInstant || !meetingDays.includes(meeting.day as MeetingDay)),
+      ...newMeetings,
     ]);
-    setMeetingTitle('');
-    setMeetingDateTime('');
-    setMeetingHost('');
-    setMeetingRecordingAccess('Public');
-    setSavedMessage('Live meeting scheduled successfully.');
+    setSavedMessage('Weekly live classes scheduled successfully.');
     setActiveAction(null);
+  };
+  const startInstantMeeting = () => {
+    const now = new Date();
+    const instantMeeting: LiveClassMeeting = {
+      id: `instant-${Date.now()}`,
+      title: 'Instant Live Class',
+      day: 'Instant',
+      startTime: formatLocalTime(now),
+      endTime: 'Open',
+      host: meetingHost || 'Ye Htet',
+      recordingAccess: meetingRecordingAccess,
+      isInstant: true,
+    };
+    setMeetings((prev) => [instantMeeting, ...prev.filter((meeting) => !meeting.isInstant)]);
+    setAdminActive('Meetings');
+    setActiveAction(null);
+    setSavedMessage('Instant live meeting is ready for students.');
+    onJoinMeeting(instantMeeting.id);
+    go('Live Meeting');
   };
 
   return (
@@ -1246,9 +1695,20 @@ function AdminPanelPage() {
             title={current.title}
             description={current.description}
             actions={
-              <button onClick={() => openAction(current.primaryAction)} className={ui.btnPrimary}>
-                <Plus className="h-4 w-4" /> {current.primaryAction}
-              </button>
+              adminActive === 'Meetings' ? (
+                <>
+                  <button onClick={startInstantMeeting} className={ui.btnPrimary}>
+                    <Radio className="h-4 w-4" /> Start instant class
+                  </button>
+                  <button onClick={() => openAction(current.primaryAction)} className={ui.btnGhost}>
+                    <CalendarClock className="h-4 w-4" /> Schedule weekly
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => openAction(current.primaryAction)} className={ui.btnPrimary}>
+                  <Plus className="h-4 w-4" /> {current.primaryAction}
+                </button>
+              )
             }
           />
 
@@ -1258,23 +1718,14 @@ function AdminPanelPage() {
             </div>
           )}
 
-          {activeAction && (
+          {activeAction && adminActive !== 'Meetings' && (
             <AdminActionPanel
               // Remount the form whenever the section/action/student changes so
               // defaultValue inputs reflect the freshly selected record.
-              key={`${adminActive}:${activeAction}:${selectedStudent.id}`}
+              key={`${adminActive}:${activeAction}:${selectedStudent.id}:${selectedLesson?.id || ''}`}
               section={adminActive}
               actionName={activeAction}
-              initialValues={
-                adminActive === 'Students' && activeAction.toLowerCase().startsWith('edit')
-                  ? {
-                      'Student name': selectedStudent.name,
-                      'Email address': selectedStudent.email,
-                      'Temporary password': '',
-                      'Assigned course': selectedStudent.course,
-                    }
-                  : undefined
-              }
+              initialValues={actionInitialValues}
               onCancel={() => setActiveAction(null)}
               onSave={() => { setSavedMessage(`${activeAction} saved successfully.`); setActiveAction(null); }}
             />
@@ -1288,46 +1739,81 @@ function AdminPanelPage() {
               onCreateStudent={() => openAction('Add Student')}
               onEditStudent={() => openAction(`Edit ${selectedStudent.name}`)}
             />
+          ) : adminActive === 'Lessons' ? (
+            <LessonManagerAdmin
+              selectedLesson={selectedLesson}
+              selectedLessonId={selectedLessonId}
+              onSelectLesson={(id) => { setSelectedLessonId(id); setActiveAction(null); setSavedMessage(''); }}
+              onCreateLesson={() => openAction('Add Lesson')}
+              onEditLesson={(lesson) => { setSelectedLessonId(lesson.id); openAction(`Edit ${lesson.title}`); }}
+            />
           ) : adminActive === 'Meetings' ? (
             <div className="space-y-6">
-              <div className={ui.card}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className={ui.eyebrow}>Meeting Setup</p>
-                    <h2 className={cx(ui.h3, 'mt-2')}>Schedule a new live class</h2>
-                    <p className="mt-2 text-sm text-slate-400">Enter meeting details and save a preview of the scheduled class.</p>
+              {isMeetingSetupOpen && (
+                <div className={ui.card}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className={ui.eyebrow}>Meeting Setup</p>
+                      <h2 className={cx(ui.h3, 'mt-2')}>Schedule weekly live classes</h2>
+                      <p className="mt-2 text-sm text-slate-400">Saturday and Sunday rooms stay ready for students every week.</p>
+                    </div>
+                    <button onClick={() => { setActiveAction(null); setSavedMessage(''); }} className={ui.btnSubtle}>Close</button>
                   </div>
-                  <button onClick={() => setSavedMessage('')} className={ui.btnSubtle}>Close</button>
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Meeting title</span>
+                      <input value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} placeholder="Enter meeting title" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                    </label>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400">Weekly days</span>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {weeklyMeetingDays.map((day) => {
+                          const active = meetingDays.includes(day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => toggleMeetingDay(day)}
+                              className={cx(
+                                'rounded-xl border px-4 py-3 text-sm font-bold transition',
+                                active ? 'border-emerald-300/50 bg-emerald-300 text-slate-950' : 'border-white/[0.08] bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]',
+                              )}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Start time</span>
+                      <input value={meetingStartTime} onChange={(e) => setMeetingStartTime(e.target.value)} type="time" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">End time</span>
+                      <input value={meetingEndTime} onChange={(e) => setMeetingEndTime(e.target.value)} type="time" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Host</span>
+                      <input value={meetingHost} onChange={(e) => setMeetingHost(e.target.value)} placeholder="Enter host name" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Recording access</span>
+                      <select value={meetingRecordingAccess} onChange={(e) => setMeetingRecordingAccess(e.target.value as RecordingAccess)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                        <option value="Students after class">Students after class</option>
+                        <option value="Admin only">Admin only</option>
+                        <option value="Private">Private</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button onClick={scheduleMeeting} className={ui.btnPrimary}>Save weekly schedule</button>
+                    <button onClick={() => { setMeetingTitle('Digital Marketing Live Class'); setMeetingDays(weeklyMeetingDays); setMeetingStartTime('19:00'); setMeetingEndTime('20:30'); setMeetingHost('Ye Htet'); setMeetingRecordingAccess('Students after class'); setSavedMessage(''); setActiveAction(null); }} className={ui.btnGhost}>Cancel</button>
+                  </div>
                 </div>
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Meeting title</span>
-                    <input value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} placeholder="Enter meeting title" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Date and time</span>
-                    <input value={meetingDateTime} onChange={(e) => setMeetingDateTime(e.target.value)} type="datetime-local" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Host</span>
-                    <input value={meetingHost} onChange={(e) => setMeetingHost(e.target.value)} placeholder="Enter host name" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Recording access</span>
-                    <select value={meetingRecordingAccess} onChange={(e) => setMeetingRecordingAccess(e.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
-                      <option value="Public">Public</option>
-                      <option value="Private">Private</option>
-                      <option value="Invite only">Invite only</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <button onClick={scheduleMeeting} className={ui.btnPrimary}>Save preview</button>
-                  <button onClick={() => { setMeetingTitle(''); setMeetingDateTime(''); setMeetingHost(''); setMeetingRecordingAccess('Public'); setSavedMessage(''); }} className={ui.btnGhost}>Cancel</button>
-                </div>
-              </div>
+              )}
 
-              {scheduledMeetings.length > 0 && (
+              {scheduledMeetings.length > 0 ? (
                 <div className={ui.card}>
                   <div className="flex items-center justify-between gap-3">
                     <h3 className={ui.h3}>Scheduled live classes</h3>
@@ -1338,17 +1824,28 @@ function AdminPanelPage() {
                       <div key={meeting.id} className="rounded-3xl border border-white/10 bg-slate-950/40 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
-                            <p className="text-sm text-slate-400">{meeting.dateTime}</p>
+                            <p className="text-sm text-slate-400">{formatMeetingWindow(meeting)}</p>
                             <h3 className="mt-1 text-lg font-black text-white">{meeting.title}</h3>
                           </div>
                           <div className="space-y-2 text-right text-sm text-slate-300">
                             <p>Host: {meeting.host}</p>
                             <p>Recording: {meeting.recordingAccess}</p>
+                            {meeting.isInstant && <p className="text-emerald-300">Live now</p>}
+                            <button
+                              onClick={() => { onJoinMeeting(meeting.id); go('Live Meeting'); }}
+                              className={cx(ui.btnSubtle, 'mt-2')}
+                            >
+                              <Video className="h-4 w-4" /> Join room
+                            </button>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className={ui.card}>
+                  <p className="text-slate-400">No live classes scheduled yet. Start an instant class or save the weekly Saturday and Sunday schedule.</p>
                 </div>
               )}
             </div>
@@ -1364,6 +1861,160 @@ function AdminPanelPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function LessonManagerAdmin({
+  selectedLesson,
+  selectedLessonId,
+  onSelectLesson,
+  onCreateLesson,
+  onEditLesson,
+}: {
+  selectedLesson?: LessonRecord;
+  selectedLessonId: string;
+  onSelectLesson: (id: string) => void;
+  onCreateLesson: () => void;
+  onEditLesson: (lesson: LessonRecord) => void;
+}) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <section className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={ui.eyebrow}>Course lesson library</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>{lessonCatalog.length} lessons</h2>
+          </div>
+          <button onClick={onCreateLesson} className={ui.btnPrimary}>
+            <Plus className="h-4 w-4" /> Add lesson
+          </button>
+        </div>
+
+        <div className="max-h-[720px] space-y-6 overflow-y-auto pr-1">
+          {modules.map((module, moduleIndex) => {
+            const moduleLessons = lessonCatalog.filter((lesson) => lesson.moduleIndex === moduleIndex);
+            return (
+              <div key={module.title} className="border-t border-white/[0.06] pt-5 first:border-t-0 first:pt-0">
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">{module.title}</p>
+                    <h3 className="mt-1 text-base font-bold text-white">{module.name}</h3>
+                  </div>
+                  <span className={ui.chipMuted}>{moduleLessons.length} lessons</span>
+                </div>
+
+                <div className="space-y-2">
+                  {moduleLessons.map((lesson) => {
+                    const isSelected = lesson.id === selectedLessonId;
+                    return (
+                      <button
+                        key={lesson.id}
+                        type="button"
+                        onClick={() => onSelectLesson(lesson.id)}
+                        aria-pressed={isSelected}
+                        className={cx(
+                          'group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition',
+                          isSelected
+                            ? 'border-emerald-300/40 bg-emerald-300/[0.07]'
+                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]',
+                        )}
+                      >
+                        <span
+                          className={cx(
+                            'grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold',
+                            isSelected ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.04] text-emerald-300',
+                          )}
+                        >
+                          {lesson.globalIndex + 1}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-white">{lesson.title}</span>
+                          <span className="mt-1 block truncate text-xs text-slate-500">{lesson.duration} · {lesson.resource}</span>
+                        </span>
+                        <span className={cx('text-xs font-semibold', isSelected ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-300')}>
+                          View
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <aside className={cx(ui.card, 'self-start xl:sticky xl:top-28')}>
+        {selectedLesson ? (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className={ui.eyebrow}>Lesson preview</p>
+                <h2 className={cx(ui.h2, 'mt-2 text-2xl sm:text-2xl')}>{selectedLesson.title}</h2>
+                <p className={cx(ui.bodySm, 'mt-2')}>
+                  Lesson {selectedLesson.globalIndex + 1} · {selectedLesson.moduleTitle} · {selectedLesson.duration}
+                </p>
+              </div>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+                <PlayCircle className="h-5 w-5" />
+              </span>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950">
+              <div className="aspect-video bg-black p-2">
+                <video
+                  controls
+                  className="h-full w-full rounded-xl bg-black"
+                  poster="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.jpg"
+                >
+                  <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              <LessonMetaField label="Module" value={selectedLesson.moduleName} />
+              <LessonMetaField label="Vimeo embed URL" value={getLessonEmbedUrl(selectedLesson)} mono />
+              <LessonMetaField label="Required watch" value="80%" />
+              <LessonMetaField label="Unlock rule" value="Previous lesson must be completed" />
+              <LessonMetaField label="Resource" value={selectedLesson.resource} />
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p className={ui.eyebrow}>Outcome</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{selectedLesson.outcome}</p>
+              </div>
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <p className={ui.eyebrow}>Practice</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{selectedLesson.practice}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button onClick={() => onEditLesson(selectedLesson)} className={ui.btnPrimary}>
+                <UploadCloud className="h-4 w-4" /> Replace video URL
+              </button>
+              <button onClick={() => onEditLesson(selectedLesson)} className={ui.btnGhost}>
+                <BookOpen className="h-4 w-4" /> Edit lesson
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="text-sm text-slate-400">No lessons found yet. Add your first lesson to start building the course.</div>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function LessonMetaField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className={cx('mt-1 break-words text-sm font-medium text-slate-200', mono && 'font-mono text-xs leading-5')}>{value}</p>
     </div>
   );
 }
@@ -1689,9 +2340,12 @@ function RoleSignInCard({
 // =====================================================================
 
 export default function App() {
-  const [active, setActive] = useState<PageName>(() => readHashPage());
+  const [active, setActive] = useState<PageName>(() => getNextPage(readHashPage(), false, null));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState<Role>(null);
+  const [liveMeetings, setLiveMeetings] = useState<LiveClassMeeting[]>(() => readStoredMeetings());
+  const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
+  const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress());
 
   useEffect(() => {
     const desired = pageToHash(active);
@@ -1716,6 +2370,14 @@ export default function App() {
     };
   }, [isLoggedIn, role]);
 
+  useEffect(() => {
+    window.localStorage.setItem(meetingStorageKey, JSON.stringify(liveMeetings));
+  }, [liveMeetings]);
+
+  useEffect(() => {
+    window.localStorage.setItem(learningStorageKey, JSON.stringify(learningProgress));
+  }, [learningProgress]);
+
   const go = (page: PageName) => {
     const next = getNextPage(page, isLoggedIn, role);
     setActive(next);
@@ -1739,14 +2401,14 @@ export default function App() {
       {active === 'Courses' && <CoursesPage go={go} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} />}
-      {active === 'Admin Panel' && <AdminPanelPage />}
-      {active === 'Student Dashboard' && <StudentDashboardPage go={go} />}
-      {active === 'Lesson Player' && <LessonPlayerPage go={go} />}
+      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} />}
+      {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} />}
+      {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} />}
       {active === 'Quiz' && <QuizPage go={go} />}
       {active === 'Assignments' && <AssignmentsPage go={go} />}
       {active === 'Resources' && <ResourcesPage go={go} />}
       {active === 'Reports' && <ReportsPage go={go} />}
-      {active === 'Live Meeting' && <LiveMeetingPage go={go} />}
+      {active === 'Live Meeting' && <LiveMeetingPage go={go} meetings={liveMeetings} initialMeetingId={activeMeetingId} />}
       {active === 'Login' && <LoginPage login={login} />}
     </Shell>
   );
