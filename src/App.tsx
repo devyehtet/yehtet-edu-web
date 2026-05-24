@@ -173,6 +173,9 @@ const demoCredentials = {
 const meetingStorageKey = 'ye-htet-live-class-meetings';
 const learningStorageKey = 'ye-htet-digital-marketing-progress';
 const lessonStorageKey = 'ye-htet-digital-marketing-lessons';
+const firstLessonVideoUrl = 'https://vimeo.com/1195114426?fl=pl&fe=sh';
+const firstLessonDuration = '2.11 min';
+const secondLessonVideoUrl = 'https://vimeo.com/1195115453?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
@@ -332,11 +335,11 @@ const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
       moduleIndex,
       lessonIndex,
       globalIndex,
-      duration: `${10 + ((globalIndex * 3) % 13)} min`,
+      duration: globalIndex === 0 ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`,
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
       resource: `${module.name} checklist`,
-      videoUrl: sampleLessonVideoUrl,
+      videoUrl: globalIndex === 0 ? firstLessonVideoUrl : globalIndex === 1 ? secondLessonVideoUrl : sampleLessonVideoUrl,
       requiredWatchPercentage: 80,
     };
   }),
@@ -372,7 +375,24 @@ function readStoredLessons(): LessonRecord[] {
     const defaultsById = new Map(lessonCatalog.map((lesson) => [lesson.id, lesson]));
     const mergedDefaults = lessonCatalog.map((lesson) => {
       const storedLesson = parsed.find((item) => item?.id === lesson.id);
-      return normalizeLessonRecord({ ...lesson, ...storedLesson }, lesson);
+      const shouldUseNewFirstLessonVideo =
+        lesson.globalIndex === 0
+        && storedLesson?.videoUrl
+        && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
+      const shouldUseNewFirstLessonDuration =
+        lesson.globalIndex === 0
+        && storedLesson?.duration === '10 min';
+      const shouldUseNewSecondLessonVideo =
+        lesson.globalIndex === 1
+        && storedLesson?.videoUrl
+        && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
+      return normalizeLessonRecord({
+        ...lesson,
+        ...storedLesson,
+        ...(shouldUseNewFirstLessonVideo ? { videoUrl: firstLessonVideoUrl } : {}),
+        ...(shouldUseNewFirstLessonDuration ? { duration: firstLessonDuration } : {}),
+        ...(shouldUseNewSecondLessonVideo ? { videoUrl: secondLessonVideoUrl } : {}),
+      }, lesson);
     });
     const customLessons = parsed
       .filter((item) => typeof item?.id === 'string' && !defaultsById.has(item.id))
@@ -443,6 +463,11 @@ function getEmbeddableLessonUrl(rawUrl: string, playerId?: string) {
   const privateHash = getVimeoPrivateHash(videoUrl, vimeoId);
   if (privateHash) url.searchParams.set('h', privateHash);
   url.searchParams.set('api', '1');
+  url.searchParams.set('title', '0');
+  url.searchParams.set('byline', '0');
+  url.searchParams.set('portrait', '0');
+  url.searchParams.set('badge', '0');
+  url.searchParams.set('dnt', '1');
   if (playerId) url.searchParams.set('player_id', playerId);
   return url.toString();
 }
@@ -1347,30 +1372,36 @@ function LessonVideoStage({
     if (!isVimeo) return;
     const targetOrigin = 'https://player.vimeo.com';
     const sendToPlayer = (method: string, value?: string) => {
-      iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ method, value }), targetOrigin);
+      const payload = { method, value };
+      iframeRef.current?.contentWindow?.postMessage(JSON.stringify(payload), targetOrigin);
+      iframeRef.current?.contentWindow?.postMessage(payload, targetOrigin);
+    };
+    const registerProgressEvents = () => {
+      sendToPlayer('addEventListener', 'timeupdate');
+      sendToPlayer('addEventListener', 'playProgress');
+      sendToPlayer('addEventListener', 'ended');
+      sendToPlayer('addEventListener', 'finish');
     };
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== targetOrigin) return;
       const data = typeof event.data === 'string' ? safeParseEventData(event.data) : event.data;
-      if (data?.event === 'ready') sendToPlayer('addEventListener', 'timeupdate');
-      if (data?.event === 'timeupdate' && data.data) {
-        const seconds = Number(data.data.seconds || 0);
-        const duration = Number(data.data.duration || 0);
-        const percent = Number.isFinite(data.data.percent)
-          ? Math.round(Number(data.data.percent) * 100)
-          : duration > 0
-          ? Math.round((seconds / duration) * 100)
-          : 0;
-        progressHandlerRef.current(Math.min(100, Math.max(0, percent)));
+      if (data?.player_id && data.player_id !== playerId) return;
+      if (data?.event === 'ready') registerProgressEvents();
+      if (data?.event === 'finish' || data?.event === 'ended') {
+        progressHandlerRef.current(100);
+        return;
+      }
+      if ((data?.event === 'timeupdate' || data?.event === 'playProgress' || data?.event === 'progress') && data.data) {
+        progressHandlerRef.current(getVimeoWatchPercent(data.data));
       }
     };
     window.addEventListener('message', onMessage);
-    const timer = window.setTimeout(() => sendToPlayer('addEventListener', 'timeupdate'), 700);
+    const timers = [700, 1600, 3200].map((delay) => window.setTimeout(registerProgressEvents, delay));
     return () => {
-      window.clearTimeout(timer);
+      timers.forEach((timer) => window.clearTimeout(timer));
       window.removeEventListener('message', onMessage);
     };
-  }, [embeddedUrl, isVimeo]);
+  }, [embeddedUrl, isVimeo, playerId]);
 
   const trackNativeProgress = (video: HTMLVideoElement) => {
     if (!Number.isFinite(video.duration) || video.duration <= 0) return;
@@ -1436,10 +1467,28 @@ function LessonVideoStage({
 
 function safeParseEventData(value: string) {
   try {
-    return JSON.parse(value) as { event?: string; data?: { seconds?: number; duration?: number; percent?: number } };
+    return JSON.parse(value) as { event?: string; player_id?: string; data?: VimeoProgressData };
   } catch {
     return null;
   }
+}
+
+type VimeoProgressData = {
+  seconds?: number;
+  duration?: number;
+  percent?: number;
+};
+
+function getVimeoWatchPercent(data: VimeoProgressData) {
+  const rawPercent = Number(data.percent);
+  if (Number.isFinite(rawPercent)) {
+    const normalized = rawPercent <= 1 ? rawPercent * 100 : rawPercent;
+    return Math.min(100, Math.max(0, Math.round(normalized)));
+  }
+  const seconds = Number(data.seconds || 0);
+  const duration = Number(data.duration || 0);
+  if (duration > 0) return Math.min(100, Math.max(0, Math.round((seconds / duration) * 100)));
+  return 0;
 }
 
 function LessonPlayerPage({
@@ -1492,14 +1541,11 @@ function LessonPlayerPage({
     });
   };
 
-  const completeLesson = () => {
-    if (watchedPercent < activeLesson.requiredWatchPercentage) {
-      setSavedMessage(`Please watch at least ${activeLesson.requiredWatchPercentage}% before completing this lesson.`);
-      return;
-    }
+  const markLessonComplete = (movePlayerToNext: boolean) => {
+    const unlocked = lessons[activeLesson.globalIndex + 1];
+    const nextLessonId = unlocked?.id || activeLesson.id;
     setLearningProgress((prev) => {
       const completedLessonIds = Array.from(new Set([...prev.completedLessonIds, activeLesson.id]));
-      const nextLessonId = lessons[activeLesson.globalIndex + 1]?.id || activeLesson.id;
       return {
         completedLessonIds,
         currentLessonId: nextLessonId,
@@ -1509,10 +1555,23 @@ function LessonPlayerPage({
         },
       };
     });
-    const unlocked = lessons[activeLesson.globalIndex + 1];
-    if (unlocked) setActiveLessonId(unlocked.id);
+    if (movePlayerToNext && unlocked) setActiveLessonId(unlocked.id);
     setSavedMessage(unlocked ? 'Lesson completed. Next lesson is unlocked.' : 'Course completed. Great work.');
   };
+
+  const completeLesson = () => {
+    if (watchedPercent < activeLesson.requiredWatchPercentage) {
+      setSavedMessage(`Please watch at least ${activeLesson.requiredWatchPercentage}% before completing this lesson.`);
+      return;
+    }
+    markLessonComplete(true);
+  };
+
+  useEffect(() => {
+    if (!isCompleted && watchedPercent >= 100) {
+      markLessonComplete(false);
+    }
+  }, [activeLesson.id, isCompleted, watchedPercent]);
 
   return (
     <div className={ui.page}>
