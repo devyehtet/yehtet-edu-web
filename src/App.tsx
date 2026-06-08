@@ -54,6 +54,7 @@ type Student = {
   id: string;
   name: string;
   email: string;
+  password?: string;
   course: string;
   progress: number;
   status: 'Active' | 'Pending';
@@ -64,6 +65,8 @@ type Student = {
 };
 
 type Role = 'admin' | 'student' | null;
+type LoginRequest = { role: 'admin' | 'student'; username: string; password: string };
+type LoginResult = { ok: boolean; message?: string };
 type MeetingDay = 'Saturday' | 'Sunday';
 type MeetingScheduleDay = MeetingDay | 'Instant';
 type RecordingAccess = 'Admin only' | 'Students after class' | 'Private';
@@ -165,14 +168,14 @@ const protectedPages: PageName[] = [
 
 const adminOnlyPages: PageName[] = ['Admin Panel', 'Reports'];
 
-const demoCredentials = {
-  admin: { username: 'admin@dmclass.com', password: 'Admin@2026' },
-  student: { username: 'student@dmclass.com', password: 'Student@2026' },
+const serverAuthCredentials = {
+  admin: { username: 'info@yehtet.com', password: '1234567890' },
 };
 
 const meetingStorageKey = 'ye-htet-live-class-meetings';
 const learningStorageKey = 'ye-htet-digital-marketing-progress';
 const lessonStorageKey = 'ye-htet-digital-marketing-lessons';
+const studentStorageKey = 'ye-htet-digital-marketing-students';
 const firstLessonVideoUrl = 'https://vimeo.com/1195114426?fl=pl&fe=sh';
 const firstLessonDuration = '2.11 min';
 const secondLessonVideoUrl = 'https://vimeo.com/1195115453?share=copy&fl=sv&fe=ci';
@@ -596,6 +599,31 @@ const demoStudents: Student[] = [
   { id: 'STU-003', name: 'Ko Lin Aung', email: 'kolin@example.com', course: 'Digital Media Planning & Buying', progress: 12, status: 'Pending', lastActive: '2 days ago', joined: 'Jan 21, 2026', assignments: '0 / 3 submitted', quizScore: 'Not started' },
   { id: 'STU-004', name: 'Thiri Mon', email: 'thiri@example.com', course: 'Digital Marketing Beginner to Professional', progress: 94, status: 'Active', lastActive: 'Today, 01:45 PM', joined: 'Dec 28, 2025', assignments: '6 / 6 submitted', quizScore: '92% avg' },
 ];
+
+function readStoredStudents(): Student[] {
+  if (typeof window === 'undefined') return demoStudents;
+  try {
+    const stored = window.localStorage.getItem(studentStorageKey);
+    if (!stored) return demoStudents;
+    const parsed = JSON.parse(stored) as Partial<Student>[];
+    if (!Array.isArray(parsed)) return demoStudents;
+    return parsed.map((student, index) => ({
+      id: typeof student.id === 'string' && student.id ? student.id : `STU-${String(index + 1).padStart(3, '0')}`,
+      name: typeof student.name === 'string' && student.name ? student.name : 'Unnamed Student',
+      email: typeof student.email === 'string' ? student.email : '',
+      password: typeof student.password === 'string' ? student.password : '',
+      course: typeof student.course === 'string' && student.course ? student.course : 'Digital Marketing Beginner to Professional',
+      progress: typeof student.progress === 'number' ? student.progress : 0,
+      status: student.status === 'Pending' ? 'Pending' : 'Active',
+      lastActive: typeof student.lastActive === 'string' ? student.lastActive : 'Not started',
+      joined: typeof student.joined === 'string' ? student.joined : new Date().toLocaleDateString(),
+      assignments: typeof student.assignments === 'string' ? student.assignments : '0 / 0 submitted',
+      quizScore: typeof student.quizScore === 'string' ? student.quizScore : 'Not started',
+    }));
+  } catch {
+    return demoStudents;
+  }
+}
 
 // =====================================================================
 // Design tokens (minimal & clean)
@@ -1887,6 +1915,8 @@ function AdminPanelPage({
   onJoinMeeting,
   lessons,
   setLessons,
+  students,
+  setStudents,
 }: {
   go: (v: PageName) => void;
   meetings: LiveClassMeeting[];
@@ -1894,12 +1924,14 @@ function AdminPanelPage({
   onJoinMeeting: (meetingId: string) => void;
   lessons: LessonRecord[];
   setLessons: React.Dispatch<React.SetStateAction<LessonRecord[]>>;
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }) {
   const adminMenu = ['Dashboard', 'Students', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState(demoStudents[0].id);
+  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || demoStudents[0].id);
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0]?.id || '');
   const [meetingTitle, setMeetingTitle] = useState('Digital Marketing Live Class');
   const [meetingDays, setMeetingDays] = useState<MeetingDay[]>(weeklyMeetingDays);
@@ -1909,7 +1941,7 @@ function AdminPanelPage({
   const [meetingRecordingAccess, setMeetingRecordingAccess] = useState<RecordingAccess>('Students after class');
   const scheduledMeetings = meetings;
   const current = adminContent[adminActive] || adminContent.Dashboard;
-  const selectedStudent = demoStudents.find((s) => s.id === selectedStudentId) || demoStudents[0];
+  const selectedStudent = students.find((s) => s.id === selectedStudentId) || students[0] || demoStudents[0];
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) || lessons[0];
   const isMeetingSetupOpen = adminActive === 'Meetings' && activeAction === current.primaryAction;
   const openAction = (name: string) => { setActiveAction(name); setSavedMessage(''); };
@@ -1935,6 +1967,11 @@ function AdminPanelPage({
       setSelectedLessonId(lessons[0]?.id || '');
     }
   }, [lessons, selectedLessonId]);
+  useEffect(() => {
+    if (!students.some((student) => student.id === selectedStudentId)) {
+      setSelectedStudentId(students[0]?.id || demoStudents[0].id);
+    }
+  }, [students, selectedStudentId]);
   const toggleMeetingDay = (day: MeetingDay) => {
     setMeetingDays((prev) => prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]);
   };
@@ -1986,7 +2023,55 @@ function AdminPanelPage({
     setSavedMessage(`${title} added successfully.`);
     setActiveAction(null);
   };
+  const saveStudentAction = (values: Record<string, string>) => {
+    const name = values['Student name']?.trim();
+    const email = values['Email address']?.trim().toLowerCase();
+    const password = values['Temporary password']?.trim();
+    const course = values['Assigned course']?.trim() || 'Digital Marketing Beginner to Professional';
+
+    if (!name || !email) {
+      setSavedMessage('Please enter student name and email address.');
+      return;
+    }
+    if (!isEditingAction && !password) {
+      setSavedMessage('Please enter a temporary password for this student.');
+      return;
+    }
+
+    if (isEditingAction && selectedStudent) {
+      setStudents((prev) => prev.map((student) => (
+        student.id === selectedStudent.id
+          ? { ...student, name, email, password: password || student.password, course }
+          : student
+      )));
+      setSavedMessage(`${name} account updated successfully.`);
+      setActiveAction(null);
+      return;
+    }
+
+    const newStudent: Student = {
+      id: `STU-${Date.now().toString().slice(-6)}`,
+      name,
+      email,
+      password,
+      course,
+      progress: 0,
+      status: 'Active',
+      lastActive: 'Not started',
+      joined: new Date().toLocaleDateString(),
+      assignments: '0 / 0 submitted',
+      quizScore: 'Not started',
+    };
+    setStudents((prev) => [newStudent, ...prev]);
+    setSelectedStudentId(newStudent.id);
+    setSavedMessage(`${name} account created successfully.`);
+    setActiveAction(null);
+  };
   const handleAdminActionSave = (values: Record<string, string>) => {
+    if (adminActive === 'Students') {
+      saveStudentAction(values);
+      return;
+    }
     if (adminActive === 'Lessons') {
       saveLessonAction(values);
       return;
@@ -2044,7 +2129,7 @@ function AdminPanelPage({
           {adminMenu.map((item) => (
             <button
               key={item}
-              onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(demoStudents[0].id); }}
+              onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(students[0]?.id || demoStudents[0].id); }}
               className={cx(
                 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
                 adminActive === item ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
@@ -2106,7 +2191,7 @@ function AdminPanelPage({
 
           {adminActive === 'Students' ? (
             <StudentDirectory
-              students={demoStudents}
+              students={students}
               selectedStudent={selectedStudent}
               onSelectStudent={(id) => { setSelectedStudentId(id); setActiveAction(null); }}
               onCreateStudent={() => openAction('Add Student')}
@@ -2626,11 +2711,21 @@ function Panel({ title, items, onAction }: { title: string; items: string[]; onA
 // Login
 // =====================================================================
 
-function LoginPage({ login }: { login: (role: 'admin' | 'student') => void }) {
+function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult }) {
+  const [loginRole, setLoginRole] = useState<'student' | 'admin'>('student');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  const submitLogin = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const result = login({ role: loginRole, username, password });
+    setMessage(result.message || '');
+  };
+
   return (
     <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Brand + headline */}
         <div className="mb-10 text-center">
           <div className="mb-6 flex justify-center">
             <LogoMark size="md" />
@@ -2639,96 +2734,68 @@ function LoginPage({ login }: { login: (role: 'admin' | 'student') => void }) {
             Sign in to your learning space
           </h1>
           <p className="mt-3 text-sm text-slate-400">
-            Choose a role to continue to your dashboard.
+            Use the account assigned to you.
           </p>
         </div>
 
-        {/* Role buttons with inline demo credentials */}
-        <div className="space-y-3">
-          <RoleSignInCard
-            role="Student"
-            tagline="Continue learning"
-            icon={GraduationCap}
-            primary
-            username={demoCredentials.student.username}
-            password={demoCredentials.student.password}
-            onClick={() => login('student')}
-          />
-          <RoleSignInCard
-            role="Admin"
-            tagline="Manage platform"
-            icon={ShieldCheck}
-            username={demoCredentials.admin.username}
-            password={demoCredentials.admin.password}
-            onClick={() => login('admin')}
-          />
-        </div>
+        <form onSubmit={submitLogin} className={cx(ui.card, 'space-y-5')}>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1">
+            {(['student', 'admin'] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => { setLoginRole(item); setMessage(''); }}
+                className={cx(
+                  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold capitalize transition',
+                  loginRole === item ? 'bg-emerald-300 text-slate-950' : 'text-slate-400 hover:bg-white/[0.05] hover:text-white',
+                )}
+              >
+                {item === 'student' ? <GraduationCap className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                {item}
+              </button>
+            ))}
+          </div>
 
-        <p className="mt-8 text-center text-xs text-slate-500">
-          Demo accounts — click any role to sign in instantly.
-        </p>
+          <label className="block">
+            <span className="text-xs font-semibold text-slate-400">Email / Username</span>
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              type="email"
+              autoComplete="username"
+              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+              placeholder="Enter your email"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-semibold text-slate-400">Password</span>
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+              placeholder="Enter password"
+            />
+          </label>
+
+          {message && (
+            <div className="rounded-xl border border-amber-300/30 bg-amber-300/5 px-4 py-3 text-sm font-medium text-amber-200">
+              {message}
+            </div>
+          )}
+
+          <button type="submit" className={cx(ui.btnPrimary, 'w-full')}>
+            Sign in <ArrowRight className="h-4 w-4" />
+          </button>
+
+          <p className="text-center text-xs leading-5 text-slate-500">
+            Student access is available only after the admin creates the account.
+          </p>
+        </form>
       </div>
     </div>
-  );
-}
-
-function RoleSignInCard({
-  role,
-  tagline,
-  icon: Icon,
-  primary,
-  username,
-  password,
-  onClick,
-}: {
-  role: string;
-  tagline: string;
-  icon: IconType;
-  primary?: boolean;
-  username: string;
-  password: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cx(
-        'group block w-full rounded-2xl border p-5 text-left transition',
-        primary
-          ? 'border-emerald-300/40 bg-emerald-300/[0.06] hover:border-emerald-300/60 hover:bg-emerald-300/[0.1]'
-          : 'border-white/[0.08] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]',
-      )}
-    >
-      {/* Header row */}
-      <div className="flex items-center gap-4">
-        <div
-          className={cx(
-            'grid h-11 w-11 shrink-0 place-items-center rounded-xl',
-            primary ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-emerald-300',
-          )}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-bold text-white">{role}</p>
-          <p className="text-sm text-slate-400">{tagline}</p>
-        </div>
-        <ArrowRight
-          className={cx(
-            'h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5',
-            primary && 'text-emerald-300',
-          )}
-        />
-      </div>
-
-      {/* Inline demo credentials */}
-      <div className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-black/20 px-3 py-2.5 font-mono text-[11px]">
-        <span className="text-slate-500">user</span>
-        <span className="truncate text-slate-200">{username}</span>
-        <span className="text-slate-500">pass</span>
-        <span className="text-emerald-300">{password}</span>
-      </div>
-    </button>
   );
 }
 
@@ -2743,6 +2810,7 @@ export default function App() {
   const [liveMeetings, setLiveMeetings] = useState<LiveClassMeeting[]>(() => readStoredMeetings());
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [lessons, setLessons] = useState<LessonRecord[]>(() => readStoredLessons());
+  const [students, setStudents] = useState<Student[]>(() => readStoredStudents());
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
 
   useEffect(() => {
@@ -2773,6 +2841,10 @@ export default function App() {
   }, [liveMeetings]);
 
   useEffect(() => {
+    window.localStorage.setItem(studentStorageKey, JSON.stringify(students));
+  }, [students]);
+
+  useEffect(() => {
     window.localStorage.setItem(lessonStorageKey, JSON.stringify(lessons));
     setLearningProgress((prev) => sanitizeLearningProgress(prev, lessons));
   }, [lessons]);
@@ -2786,10 +2858,35 @@ export default function App() {
     setActive(next);
   };
 
-  const login = (loginRole: 'admin' | 'student') => {
-    setIsLoggedIn(true);
-    setRole(loginRole);
-    setActive(loginRole === 'admin' ? 'Admin Panel' : 'Student Dashboard');
+  const login = ({ role: loginRole, username, password }: LoginRequest): LoginResult => {
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!normalizedUsername || !password) {
+      return { ok: false, message: 'Please enter username and password.' };
+    }
+
+    if (
+      loginRole === 'admin'
+      && normalizedUsername === serverAuthCredentials.admin.username
+      && password === serverAuthCredentials.admin.password
+    ) {
+      setIsLoggedIn(true);
+      setRole('admin');
+      setActive('Admin Panel');
+      return { ok: true };
+    }
+
+    if (loginRole === 'student') {
+      const student = students.find((item) => item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
+      if (student) {
+        setIsLoggedIn(true);
+        setRole('student');
+        setActive('Student Dashboard');
+        return { ok: true };
+      }
+      return { ok: false, message: 'Student account not found. Please ask admin to create or activate your account.' };
+    }
+
+    return { ok: false, message: 'Invalid admin username or password.' };
   };
 
   const logout = () => {
@@ -2804,7 +2901,7 @@ export default function App() {
       {active === 'Courses' && <CoursesPage go={go} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} />}
-      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} />}
+      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} />}
       {active === 'Quiz' && <QuizPage go={go} />}
