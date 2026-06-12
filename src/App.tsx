@@ -16,11 +16,13 @@ import {
   GraduationCap,
   LayoutDashboard,
   Lock,
+  MessageCircle,
   Mic,
   PlayCircle,
   Plus,
   Radio,
   ScreenShare,
+  Send,
   Settings,
   ShieldCheck,
   UploadCloud,
@@ -100,6 +102,14 @@ type LessonRecord = {
   videoUrl: string;
   requiredWatchPercentage: number;
 };
+type LessonComment = {
+  id: string;
+  lessonId: string;
+  studentId: string;
+  studentName: string;
+  text: string;
+  createdAt: number;
+};
 
 const pageSlugs: Record<PageName, string> = {
   Home: '',
@@ -176,6 +186,7 @@ const meetingStorageKey = 'ye-htet-live-class-meetings';
 const learningStorageKey = 'ye-htet-digital-marketing-progress';
 const lessonStorageKey = 'ye-htet-digital-marketing-lessons';
 const studentStorageKey = 'ye-htet-digital-marketing-students';
+const lessonCommentStorageKey = 'ye-htet-digital-marketing-lesson-comments';
 const firstLessonVideoUrl = 'https://vimeo.com/1195114426?fl=pl&fe=sh';
 const firstLessonDuration = '2.11 min';
 const secondLessonVideoUrl = 'https://vimeo.com/1195115453?share=copy&fl=sv&fe=ci';
@@ -593,35 +604,89 @@ const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
   { title: 'Next course path', text: 'Finish this course first, then continue to Digital Media Planning & Buying.', icon: Video },
 ];
 
-const demoStudents: Student[] = [
-  { id: 'STU-001', name: 'Aung Min Thu', email: 'aungmin@example.com', course: 'Digital Marketing Beginner to Professional', progress: 72, status: 'Active', lastActive: 'Today, 09:30 AM', joined: 'Jan 12, 2026', assignments: '4 / 6 submitted', quizScore: '86% avg' },
-  { id: 'STU-002', name: 'May Zin Htet', email: 'mayzin@example.com', course: 'Digital Marketing Beginner to Professional', progress: 38, status: 'Active', lastActive: 'Yesterday, 08:10 PM', joined: 'Jan 15, 2026', assignments: '2 / 6 submitted', quizScore: '78% avg' },
-  { id: 'STU-003', name: 'Ko Lin Aung', email: 'kolin@example.com', course: 'Digital Media Planning & Buying', progress: 12, status: 'Pending', lastActive: '2 days ago', joined: 'Jan 21, 2026', assignments: '0 / 3 submitted', quizScore: 'Not started' },
-  { id: 'STU-004', name: 'Thiri Mon', email: 'thiri@example.com', course: 'Digital Marketing Beginner to Professional', progress: 94, status: 'Active', lastActive: 'Today, 01:45 PM', joined: 'Dec 28, 2025', assignments: '6 / 6 submitted', quizScore: '92% avg' },
+const defaultCourseTitle = 'Digital Marketing Beginner to Professional';
+const seededStudentPassword = 'yehtet3Du';
+
+const seededStudentAccounts: Student[] = [
+  { id: 'STU-SEED-001', name: 'Kaung Thant Khine', email: 'kaungthantkhine@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-002', name: 'Aung Naing Win', email: 'aungnaingwin971985@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-003', name: 'Mya Myat Tar Khin', email: 'myamyattarkhin.01@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-004', name: 'Seint Seint YJ', email: 'seintseint.yj@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-005', name: 'Train 163201', email: 'train163201@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-006', name: 'Yamon Zin', email: 'yamonzin14@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-007', name: 'Ye Thu Leo', email: 'yethu.leo.mm@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
+const demoStudents: Student[] = [
+  { id: 'STU-001', name: 'Aung Min Thu', email: 'aungmin@example.com', course: defaultCourseTitle, progress: 72, status: 'Active', lastActive: 'Today, 09:30 AM', joined: 'Jan 12, 2026', assignments: '4 / 6 submitted', quizScore: '86% avg' },
+  { id: 'STU-002', name: 'May Zin Htet', email: 'mayzin@example.com', course: defaultCourseTitle, progress: 38, status: 'Active', lastActive: 'Yesterday, 08:10 PM', joined: 'Jan 15, 2026', assignments: '2 / 6 submitted', quizScore: '78% avg' },
+  { id: 'STU-003', name: 'Ko Lin Aung', email: 'kolin@example.com', course: 'Digital Media Planning & Buying', progress: 12, status: 'Pending', lastActive: '2 days ago', joined: 'Jan 21, 2026', assignments: '0 / 3 submitted', quizScore: 'Not started' },
+  { id: 'STU-004', name: 'Thiri Mon', email: 'thiri@example.com', course: defaultCourseTitle, progress: 94, status: 'Active', lastActive: 'Today, 01:45 PM', joined: 'Dec 28, 2025', assignments: '6 / 6 submitted', quizScore: '92% avg' },
+];
+
+const defaultStudents: Student[] = [...seededStudentAccounts, ...demoStudents];
+
+function normalizeStoredStudent(student: Partial<Student>, index: number): Student {
+  return {
+    id: typeof student.id === 'string' && student.id ? student.id : `STU-${String(index + 1).padStart(3, '0')}`,
+    name: typeof student.name === 'string' && student.name ? student.name : 'Unnamed Student',
+    email: typeof student.email === 'string' ? student.email.toLowerCase() : '',
+    password: typeof student.password === 'string' ? student.password : '',
+    course: typeof student.course === 'string' && student.course ? student.course : defaultCourseTitle,
+    progress: typeof student.progress === 'number' ? student.progress : 0,
+    status: student.status === 'Pending' ? 'Pending' : 'Active',
+    lastActive: typeof student.lastActive === 'string' ? student.lastActive : 'Not started',
+    joined: typeof student.joined === 'string' ? student.joined : new Date().toLocaleDateString(),
+    assignments: typeof student.assignments === 'string' ? student.assignments : '0 / 0 submitted',
+    quizScore: typeof student.quizScore === 'string' ? student.quizScore : 'Not started',
+  };
+}
+
+function mergeSeededStudentAccounts(students: Student[]) {
+  const existingEmails = new Set(students.map((student) => student.email.toLowerCase()).filter(Boolean));
+  const missingSeededAccounts = seededStudentAccounts.filter((student) => !existingEmails.has(student.email.toLowerCase()));
+  return [...missingSeededAccounts, ...students];
+}
+
 function readStoredStudents(): Student[] {
-  if (typeof window === 'undefined') return demoStudents;
+  if (typeof window === 'undefined') return defaultStudents;
   try {
     const stored = window.localStorage.getItem(studentStorageKey);
-    if (!stored) return demoStudents;
+    if (!stored) return defaultStudents;
     const parsed = JSON.parse(stored) as Partial<Student>[];
-    if (!Array.isArray(parsed)) return demoStudents;
-    return parsed.map((student, index) => ({
-      id: typeof student.id === 'string' && student.id ? student.id : `STU-${String(index + 1).padStart(3, '0')}`,
-      name: typeof student.name === 'string' && student.name ? student.name : 'Unnamed Student',
-      email: typeof student.email === 'string' ? student.email : '',
-      password: typeof student.password === 'string' ? student.password : '',
-      course: typeof student.course === 'string' && student.course ? student.course : 'Digital Marketing Beginner to Professional',
-      progress: typeof student.progress === 'number' ? student.progress : 0,
-      status: student.status === 'Pending' ? 'Pending' : 'Active',
-      lastActive: typeof student.lastActive === 'string' ? student.lastActive : 'Not started',
-      joined: typeof student.joined === 'string' ? student.joined : new Date().toLocaleDateString(),
-      assignments: typeof student.assignments === 'string' ? student.assignments : '0 / 0 submitted',
-      quizScore: typeof student.quizScore === 'string' ? student.quizScore : 'Not started',
-    }));
+    if (!Array.isArray(parsed)) return defaultStudents;
+    return mergeSeededStudentAccounts(parsed.map(normalizeStoredStudent));
   } catch {
-    return demoStudents;
+    return defaultStudents;
+  }
+}
+
+function readStoredLessonComments(): LessonComment[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = window.localStorage.getItem(lessonCommentStorageKey);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as Partial<LessonComment>[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((comment) => (
+        typeof comment.id === 'string'
+        && typeof comment.lessonId === 'string'
+        && typeof comment.studentId === 'string'
+        && typeof comment.studentName === 'string'
+        && typeof comment.text === 'string'
+        && typeof comment.createdAt === 'number'
+      ))
+      .map((comment) => ({
+        id: comment.id as string,
+        lessonId: comment.lessonId as string,
+        studentId: comment.studentId as string,
+        studentName: comment.studentName as string,
+        text: comment.text as string,
+        createdAt: comment.createdAt as number,
+      }));
+  } catch {
+    return [];
   }
 }
 
@@ -1519,16 +1584,115 @@ function getVimeoWatchPercent(data: VimeoProgressData) {
   return 0;
 }
 
+function LessonCommentsPanel({
+  lesson,
+  currentStudent,
+  comments,
+  setComments,
+}: {
+  lesson: LessonRecord;
+  currentStudent: Student | null;
+  comments: LessonComment[];
+  setComments: React.Dispatch<React.SetStateAction<LessonComment[]>>;
+}) {
+  const [commentText, setCommentText] = useState('');
+  const lessonComments = comments
+    .filter((comment) => comment.lessonId === lesson.id)
+    .sort((a, b) => b.createdAt - a.createdAt);
+
+  const submitComment = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = commentText.trim();
+    if (!text || !currentStudent) return;
+    const nextComment: LessonComment = {
+      id: `comment-${Date.now()}`,
+      lessonId: lesson.id,
+      studentId: currentStudent.id,
+      studentName: currentStudent.name,
+      text,
+      createdAt: Date.now(),
+    };
+    setComments((prev) => [nextComment, ...prev]);
+    setCommentText('');
+  };
+
+  return (
+    <section className={ui.cardSubtle}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className={ui.eyebrow}>Comments</p>
+          <h2 className="mt-2 text-lg font-bold text-white">Ask questions under this lesson</h2>
+        </div>
+        <span className={ui.chipMuted}>
+          <MessageCircle className="h-3.5 w-3.5" /> {lessonComments.length} comments
+        </span>
+      </div>
+
+      <form onSubmit={submitComment} className="mt-5 space-y-3">
+        <textarea
+          value={commentText}
+          onChange={(event) => setCommentText(event.target.value)}
+          disabled={!currentStudent}
+          rows={4}
+          className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40 disabled:cursor-not-allowed disabled:opacity-60"
+          placeholder={currentStudent ? 'Write your comment or question...' : 'Sign in as a student to comment.'}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            {currentStudent ? `Posting as ${currentStudent.name}` : 'Only student accounts can comment.'}
+          </p>
+          <button type="submit" disabled={!currentStudent || !commentText.trim()} className={cx(ui.btnPrimary, (!currentStudent || !commentText.trim()) && 'cursor-not-allowed opacity-60')}>
+            <Send className="h-4 w-4" /> Post comment
+          </button>
+        </div>
+      </form>
+
+      <div className="mt-6 space-y-3">
+        {lessonComments.length > 0 ? (
+          lessonComments.map((comment) => (
+            <div key={comment.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-bold text-white">{comment.studentName}</p>
+                <p className="text-xs text-slate-500">{formatCommentTime(comment.createdAt)}</p>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
+            No comments yet. Be the first student to ask a question.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function formatCommentTime(value: number) {
+  return new Date(value).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function LessonPlayerPage({
   go,
   learningProgress,
   setLearningProgress,
   lessons,
+  currentStudent,
+  lessonComments,
+  setLessonComments,
 }: {
   go: (v: PageName) => void;
   learningProgress: LearningProgress;
   setLearningProgress: React.Dispatch<React.SetStateAction<LearningProgress>>;
   lessons: LessonRecord[];
+  currentStudent: Student | null;
+  lessonComments: LessonComment[];
+  setLessonComments: React.Dispatch<React.SetStateAction<LessonComment[]>>;
 }) {
   const [activeLessonId, setActiveLessonId] = useState(getCurrentLesson(learningProgress, lessons).id);
   const [savedMessage, setSavedMessage] = useState('');
@@ -1633,6 +1797,13 @@ function LessonPlayerPage({
               {savedMessage}
             </div>
           )}
+
+          <LessonCommentsPanel
+            lesson={activeLesson}
+            currentStudent={currentStudent}
+            comments={lessonComments}
+            setComments={setLessonComments}
+          />
 
           <section className="grid gap-4 lg:grid-cols-3">
             <div className={ui.cardSubtle}>
@@ -1931,7 +2102,7 @@ function AdminPanelPage({
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || demoStudents[0].id);
+  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || defaultStudents[0].id);
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0]?.id || '');
   const [meetingTitle, setMeetingTitle] = useState('Digital Marketing Live Class');
   const [meetingDays, setMeetingDays] = useState<MeetingDay[]>(weeklyMeetingDays);
@@ -1941,7 +2112,7 @@ function AdminPanelPage({
   const [meetingRecordingAccess, setMeetingRecordingAccess] = useState<RecordingAccess>('Students after class');
   const scheduledMeetings = meetings;
   const current = adminContent[adminActive] || adminContent.Dashboard;
-  const selectedStudent = students.find((s) => s.id === selectedStudentId) || students[0] || demoStudents[0];
+  const selectedStudent = students.find((s) => s.id === selectedStudentId) || students[0] || defaultStudents[0];
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) || lessons[0];
   const isMeetingSetupOpen = adminActive === 'Meetings' && activeAction === current.primaryAction;
   const openAction = (name: string) => { setActiveAction(name); setSavedMessage(''); };
@@ -1962,6 +2133,10 @@ function AdminPanelPage({
           'Attached resource': selectedLesson.resource,
         }
       : undefined;
+  const actionFieldOptions =
+    adminActive === 'Students'
+      ? { 'Assigned course': courseCards.map((course) => course.title) }
+      : undefined;
   useEffect(() => {
     if (!lessons.some((lesson) => lesson.id === selectedLessonId)) {
       setSelectedLessonId(lessons[0]?.id || '');
@@ -1969,7 +2144,7 @@ function AdminPanelPage({
   }, [lessons, selectedLessonId]);
   useEffect(() => {
     if (!students.some((student) => student.id === selectedStudentId)) {
-      setSelectedStudentId(students[0]?.id || demoStudents[0].id);
+      setSelectedStudentId(students[0]?.id || defaultStudents[0].id);
     }
   }, [students, selectedStudentId]);
   const toggleMeetingDay = (day: MeetingDay) => {
@@ -2129,7 +2304,7 @@ function AdminPanelPage({
           {adminMenu.map((item) => (
             <button
               key={item}
-              onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(students[0]?.id || demoStudents[0].id); }}
+              onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(students[0]?.id || defaultStudents[0].id); }}
               className={cx(
                 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
                 adminActive === item ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
@@ -2184,6 +2359,7 @@ function AdminPanelPage({
               section={adminActive}
               actionName={activeAction}
               initialValues={actionInitialValues}
+              fieldOptions={actionFieldOptions}
               onCancel={() => setActiveAction(null)}
               onSave={handleAdminActionSave}
             />
@@ -2195,7 +2371,11 @@ function AdminPanelPage({
               selectedStudent={selectedStudent}
               onSelectStudent={(id) => { setSelectedStudentId(id); setActiveAction(null); }}
               onCreateStudent={() => openAction('Add Student')}
-              onEditStudent={() => openAction(`Edit ${selectedStudent.name}`)}
+              onEditStudent={(id) => {
+                const studentToEdit = students.find((student) => student.id === id) || selectedStudent;
+                setSelectedStudentId(studentToEdit.id);
+                openAction(`Edit ${studentToEdit.name}`);
+              }}
             />
           ) : adminActive === 'Lessons' ? (
             <LessonManagerAdmin
@@ -2505,7 +2685,7 @@ function StudentDirectory({
   selectedStudent: Student;
   onSelectStudent: (id: string) => void;
   onCreateStudent: () => void;
-  onEditStudent: () => void;
+  onEditStudent: (id: string) => void;
 }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
@@ -2520,13 +2700,14 @@ function StudentDirectory({
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[640px] w-full border-collapse text-left text-sm">
+          <table className="min-w-[760px] w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
                 <th className="py-3 pr-4 font-medium">Student</th>
                 <th className="py-3 pr-4 font-medium">Progress</th>
                 <th className="py-3 pr-4 font-medium">Status</th>
                 <th className="py-3 pr-4 font-medium">Last active</th>
+                <th className="py-3 pr-4 font-medium">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -2559,6 +2740,18 @@ function StudentDirectory({
                       </span>
                     </td>
                     <td className="py-4 pr-4 text-slate-400">{student.lastActive}</td>
+                    <td className="py-4 pr-4">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEditStudent(student.id);
+                        }}
+                        className={ui.btnSubtle}
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -2574,7 +2767,7 @@ function StudentDirectory({
             <h2 className={cx(ui.h2, 'mt-2 text-2xl sm:text-2xl')}>{selectedStudent.name}</h2>
             <p className={cx(ui.bodySm, 'mt-1')}>{selectedStudent.email}</p>
           </div>
-          <button onClick={onEditStudent} className={ui.btnSubtle}>Edit</button>
+          <button onClick={() => onEditStudent(selectedStudent.id)} className={ui.btnSubtle}>Edit</button>
         </div>
 
         <div className="mt-6 space-y-2">
@@ -2614,12 +2807,14 @@ function AdminActionPanel({
   section,
   actionName,
   initialValues,
+  fieldOptions,
   onCancel,
   onSave,
 }: {
   section: string;
   actionName: string;
   initialValues?: Record<string, string>;
+  fieldOptions?: Record<string, string[]>;
   onCancel: () => void;
   onSave: (values: Record<string, string>) => void;
 }) {
@@ -2638,6 +2833,7 @@ function AdminActionPanel({
     } as Record<string, string[]>)[section] || ['Title', 'Description', 'Status', 'Owner'];
 
   const isEditing = actionName.toLowerCase().startsWith('edit');
+  const submitLabel = isEditing ? 'Save changes' : section === 'Students' ? 'Create account' : section === 'Lessons' ? 'Add lesson' : 'Save preview';
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -2658,27 +2854,40 @@ function AdminActionPanel({
         {fields.map((field) => {
           const isPassword = field.toLowerCase().includes('password');
           const preset = initialValues?.[field] ?? '';
+          const options = fieldOptions?.[field];
           return (
             <label key={field} className="block">
               <span className="text-xs font-semibold text-slate-400">{field}</span>
-              <input
-                name={field}
-                type={isPassword ? 'password' : 'text'}
-                defaultValue={preset}
-                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
-                placeholder={
-                  isEditing && isPassword
-                    ? 'Leave blank to keep current'
-                    : `Enter ${field.toLowerCase()}`
-                }
-              />
+              {options ? (
+                <select
+                  name={field}
+                  defaultValue={preset || options[0]}
+                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40"
+                >
+                  {options.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  name={field}
+                  type={isPassword ? 'password' : 'text'}
+                  defaultValue={preset}
+                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+                  placeholder={
+                    isEditing && isPassword
+                      ? 'Leave blank to keep current'
+                      : `Enter ${field.toLowerCase()}`
+                  }
+                />
+              )}
             </label>
           );
         })}
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
         <button type="submit" className={ui.btnPrimary}>
-          {isEditing ? 'Save changes' : 'Save preview'}
+          {submitLabel}
         </button>
         <button type="button" onClick={onCancel} className={ui.btnGhost}>Cancel</button>
       </div>
@@ -2811,7 +3020,10 @@ export default function App() {
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [lessons, setLessons] = useState<LessonRecord[]>(() => readStoredLessons());
   const [students, setStudents] = useState<Student[]>(() => readStoredStudents());
+  const [currentStudentId, setCurrentStudentId] = useState<string | null>(null);
+  const [lessonComments, setLessonComments] = useState<LessonComment[]>(() => readStoredLessonComments());
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
+  const currentStudent = students.find((student) => student.id === currentStudentId) || null;
 
   useEffect(() => {
     const desired = pageToHash(active);
@@ -2845,6 +3057,10 @@ export default function App() {
   }, [students]);
 
   useEffect(() => {
+    window.localStorage.setItem(lessonCommentStorageKey, JSON.stringify(lessonComments));
+  }, [lessonComments]);
+
+  useEffect(() => {
     window.localStorage.setItem(lessonStorageKey, JSON.stringify(lessons));
     setLearningProgress((prev) => sanitizeLearningProgress(prev, lessons));
   }, [lessons]);
@@ -2871,6 +3087,7 @@ export default function App() {
     ) {
       setIsLoggedIn(true);
       setRole('admin');
+      setCurrentStudentId(null);
       setActive('Admin Panel');
       return { ok: true };
     }
@@ -2880,6 +3097,7 @@ export default function App() {
       if (student) {
         setIsLoggedIn(true);
         setRole('student');
+        setCurrentStudentId(student.id);
         setActive('Student Dashboard');
         return { ok: true };
       }
@@ -2892,6 +3110,7 @@ export default function App() {
   const logout = () => {
     setIsLoggedIn(false);
     setRole(null);
+    setCurrentStudentId(null);
     setActive('Home');
   };
 
@@ -2903,7 +3122,7 @@ export default function App() {
       {active === 'Course Detail' && <CourseDetailPage go={go} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
-      {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} />}
+      {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} />}
       {active === 'Quiz' && <QuizPage go={go} />}
       {active === 'Assignments' && <AssignmentsPage go={go} />}
       {active === 'Resources' && <ResourcesPage go={go} />}
