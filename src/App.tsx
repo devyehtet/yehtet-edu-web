@@ -190,7 +190,17 @@ const lessonCommentStorageKey = 'ye-htet-digital-marketing-lesson-comments';
 const firstLessonVideoUrl = 'https://vimeo.com/1195114426?fl=pl&fe=sh';
 const firstLessonDuration = '2.11 min';
 const secondLessonVideoUrl = 'https://vimeo.com/1195115453?share=copy&fl=sv&fe=ci';
+const whyDigitalMarketingVideoUrl = 'https://vimeo.com/1200543349?fl=ip&fe=ec';
+const traditionalVsDigitalVideoUrl = 'https://vimeo.com/1200545080?fl=ip&fe=ec';
+const digitalMarketingEcosystemVideoUrl = 'https://vimeo.com/1200546085?fl=ip&fe=ec';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+const defaultLessonVideoUrls = [
+  firstLessonVideoUrl,
+  secondLessonVideoUrl,
+  whyDigitalMarketingVideoUrl,
+  traditionalVsDigitalVideoUrl,
+  digitalMarketingEcosystemVideoUrl,
+];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
 const recordingAccessOptions: RecordingAccess[] = ['Students after class', 'Admin only', 'Private'];
@@ -353,7 +363,7 @@ const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
       resource: `${module.name} checklist`,
-      videoUrl: globalIndex === 0 ? firstLessonVideoUrl : globalIndex === 1 ? secondLessonVideoUrl : sampleLessonVideoUrl,
+      videoUrl: defaultLessonVideoUrls[globalIndex] || sampleLessonVideoUrl,
       requiredWatchPercentage: 80,
     };
   }),
@@ -400,12 +410,19 @@ function readStoredLessons(): LessonRecord[] {
         lesson.globalIndex === 1
         && storedLesson?.videoUrl
         && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
+      const defaultLessonVideoUrl = defaultLessonVideoUrls[lesson.globalIndex];
+      const shouldUseNewDefaultLessonVideo =
+        lesson.globalIndex > 1
+        && Boolean(defaultLessonVideoUrl)
+        && storedLesson?.videoUrl
+        && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
       return normalizeLessonRecord({
         ...lesson,
         ...storedLesson,
         ...(shouldUseNewFirstLessonVideo ? { videoUrl: firstLessonVideoUrl } : {}),
         ...(shouldUseNewFirstLessonDuration ? { duration: firstLessonDuration } : {}),
         ...(shouldUseNewSecondLessonVideo ? { videoUrl: secondLessonVideoUrl } : {}),
+        ...(shouldUseNewDefaultLessonVideo ? { videoUrl: defaultLessonVideoUrl } : {}),
       }, lesson);
     });
     const customLessons = parsed
