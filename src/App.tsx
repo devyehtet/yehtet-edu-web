@@ -193,6 +193,8 @@ const secondLessonVideoUrl = 'https://vimeo.com/1195115453?share=copy&fl=sv&fe=c
 const whyDigitalMarketingVideoUrl = 'https://vimeo.com/1200543349?fl=ip&fe=ec';
 const traditionalVsDigitalVideoUrl = 'https://vimeo.com/1200545080?fl=ip&fe=ec';
 const digitalMarketingEcosystemVideoUrl = 'https://vimeo.com/1200546085?fl=ip&fe=ec';
+const marketingFunnelBasicsVideoUrl = 'https://vimeo.com/1201042718?share=copy&fl=sv&fe=ci';
+const keyDigitalMarketingMetricsVideoUrl = 'https://vimeo.com/1201047277?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -200,6 +202,8 @@ const defaultLessonVideoUrls = [
   whyDigitalMarketingVideoUrl,
   traditionalVsDigitalVideoUrl,
   digitalMarketingEcosystemVideoUrl,
+  marketingFunnelBasicsVideoUrl,
+  keyDigitalMarketingMetricsVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
