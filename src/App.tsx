@@ -99,6 +99,7 @@ type LessonRecord = {
   outcome: string;
   practice: string;
   resource: string;
+  resourceUrl?: string;
   videoUrl: string;
   requiredWatchPercentage: number;
 };
@@ -195,6 +196,9 @@ const traditionalVsDigitalVideoUrl = 'https://vimeo.com/1200545080?fl=ip&fe=ec';
 const digitalMarketingEcosystemVideoUrl = 'https://vimeo.com/1200546085?fl=ip&fe=ec';
 const marketingFunnelBasicsVideoUrl = 'https://vimeo.com/1201042718?share=copy&fl=sv&fe=ci';
 const keyDigitalMarketingMetricsVideoUrl = 'https://vimeo.com/1201047277?share=copy&fl=sv&fe=ci';
+const ecosystemMapTemplateTitle = 'Digital Marketing Ecosystem Map Template';
+const ecosystemMapTemplateVideoUrl = 'https://vimeo.com/1201236025?share=copy&fl=sv&fe=ci';
+const ecosystemMapTemplateResourceUrl = 'https://docs.google.com/spreadsheets/d/15xlkz9C2_WcPAtvmewHaaZkxeHNXjCb636ywovCOP08/edit?gid=597559664#gid=597559664';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -204,6 +208,7 @@ const defaultLessonVideoUrls = [
   digitalMarketingEcosystemVideoUrl,
   marketingFunnelBasicsVideoUrl,
   keyDigitalMarketingMetricsVideoUrl,
+  ecosystemMapTemplateVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
@@ -298,6 +303,7 @@ const digitalMarketingLessons = [
   'The Digital Marketing Ecosystem',
   'Marketing Funnel Basics',
   'Key Digital Marketing Metrics',
+  ecosystemMapTemplateTitle,
   'Understanding Customer Psychology',
   'Content Strategy Basics',
   'Mastering Social Media in 2025',
@@ -339,24 +345,29 @@ const digitalMarketingLessons = [
 ];
 
 const courseCards = [
-  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '45 lessons', modules: '8 modules' },
+  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '46 lessons', modules: '8 modules' },
   { title: 'Digital Media Planning & Buying', level: 'Intermediate to Professional', lessons: 'Coming soon', modules: 'Media planning modules' },
   { title: 'Campaign Portfolio & Capstone Support', level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
 ];
 
 const modules = [
-  { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 8) },
-  { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(8, 15) },
-  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(15, 24) },
-  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(24, 35) },
-  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(35, 45) },
+  { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 9) },
+  { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(9, 16) },
+  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(16, 25) },
+  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(25, 36) },
+  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(36, 46) },
 ];
+
+const stableLessonIdsByTitle: Record<string, string> = {
+  [ecosystemMapTemplateTitle]: 'm1-l8-ecosystem-map-template',
+  'Understanding Customer Psychology': 'm1-l8',
+};
 
 const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
   module.lessons.map((title, lessonIndex) => {
     const globalIndex = modules.slice(0, moduleIndex).reduce((total, item) => total + item.lessons.length, 0) + lessonIndex;
     return {
-      id: `m${moduleIndex + 1}-l${lessonIndex + 1}`,
+      id: stableLessonIdsByTitle[title] || `m${moduleIndex + 1}-l${lessonIndex + 1}`,
       title,
       moduleTitle: module.title,
       moduleName: module.name,
@@ -366,7 +377,8 @@ const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
       duration: globalIndex === 0 ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`,
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
-      resource: `${module.name} checklist`,
+      resource: title === ecosystemMapTemplateTitle ? ecosystemMapTemplateTitle : `${module.name} checklist`,
+      resourceUrl: title === ecosystemMapTemplateTitle ? ecosystemMapTemplateResourceUrl : undefined,
       videoUrl: defaultLessonVideoUrls[globalIndex] || sampleLessonVideoUrl,
       requiredWatchPercentage: 80,
     };
@@ -456,6 +468,7 @@ function normalizeLessonRecord(value: Partial<LessonRecord>, fallback: LessonRec
     outcome: typeof value.outcome === 'string' && value.outcome.trim() ? value.outcome : getLessonOutcome(title),
     practice: typeof value.practice === 'string' && value.practice.trim() ? value.practice : getLessonPractice(title),
     resource: typeof value.resource === 'string' && value.resource.trim() ? value.resource.trim() : fallback.resource,
+    resourceUrl: typeof value.resourceUrl === 'string' && value.resourceUrl.trim() ? value.resourceUrl.trim() : fallback.resourceUrl,
     videoUrl: normalizeLessonVideoUrl(value.videoUrl),
     requiredWatchPercentage: normalizeRequiredWatchPercentage(value.requiredWatchPercentage),
   };
@@ -580,7 +593,8 @@ function getNextLessonId(completedLessonIds: string[], lessons: LessonRecord[] =
 
 function getCurrentLesson(progress: LearningProgress, lessons: LessonRecord[] = lessonCatalog) {
   const current = lessons.find((lesson) => lesson.id === progress.currentLessonId);
-  return current || lessons.find((lesson) => !getCompletedSet(progress).has(lesson.id)) || lessons[0];
+  if (current && isLessonUnlocked(current, progress, lessons)) return current;
+  return lessons.find((lesson) => !getCompletedSet(progress).has(lesson.id)) || lessons[0];
 }
 
 function getCourseProgressPercent(progress: LearningProgress, lessons: LessonRecord[] = lessonCatalog) {
@@ -612,14 +626,14 @@ const adminStats: Array<{ label: string; value: string; icon: IconType }> = [
 ];
 
 const homeStats: Array<{ label: string; value: string; icon: IconType }> = [
-  { label: 'Lessons', value: '45', icon: PlayCircle },
+  { label: 'Lessons', value: '46', icon: PlayCircle },
   { label: 'Modules', value: '8+', icon: BookOpen },
   { label: 'Live Class', value: 'Weekly', icon: CalendarDays },
   { label: 'Next Course', value: 'Media Buying', icon: ArrowRight },
 ];
 
 const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
-  { title: '45 structured lessons', text: 'Open your lesson list and continue from the next available video.', icon: BookOpen },
+  { title: '46 structured lessons', text: 'Open your lesson list and continue from the next available video.', icon: BookOpen },
   { title: 'No skipping system', text: 'Watch the required video progress to unlock the next lesson.', icon: Lock },
   { title: 'Assignments & capstone', text: 'Download the task, finish your work, and submit it before the deadline.', icon: ClipboardCheck },
   { title: 'Next course path', text: 'Finish this course first, then continue to Digital Media Planning & Buying.', icon: Video },
@@ -988,7 +1002,7 @@ function HomePage({ go }: { go: (v: PageName) => void }) {
             <div>
               <p className={ui.eyebrow}>Featured course</p>
               <h2 className="mt-2 text-xl font-bold text-white">Digital Marketing — Beginner to Professional</h2>
-              <p className="mt-2 text-sm text-slate-400">45 lessons · 8 modules · Capstone project</p>
+              <p className="mt-2 text-sm text-slate-400">46 lessons · 8 modules · Capstone project</p>
             </div>
             <LogoMark size="md" />
           </div>
@@ -1204,7 +1218,7 @@ function CourseDetailPage({ go }: { go: (v: PageName) => void }) {
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Metric icon={BookOpen} label="Modules" value="8+" detail="Structured roadmap" />
-        <Metric icon={PlayCircle} label="Video lessons" value="45" detail="Vimeo + progress tracking" />
+        <Metric icon={PlayCircle} label="Video lessons" value="46" detail="Vimeo + progress tracking" />
         <Metric icon={CalendarDays} label="Next course" value="Media Buying" detail="Continue the path" />
       </section>
 
@@ -1813,6 +1827,18 @@ function LessonPlayerPage({
             onComplete={completeLesson}
           />
 
+          {activeLesson.resourceUrl && (
+            <section className={cx(ui.cardSubtle, 'flex flex-wrap items-center justify-between gap-4')}>
+              <div>
+                <p className={ui.eyebrow}>Lesson file</p>
+                <h2 className="mt-2 text-lg font-bold text-white">{activeLesson.resource}</h2>
+              </div>
+              <a href={activeLesson.resourceUrl} target="_blank" rel="noreferrer" className={ui.btnPrimary}>
+                <Download className="h-4 w-4" /> File ရယူရန်
+              </a>
+            </section>
+          )}
+
           {savedMessage && (
             <div className="rounded-xl border border-emerald-300/30 bg-emerald-300/5 px-4 py-3 text-sm font-medium text-emerald-200">
               {savedMessage}
@@ -1838,6 +1864,11 @@ function LessonPlayerPage({
             <div className={ui.cardSubtle}>
               <p className={ui.eyebrow}>Resource</p>
               <p className="mt-3 text-sm leading-6 text-slate-300">{activeLesson.resource}</p>
+              {activeLesson.resourceUrl && (
+                <a href={activeLesson.resourceUrl} target="_blank" rel="noreferrer" className={cx(ui.btnSubtle, 'mt-4')}>
+                  <ExternalLink className="h-4 w-4" /> File ရယူရန်
+                </a>
+              )}
             </div>
           </section>
 
@@ -2090,7 +2121,7 @@ function LiveMeetingPage({
 const adminContent: Record<string, { title: string; description: string; primaryAction: string; cards: Array<{ title: string; items: string[] }> }> = {
   Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Reports', items: ['Student progress percentage', 'Video watch history', 'Quiz score report', 'Assignment review status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
-  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '45 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
+  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '46 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
   Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
   Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
@@ -2152,6 +2183,7 @@ function AdminPanelPage({
           'Vimeo embed URL': getLessonVideoUrl(selectedLesson),
           'Required watch percentage': String(selectedLesson.requiredWatchPercentage),
           'Attached resource': selectedLesson.resource,
+          'Resource file URL': selectedLesson.resourceUrl || '',
         }
       : undefined;
   const actionFieldOptions =
@@ -2176,6 +2208,7 @@ function AdminPanelPage({
     const videoUrl = normalizeLessonVideoUrl(values['Vimeo embed URL']);
     const requiredWatchPercentage = normalizeRequiredWatchPercentage(values['Required watch percentage']);
     const resource = values['Attached resource']?.trim() || `${modules[modules.length - 1].name} resource`;
+    const resourceUrl = values['Resource file URL']?.trim() || undefined;
 
     if (isEditingAction && selectedLesson) {
       setLessons((prev) => reindexLessons(prev.map((lesson) => (
@@ -2186,6 +2219,7 @@ function AdminPanelPage({
               videoUrl,
               requiredWatchPercentage,
               resource,
+              resourceUrl,
               outcome: getLessonOutcome(title),
               practice: getLessonPractice(title),
             }
@@ -2211,6 +2245,7 @@ function AdminPanelPage({
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
       resource,
+      resourceUrl,
       videoUrl,
       requiredWatchPercentage,
     };
@@ -2656,6 +2691,7 @@ function LessonManagerAdmin({
               <LessonMetaField label="Required watch" value={`${selectedLesson.requiredWatchPercentage}%`} />
               <LessonMetaField label="Unlock rule" value="Previous lesson must be completed" />
               <LessonMetaField label="Resource" value={selectedLesson.resource} />
+              {selectedLesson.resourceUrl && <LessonMetaField label="Resource URL" value={selectedLesson.resourceUrl} mono />}
             </div>
 
             <div className="mt-5 space-y-3">
@@ -2844,7 +2880,7 @@ function AdminActionPanel({
       Students: ['Student name', 'Email address', 'Temporary password', 'Assigned course'],
       Courses: ['Course title', 'Level', 'Short description', 'Publish status'],
       Modules: ['Module title', 'Course', 'Sort order', 'Unlock rule'],
-      Lessons: ['Lesson title', 'Vimeo embed URL', 'Required watch percentage', 'Attached resource'],
+      Lessons: ['Lesson title', 'Vimeo embed URL', 'Required watch percentage', 'Attached resource', 'Resource file URL'],
       Quizzes: ['Quiz title', 'Passing score', 'Max attempts', 'Question type'],
       Assignments: ['Assignment title', 'Due date', 'Submission type', 'Unlock behavior'],
       Meetings: ['Meeting title', 'Date and time', 'Host', 'Recording access'],
