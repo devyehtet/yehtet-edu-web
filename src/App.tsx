@@ -198,6 +198,8 @@ const marketingFunnelBasicsVideoUrl = 'https://vimeo.com/1201042718?share=copy&f
 const keyDigitalMarketingMetricsVideoUrl = 'https://vimeo.com/1201047277?share=copy&fl=sv&fe=ci';
 const ecosystemMapTemplateTitle = 'Digital Marketing Ecosystem Map Template';
 const ecosystemMapTemplateVideoUrl = 'https://vimeo.com/1201236025?share=copy&fl=sv&fe=ci';
+const ecosystemMapTemplatePartTwoTitle = 'Digital Marketing Ecosystem Map Template (Part - 2)';
+const ecosystemMapTemplatePartTwoVideoUrl = 'https://vimeo.com/1201511142?share=copy&fl=sv&fe=ci';
 const ecosystemMapTemplateResourceUrl = 'https://docs.google.com/spreadsheets/d/15xlkz9C2_WcPAtvmewHaaZkxeHNXjCb636ywovCOP08/edit?gid=597559664#gid=597559664';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
@@ -209,6 +211,7 @@ const defaultLessonVideoUrls = [
   marketingFunnelBasicsVideoUrl,
   keyDigitalMarketingMetricsVideoUrl,
   ecosystemMapTemplateVideoUrl,
+  ecosystemMapTemplatePartTwoVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
@@ -304,6 +307,7 @@ const digitalMarketingLessons = [
   'Marketing Funnel Basics',
   'Key Digital Marketing Metrics',
   ecosystemMapTemplateTitle,
+  ecosystemMapTemplatePartTwoTitle,
   'Understanding Customer Psychology',
   'Content Strategy Basics',
   'Mastering Social Media in 2025',
@@ -345,23 +349,29 @@ const digitalMarketingLessons = [
 ];
 
 const courseCards = [
-  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '46 lessons', modules: '8 modules' },
+  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '47 lessons', modules: '8 modules' },
   { title: 'Digital Media Planning & Buying', level: 'Intermediate to Professional', lessons: 'Coming soon', modules: 'Media planning modules' },
   { title: 'Campaign Portfolio & Capstone Support', level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
 ];
 
 const modules = [
-  { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 9) },
-  { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(9, 16) },
-  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(16, 25) },
-  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(25, 36) },
-  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(36, 46) },
+  { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 10) },
+  { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(10, 17) },
+  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(17, 26) },
+  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(26, 37) },
+  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(37, 47) },
 ];
 
 const stableLessonIdsByTitle: Record<string, string> = {
   [ecosystemMapTemplateTitle]: 'm1-l8-ecosystem-map-template',
+  [ecosystemMapTemplatePartTwoTitle]: 'm1-l8-ecosystem-map-template-part-2',
   'Understanding Customer Psychology': 'm1-l8',
 };
+
+const ecosystemMapTemplateLessons = new Set([
+  ecosystemMapTemplateTitle,
+  ecosystemMapTemplatePartTwoTitle,
+]);
 
 const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
   module.lessons.map((title, lessonIndex) => {
@@ -377,8 +387,8 @@ const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
       duration: globalIndex === 0 ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`,
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
-      resource: title === ecosystemMapTemplateTitle ? ecosystemMapTemplateTitle : `${module.name} checklist`,
-      resourceUrl: title === ecosystemMapTemplateTitle ? ecosystemMapTemplateResourceUrl : undefined,
+      resource: ecosystemMapTemplateLessons.has(title) ? title : `${module.name} checklist`,
+      resourceUrl: ecosystemMapTemplateLessons.has(title) ? ecosystemMapTemplateResourceUrl : undefined,
       videoUrl: defaultLessonVideoUrls[globalIndex] || sampleLessonVideoUrl,
       requiredWatchPercentage: 80,
     };
@@ -626,14 +636,14 @@ const adminStats: Array<{ label: string; value: string; icon: IconType }> = [
 ];
 
 const homeStats: Array<{ label: string; value: string; icon: IconType }> = [
-  { label: 'Lessons', value: '46', icon: PlayCircle },
+  { label: 'Lessons', value: '47', icon: PlayCircle },
   { label: 'Modules', value: '8+', icon: BookOpen },
   { label: 'Live Class', value: 'Weekly', icon: CalendarDays },
   { label: 'Next Course', value: 'Media Buying', icon: ArrowRight },
 ];
 
 const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
-  { title: '46 structured lessons', text: 'Open your lesson list and continue from the next available video.', icon: BookOpen },
+  { title: '47 structured lessons', text: 'Open your lesson list and continue from the next available video.', icon: BookOpen },
   { title: 'No skipping system', text: 'Watch the required video progress to unlock the next lesson.', icon: Lock },
   { title: 'Assignments & capstone', text: 'Download the task, finish your work, and submit it before the deadline.', icon: ClipboardCheck },
   { title: 'Next course path', text: 'Finish this course first, then continue to Digital Media Planning & Buying.', icon: Video },
@@ -1002,7 +1012,7 @@ function HomePage({ go }: { go: (v: PageName) => void }) {
             <div>
               <p className={ui.eyebrow}>Featured course</p>
               <h2 className="mt-2 text-xl font-bold text-white">Digital Marketing — Beginner to Professional</h2>
-              <p className="mt-2 text-sm text-slate-400">46 lessons · 8 modules · Capstone project</p>
+              <p className="mt-2 text-sm text-slate-400">47 lessons · 8 modules · Capstone project</p>
             </div>
             <LogoMark size="md" />
           </div>
@@ -1218,7 +1228,7 @@ function CourseDetailPage({ go }: { go: (v: PageName) => void }) {
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Metric icon={BookOpen} label="Modules" value="8+" detail="Structured roadmap" />
-        <Metric icon={PlayCircle} label="Video lessons" value="46" detail="Vimeo + progress tracking" />
+        <Metric icon={PlayCircle} label="Video lessons" value="47" detail="Vimeo + progress tracking" />
         <Metric icon={CalendarDays} label="Next course" value="Media Buying" detail="Continue the path" />
       </section>
 
@@ -2121,7 +2131,7 @@ function LiveMeetingPage({
 const adminContent: Record<string, { title: string; description: string; primaryAction: string; cards: Array<{ title: string; items: string[] }> }> = {
   Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Reports', items: ['Student progress percentage', 'Video watch history', 'Quiz score report', 'Assignment review status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
-  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '46 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
+  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '47 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
   Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
   Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
