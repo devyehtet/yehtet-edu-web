@@ -2528,6 +2528,7 @@ function AdminPanelPage({
           ) : adminActive === 'Lessons' ? (
             <LessonManagerAdmin
               lessons={lessons}
+              lessonComments={lessonComments}
               selectedLesson={selectedLesson}
               selectedLessonId={selectedLessonId}
               onSelectLesson={(id) => { setSelectedLessonId(id); setActiveAction(null); setSavedMessage(''); }}
@@ -2661,6 +2662,7 @@ function AdminPanelPage({
 
 function LessonManagerAdmin({
   lessons,
+  lessonComments,
   selectedLesson,
   selectedLessonId,
   onSelectLesson,
@@ -2668,6 +2670,7 @@ function LessonManagerAdmin({
   onEditLesson,
 }: {
   lessons: LessonRecord[];
+  lessonComments: LessonComment[];
   selectedLesson?: LessonRecord;
   selectedLessonId: string;
   onSelectLesson: (id: string) => void;
@@ -2677,6 +2680,9 @@ function LessonManagerAdmin({
   const selectedVideoUrl = selectedLesson ? getLessonVideoUrl(selectedLesson) : '';
   const selectedPreviewUrl = selectedLesson ? getEmbeddableLessonUrl(selectedVideoUrl, `admin-preview-${selectedLesson.id}`) : '';
   const selectedPreviewIsVimeo = selectedLesson ? isVimeoLessonUrl(selectedVideoUrl) : false;
+  const selectedLessonComments = selectedLesson
+    ? lessonComments.filter((comment) => comment.lessonId === selectedLesson.id).sort((a, b) => b.createdAt - a.createdAt)
+    : [];
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -2801,6 +2807,30 @@ function LessonManagerAdmin({
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                 <p className={ui.eyebrow}>Practice</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">{selectedLesson.practice}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/[0.06] pt-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className={ui.eyebrow}>Lesson comments</p>
+                <span className={ui.chipMuted}>{selectedLessonComments.length} comments</span>
+              </div>
+              <div className="mt-4 max-h-[280px] space-y-2 overflow-y-auto pr-1">
+                {selectedLessonComments.length > 0 ? (
+                  selectedLessonComments.map((comment) => (
+                    <div key={comment.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-white">{comment.studentName}</p>
+                        <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-400">
+                    No comments for this lesson yet.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -3078,6 +3108,14 @@ function StudentActivityReport({
     ? Math.round(progressRows.reduce((total, row) => total + row.progressPercent, 0) / progressRows.length)
     : 0;
   const latestComments = [...lessonComments].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
+  const commentsByLesson = lessons
+    .map((lesson) => ({
+      lesson,
+      comments: lessonComments
+        .filter((comment) => comment.lessonId === lesson.id)
+        .sort((a, b) => b.createdAt - a.createdAt),
+    }))
+    .filter((item) => item.comments.length > 0);
 
   return (
     <div className="space-y-6">
@@ -3154,6 +3192,46 @@ function StudentActivityReport({
           ) : (
             <p className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
               No student comments yet.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={ui.eyebrow}>Comments by lesson</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>Video-specific comments</h2>
+          </div>
+          <span className={ui.chipMuted}>{commentsByLesson.length} lessons</span>
+        </div>
+        <div className="space-y-4">
+          {commentsByLesson.length > 0 ? (
+            commentsByLesson.map(({ lesson, comments }) => (
+              <div key={lesson.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Lesson {lesson.globalIndex + 1}</p>
+                    <h3 className="mt-1 text-base font-bold text-white">{lesson.title}</h3>
+                  </div>
+                  <span className={ui.chipMuted}>{comments.length} comments</span>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="rounded-xl border border-white/[0.05] bg-slate-950/30 px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-white">{comment.studentName}</p>
+                        <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
+              No lesson-specific comments yet.
             </p>
           )}
         </div>
