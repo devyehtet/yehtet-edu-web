@@ -87,6 +87,7 @@ type LearningProgress = {
   currentLessonId: string;
   watchProgressByLessonId: Record<string, number>;
 };
+type StudentProgressById = Record<string, LearningProgress>;
 type LessonRecord = {
   id: string;
   title: string;
@@ -185,6 +186,7 @@ const serverAuthCredentials = {
 
 const meetingStorageKey = 'ye-htet-live-class-meetings';
 const learningStorageKey = 'ye-htet-digital-marketing-progress';
+const studentProgressStorageKey = 'ye-htet-digital-marketing-progress-by-student';
 const lessonStorageKey = 'ye-htet-digital-marketing-lessons';
 const studentStorageKey = 'ye-htet-digital-marketing-students';
 const lessonCommentStorageKey = 'ye-htet-digital-marketing-lesson-comments';
@@ -554,6 +556,22 @@ const defaultLearningProgress: LearningProgress = {
   watchProgressByLessonId: {},
 };
 
+function normalizeLearningProgress(value: Partial<LearningProgress> | undefined, lessons: LessonRecord[] = lessonCatalog): LearningProgress {
+  const validIds = new Set(lessons.map((lesson) => lesson.id));
+  const completedLessonIds = Array.isArray(value?.completedLessonIds)
+    ? value.completedLessonIds.filter((id) => validIds.has(id))
+    : [];
+  const currentLessonId = typeof value?.currentLessonId === 'string' && validIds.has(value.currentLessonId)
+    ? value.currentLessonId
+    : getNextLessonId(completedLessonIds, lessons);
+  const watchProgressByLessonId = Object.fromEntries(
+    Object.entries(value?.watchProgressByLessonId || {})
+      .filter(([id, progress]) => validIds.has(id) && typeof progress === 'number' && Number.isFinite(progress))
+      .map(([id, progress]) => [id, Math.min(100, Math.max(0, Math.round(progress as number)))]),
+  );
+  return { completedLessonIds, currentLessonId, watchProgressByLessonId };
+}
+
 function getLessonOutcome(title: string) {
   if (title.toLowerCase().includes('ads')) return 'Understand the campaign decision, setup step, and optimization habit behind this advertising lesson.';
   if (title.toLowerCase().includes('seo')) return 'Learn how search visibility works and how to plan actions that improve organic discovery.';
@@ -576,34 +594,50 @@ function readStoredLearningProgress(lessons: LessonRecord[] = lessonCatalog): Le
     const stored = window.localStorage.getItem(learningStorageKey);
     if (!stored) return defaultLearningProgress;
     const parsed = JSON.parse(stored) as Partial<LearningProgress>;
-    const validIds = new Set(lessons.map((lesson) => lesson.id));
-    const completedLessonIds = Array.isArray(parsed.completedLessonIds)
-      ? parsed.completedLessonIds.filter((id) => validIds.has(id))
-      : [];
-    const currentLessonId = typeof parsed.currentLessonId === 'string' && validIds.has(parsed.currentLessonId)
-      ? parsed.currentLessonId
-      : getNextLessonId(completedLessonIds, lessons);
-    const watchProgressByLessonId = Object.fromEntries(
-      Object.entries(parsed.watchProgressByLessonId || {})
-        .filter(([id, value]) => validIds.has(id) && typeof value === 'number' && Number.isFinite(value))
-        .map(([id, value]) => [id, Math.min(100, Math.max(0, Math.round(value as number)))]),
-    );
-    return { completedLessonIds, currentLessonId, watchProgressByLessonId };
+    return normalizeLearningProgress(parsed, lessons);
   } catch {
     return defaultLearningProgress;
   }
 }
 
+function readStoredStudentProgress(lessons: LessonRecord[] = lessonCatalog): StudentProgressById {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = window.localStorage.getItem(studentProgressStorageKey);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored) as Record<string, Partial<LearningProgress>>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([studentId, progress]) => studentId && progress && typeof progress === 'object' && !Array.isArray(progress))
+        .map(([studentId, progress]) => [studentId, normalizeLearningProgress(progress, lessons)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
 function sanitizeLearningProgress(progress: LearningProgress, lessons: LessonRecord[]) {
-  const validIds = new Set(lessons.map((lesson) => lesson.id));
-  const completedLessonIds = progress.completedLessonIds.filter((id) => validIds.has(id));
-  const currentLessonId = validIds.has(progress.currentLessonId)
-    ? progress.currentLessonId
-    : getNextLessonId(completedLessonIds, lessons);
-  const watchProgressByLessonId = Object.fromEntries(
-    Object.entries(progress.watchProgressByLessonId || {}).filter(([id]) => validIds.has(id)),
+  return normalizeLearningProgress(progress, lessons);
+}
+
+function sanitizeStudentProgressById(progressById: StudentProgressById, lessons: LessonRecord[]) {
+  return Object.fromEntries(
+    Object.entries(progressById).map(([studentId, progress]) => [studentId, sanitizeLearningProgress(progress, lessons)]),
   );
-  return { completedLessonIds, currentLessonId, watchProgressByLessonId };
+}
+
+function getStudentProgress(studentId: string, progressById: StudentProgressById, lessons: LessonRecord[]) {
+  return progressById[studentId] ? sanitizeLearningProgress(progressById[studentId], lessons) : normalizeLearningProgress(undefined, lessons);
+}
+
+function isSameLearningProgress(a: LearningProgress | undefined, b: LearningProgress) {
+  return Boolean(
+    a
+      && a.currentLessonId === b.currentLessonId
+      && JSON.stringify(a.completedLessonIds) === JSON.stringify(b.completedLessonIds)
+      && JSON.stringify(a.watchProgressByLessonId) === JSON.stringify(b.watchProgressByLessonId),
+  );
 }
 
 function getCompletedSet(progress: LearningProgress) {
@@ -2021,8 +2055,35 @@ function AssignmentsPage({ go }: { go: (v: PageName) => void }) {
 function ResourcesPage({ go }: { go: (v: PageName) => void }) {
   return <SimplePage icon={Download} title="Lesson resource files." eyebrow="Resources" text="Download the files you need for the current lesson or assignment." backTarget="Student Dashboard" go={go} />;
 }
-function ReportsPage({ go }: { go: (v: PageName) => void }) {
-  return <SimplePage icon={BarChart3} title="Progress, quiz & assignment reports." eyebrow="Reports" text="Select a report type, review student activity, then export the result if needed." backTarget="Admin Panel" go={go} />;
+function ReportsPage({
+  go,
+  students,
+  lessons,
+  studentProgressById,
+  lessonComments,
+}: {
+  go: (v: PageName) => void;
+  students: Student[];
+  lessons: LessonRecord[];
+  studentProgressById: StudentProgressById;
+  lessonComments: LessonComment[];
+}) {
+  return (
+    <div className={ui.page}>
+      <BackLink go={go} to="Admin Panel" label="Back to admin panel" />
+      <PageHeader
+        eyebrow="Reports"
+        title="Student progress and comments."
+        description="Review which lessons students have watched, completion progress, and comments left under videos."
+      />
+      <StudentActivityReport
+        students={students}
+        lessons={lessons}
+        studentProgressById={studentProgressById}
+        lessonComments={lessonComments}
+      />
+    </div>
+  );
 }
 
 // =====================================================================
@@ -2164,6 +2225,8 @@ function AdminPanelPage({
   setLessons,
   students,
   setStudents,
+  studentProgressById,
+  lessonComments,
 }: {
   go: (v: PageName) => void;
   meetings: LiveClassMeeting[];
@@ -2173,6 +2236,8 @@ function AdminPanelPage({
   setLessons: React.Dispatch<React.SetStateAction<LessonRecord[]>>;
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  studentProgressById: StudentProgressById;
+  lessonComments: LessonComment[];
 }) {
   const adminMenu = ['Dashboard', 'Students', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
   const [adminActive, setAdminActive] = useState('Dashboard');
@@ -2449,6 +2514,9 @@ function AdminPanelPage({
             <StudentDirectory
               students={students}
               selectedStudent={selectedStudent}
+              lessons={lessons}
+              studentProgressById={studentProgressById}
+              lessonComments={lessonComments}
               onSelectStudent={(id) => { setSelectedStudentId(id); setActiveAction(null); }}
               onCreateStudent={() => openAction('Add Student')}
               onEditStudent={(id) => {
@@ -2465,6 +2533,13 @@ function AdminPanelPage({
               onSelectLesson={(id) => { setSelectedLessonId(id); setActiveAction(null); setSavedMessage(''); }}
               onCreateLesson={() => openAction('Add Lesson')}
               onEditLesson={(lesson) => { setSelectedLessonId(lesson.id); openAction(`Edit ${lesson.title}`); }}
+            />
+          ) : adminActive === 'Reports' ? (
+            <StudentActivityReport
+              students={students}
+              lessons={lessons}
+              studentProgressById={studentProgressById}
+              lessonComments={lessonComments}
             />
           ) : adminActive === 'Meetings' ? (
             <div className="space-y-6">
@@ -2758,16 +2833,25 @@ function LessonMetaField({ label, value, mono = false }: { label: string; value:
 function StudentDirectory({
   students,
   selectedStudent,
+  lessons,
+  studentProgressById,
+  lessonComments,
   onSelectStudent,
   onCreateStudent,
   onEditStudent,
 }: {
   students: Student[];
   selectedStudent: Student;
+  lessons: LessonRecord[];
+  studentProgressById: StudentProgressById;
+  lessonComments: LessonComment[];
   onSelectStudent: (id: string) => void;
   onCreateStudent: () => void;
   onEditStudent: (id: string) => void;
 }) {
+  const selectedProgress = getStudentProgress(selectedStudent.id, studentProgressById, lessons);
+  const selectedProgressPercent = getCourseProgressPercent(selectedProgress, lessons);
+  const selectedComments = lessonComments.filter((comment) => comment.studentId === selectedStudent.id);
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
       <div className={ui.card}>
@@ -2781,11 +2865,12 @@ function StudentDirectory({
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[760px] w-full border-collapse text-left text-sm">
+          <table className="min-w-[860px] w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
                 <th className="py-3 pr-4 font-medium">Student</th>
                 <th className="py-3 pr-4 font-medium">Progress</th>
+                <th className="py-3 pr-4 font-medium">Comments</th>
                 <th className="py-3 pr-4 font-medium">Status</th>
                 <th className="py-3 pr-4 font-medium">Last active</th>
                 <th className="py-3 pr-4 font-medium">Action</th>
@@ -2794,6 +2879,9 @@ function StudentDirectory({
             <tbody>
               {students.map((student) => {
                 const isSelected = student.id === selectedStudent.id;
+                const progress = getStudentProgress(student.id, studentProgressById, lessons);
+                const progressPercent = getCourseProgressPercent(progress, lessons);
+                const commentCount = lessonComments.filter((comment) => comment.studentId === student.id).length;
                 return (
                   <tr
                     key={student.id}
@@ -2811,10 +2899,11 @@ function StudentDirectory({
                     </td>
                     <td className="py-4 pr-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-20"><ProgressBar value={student.progress} /></div>
-                        <span className="text-xs font-medium text-slate-400">{student.progress}%</span>
+                        <div className="w-20"><ProgressBar value={progressPercent} /></div>
+                        <span className="text-xs font-medium text-slate-400">{progressPercent}%</span>
                       </div>
                     </td>
+                    <td className="py-4 pr-4 text-slate-400">{commentCount}</td>
                     <td className="py-4 pr-4">
                       <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', student.status === 'Active' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300')}>
                         {student.status}
@@ -2863,14 +2952,221 @@ function StudentDirectory({
         <div className="mt-6">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-slate-400">Course progress</p>
-            <p className="text-sm font-bold text-white">{selectedStudent.progress}%</p>
+            <p className="text-sm font-bold text-white">{selectedProgressPercent}%</p>
           </div>
           <div className="mt-2">
-            <ProgressBar value={selectedStudent.progress} height="md" />
+            <ProgressBar value={selectedProgressPercent} height="md" />
           </div>
-          <p className="mt-3 text-xs text-slate-500">Last active: {selectedStudent.lastActive}</p>
+          <p className="mt-3 text-xs text-slate-500">
+            {getCompletedSet(selectedProgress).size} / {lessons.length} lessons completed · {selectedComments.length} comments
+          </p>
         </div>
+
+        <StudentActivityDetail
+          student={selectedStudent}
+          lessons={lessons}
+          progress={selectedProgress}
+          comments={selectedComments}
+        />
       </aside>
+    </div>
+  );
+}
+
+function StudentActivityDetail({
+  student,
+  lessons,
+  progress,
+  comments,
+}: {
+  student: Student;
+  lessons: LessonRecord[];
+  progress: LearningProgress;
+  comments: LessonComment[];
+}) {
+  const completed = getCompletedSet(progress);
+  const lessonTitleById = new Map(lessons.map((lesson) => [lesson.id, lesson.title]));
+  const activeLessons = lessons.filter((lesson) => completed.has(lesson.id) || (progress.watchProgressByLessonId[lesson.id] || 0) > 0);
+  const recentComments = [...comments].sort((a, b) => b.createdAt - a.createdAt);
+
+  return (
+    <div className="mt-6 space-y-6 border-t border-white/[0.06] pt-6">
+      <section>
+        <div className="flex items-center justify-between gap-3">
+          <p className={ui.eyebrow}>Lesson activity</p>
+          <span className={ui.chipMuted}>{activeLessons.length} started</span>
+        </div>
+        <div className="mt-4 max-h-[280px] space-y-2 overflow-y-auto pr-1">
+          {activeLessons.length > 0 ? (
+            activeLessons.map((lesson) => {
+              const watchPercent = completed.has(lesson.id) ? 100 : progress.watchProgressByLessonId[lesson.id] || 0;
+              const status = completed.has(lesson.id) ? 'Completed' : 'Watching';
+              return (
+                <div key={lesson.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 flex-1 text-sm font-medium text-white">{lesson.title}</p>
+                    <span className={cx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', status === 'Completed' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300')}>
+                      {status}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex-1"><ProgressBar value={watchPercent} /></div>
+                    <span className="text-xs font-medium text-slate-400">{watchPercent}%</span>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-400">
+              {student.name} has not started any lesson yet.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between gap-3">
+          <p className={ui.eyebrow}>Comments</p>
+          <span className={ui.chipMuted}>{recentComments.length} total</span>
+        </div>
+        <div className="mt-4 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+          {recentComments.length > 0 ? (
+            recentComments.map((comment) => (
+              <div key={comment.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-emerald-300">{lessonTitleById.get(comment.lessonId) || 'Unknown lesson'}</p>
+                  <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
+              </div>
+            ))
+          ) : (
+            <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-400">
+              No comments from this student yet.
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function StudentActivityReport({
+  students,
+  lessons,
+  studentProgressById,
+  lessonComments,
+}: {
+  students: Student[];
+  lessons: LessonRecord[];
+  studentProgressById: StudentProgressById;
+  lessonComments: LessonComment[];
+}) {
+  const lessonTitleById = new Map(lessons.map((lesson) => [lesson.id, lesson.title]));
+  const progressRows = students.map((student) => {
+    const progress = getStudentProgress(student.id, studentProgressById, lessons);
+    return {
+      student,
+      progress,
+      progressPercent: getCourseProgressPercent(progress, lessons),
+      completedCount: getCompletedSet(progress).size,
+      commentCount: lessonComments.filter((comment) => comment.studentId === student.id).length,
+      currentLesson: getCurrentLesson(progress, lessons),
+    };
+  });
+  const averageProgress = progressRows.length
+    ? Math.round(progressRows.reduce((total, row) => total + row.progressPercent, 0) / progressRows.length)
+    : 0;
+  const latestComments = [...lessonComments].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
+
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-3 md:grid-cols-3">
+        <ActivityMetric label="Average progress" value={`${averageProgress}%`} />
+        <ActivityMetric label="Completed lessons" value={`${progressRows.reduce((total, row) => total + row.completedCount, 0)}`} />
+        <ActivityMetric label="Student comments" value={`${lessonComments.length}`} />
+      </section>
+
+      <section className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={ui.eyebrow}>Student progress</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>Lesson watch report</h2>
+          </div>
+          <span className={ui.chipMuted}>{lessons.length} lessons</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-[820px] w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                <th className="py-3 pr-4 font-medium">Student</th>
+                <th className="py-3 pr-4 font-medium">Progress</th>
+                <th className="py-3 pr-4 font-medium">Completed</th>
+                <th className="py-3 pr-4 font-medium">Current lesson</th>
+                <th className="py-3 pr-4 font-medium">Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+              {progressRows.map((row) => (
+                <tr key={row.student.id} className="border-b border-white/[0.04]">
+                  <td className="py-4 pr-4">
+                    <p className="font-medium text-white">{row.student.name}</p>
+                    <p className="text-xs text-slate-500">{row.student.email}</p>
+                  </td>
+                  <td className="py-4 pr-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-24"><ProgressBar value={row.progressPercent} /></div>
+                      <span className="text-xs font-medium text-slate-400">{row.progressPercent}%</span>
+                    </div>
+                  </td>
+                  <td className="py-4 pr-4 text-slate-300">{row.completedCount} / {lessons.length}</td>
+                  <td className="max-w-[260px] truncate py-4 pr-4 text-slate-400">{row.currentLesson?.title || 'Not started'}</td>
+                  <td className="py-4 pr-4 text-slate-300">{row.commentCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={ui.eyebrow}>Latest comments</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>Student questions and notes</h2>
+          </div>
+          <span className={ui.chipMuted}>{latestComments.length} recent</span>
+        </div>
+        <div className="space-y-3">
+          {latestComments.length > 0 ? (
+            latestComments.map((comment) => (
+              <div key={comment.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-white">{comment.studentName}</p>
+                    <p className="mt-1 text-xs text-emerald-300">{lessonTitleById.get(comment.lessonId) || 'Unknown lesson'}</p>
+                  </div>
+                  <p className="text-xs text-slate-500">{formatCommentTime(comment.createdAt)}</p>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
+              </div>
+            ))
+          ) : (
+            <p className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
+              No student comments yet.
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ActivityMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={ui.cardSubtle}>
+      <p className="font-serif text-3xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-400">{label}</p>
     </div>
   );
 }
@@ -3103,6 +3399,7 @@ export default function App() {
   const [students, setStudents] = useState<Student[]>(() => readStoredStudents());
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(null);
   const [lessonComments, setLessonComments] = useState<LessonComment[]>(() => readStoredLessonComments());
+  const [studentProgressById, setStudentProgressById] = useState<StudentProgressById>(() => readStoredStudentProgress(lessons));
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
   const currentStudent = students.find((student) => student.id === currentStudentId) || null;
 
@@ -3142,13 +3439,25 @@ export default function App() {
   }, [lessonComments]);
 
   useEffect(() => {
+    window.localStorage.setItem(studentProgressStorageKey, JSON.stringify(studentProgressById));
+  }, [studentProgressById]);
+
+  useEffect(() => {
     window.localStorage.setItem(lessonStorageKey, JSON.stringify(lessons));
     setLearningProgress((prev) => sanitizeLearningProgress(prev, lessons));
+    setStudentProgressById((prev) => sanitizeStudentProgressById(prev, lessons));
   }, [lessons]);
 
   useEffect(() => {
     window.localStorage.setItem(learningStorageKey, JSON.stringify(learningProgress));
-  }, [learningProgress]);
+    if (!currentStudentId) return;
+    const sanitized = sanitizeLearningProgress(learningProgress, lessons);
+    setStudentProgressById((prev) => (
+      isSameLearningProgress(prev[currentStudentId], sanitized)
+        ? prev
+        : { ...prev, [currentStudentId]: sanitized }
+    ));
+  }, [learningProgress, currentStudentId, lessons]);
 
   const go = (page: PageName) => {
     const next = getNextPage(page, isLoggedIn, role);
@@ -3176,6 +3485,7 @@ export default function App() {
     if (loginRole === 'student') {
       const student = students.find((item) => item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
       if (student) {
+        setLearningProgress(studentProgressById[student.id] || readStoredLearningProgress(lessons));
         setIsLoggedIn(true);
         setRole('student');
         setCurrentStudentId(student.id);
@@ -3201,13 +3511,13 @@ export default function App() {
       {active === 'Courses' && <CoursesPage go={go} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} />}
-      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} />}
+      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} studentProgressById={studentProgressById} lessonComments={lessonComments} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} />}
       {active === 'Quiz' && <QuizPage go={go} />}
       {active === 'Assignments' && <AssignmentsPage go={go} />}
       {active === 'Resources' && <ResourcesPage go={go} />}
-      {active === 'Reports' && <ReportsPage go={go} />}
+      {active === 'Reports' && <ReportsPage go={go} students={students} lessons={lessons} studentProgressById={studentProgressById} lessonComments={lessonComments} />}
       {active === 'Live Meeting' && <LiveMeetingPage go={go} meetings={liveMeetings} initialMeetingId={activeMeetingId} />}
       {active === 'Login' && <LoginPage login={login} />}
     </Shell>
