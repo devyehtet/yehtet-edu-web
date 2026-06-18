@@ -640,6 +640,10 @@ function isSameLearningProgress(a: LearningProgress | undefined, b: LearningProg
   );
 }
 
+function isJsonEqual(a: unknown, b: unknown) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function getCompletedSet(progress: LearningProgress) {
   return new Set(progress.completedLessonIds);
 }
@@ -2713,6 +2717,7 @@ function LessonManagerAdmin({
                 <div className="space-y-2">
                   {moduleLessons.map((lesson) => {
                     const isSelected = lesson.id === selectedLessonId;
+                    const commentCount = lessonComments.filter((comment) => comment.lessonId === lesson.id).length;
                     return (
                       <button
                         key={lesson.id}
@@ -2738,6 +2743,11 @@ function LessonManagerAdmin({
                           <span className="block truncate text-sm font-bold text-white">{lesson.title}</span>
                           <span className="mt-1 block truncate text-xs text-slate-500">{lesson.duration} · {lesson.resource}</span>
                         </span>
+                        {commentCount > 0 && (
+                          <span className={cx('inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold', isSelected ? 'bg-slate-950/10 text-slate-950' : 'bg-emerald-300/10 text-emerald-300')}>
+                            <MessageCircle className="h-3 w-3" /> {commentCount}
+                          </span>
+                        )}
                         <span className={cx('text-xs font-semibold', isSelected ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-300')}>
                           View
                         </span>
@@ -3511,6 +3521,37 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(studentStorageKey, JSON.stringify(students));
   }, [students]);
+
+  useEffect(() => {
+    const syncStoredActivity = () => {
+      const nextComments = readStoredLessonComments();
+      const nextProgressById = readStoredStudentProgress(lessons);
+      setLessonComments((prev) => (isJsonEqual(prev, nextComments) ? prev : nextComments));
+      setStudentProgressById((prev) => (isJsonEqual(prev, nextProgressById) ? prev : nextProgressById));
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === lessonCommentStorageKey
+        || event.key === studentProgressStorageKey
+        || event.key === null
+      ) {
+        syncStoredActivity();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) syncStoredActivity();
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', syncStoredActivity);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const timer = window.setInterval(syncStoredActivity, 5000);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', syncStoredActivity);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(timer);
+    };
+  }, [lessons]);
 
   useEffect(() => {
     window.localStorage.setItem(lessonCommentStorageKey, JSON.stringify(lessonComments));
