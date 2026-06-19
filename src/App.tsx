@@ -208,6 +208,7 @@ const marketingFunnelFrameworkPartOneVideoUrl = 'https://vimeo.com/1201560354?sh
 const marketingFunnelFrameworkPartOneResourceUrl = 'https://docs.google.com/spreadsheets/d/15b7jVEagkjRTopsz5BU0LBIMV5px-EBJBbejlB2ho78/edit?gid=478517468#gid=478517468';
 const marketingFunnelFrameworkPartTwoTitle = 'Marketing Funnel Framework l Template (Part-2)';
 const marketingFunnelFrameworkPartTwoVideoUrl = 'https://vimeo.com/1201900568?share=copy&fl=sv&fe=ci';
+const understandingCustomerPsychologyVideoUrl = 'https://vimeo.com/1202908271?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -221,6 +222,7 @@ const defaultLessonVideoUrls = [
   ecosystemMapTemplatePartTwoVideoUrl,
   marketingFunnelFrameworkPartOneVideoUrl,
   marketingFunnelFrameworkPartTwoVideoUrl,
+  understandingCustomerPsychologyVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
@@ -642,6 +644,189 @@ function isSameLearningProgress(a: LearningProgress | undefined, b: LearningProg
 
 function isJsonEqual(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyDlZVwiUaDyDUzSK1V-w2ws46lTJPlwyuU',
+  authDomain: 'yehtet-edu.firebaseapp.com',
+  projectId: 'yehtet-edu',
+  storageBucket: 'yehtet-edu.firebasestorage.app',
+  messagingSenderId: '773247085634',
+  appId: '1:773247085634:web:7e8bfcecc29f17726911db',
+  measurementId: 'G-ZGY0ME7M3H',
+};
+
+const firestoreBaseUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+
+type FirestoreFields = Record<string, {
+  stringValue?: string;
+  integerValue?: string;
+  doubleValue?: number;
+  arrayValue?: { values?: Array<{ stringValue?: string }> };
+  mapValue?: { fields?: FirestoreFields };
+}>;
+
+function readFirestoreString(fields: FirestoreFields, key: string) {
+  return fields[key]?.stringValue || '';
+}
+
+function readFirestoreNumber(fields: FirestoreFields, key: string) {
+  const value = fields[key];
+  const parsed = Number(value?.integerValue ?? value?.doubleValue ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function firestoreString(value: string) {
+  return { stringValue: value };
+}
+
+function firestoreInteger(value: number) {
+  return { integerValue: String(Math.round(value)) };
+}
+
+function serializeLessonComment(comment: LessonComment) {
+  return {
+    fields: {
+      id: firestoreString(comment.id),
+      lessonId: firestoreString(comment.lessonId),
+      studentId: firestoreString(comment.studentId),
+      studentName: firestoreString(comment.studentName),
+      text: firestoreString(comment.text),
+      createdAt: firestoreInteger(comment.createdAt),
+    },
+  };
+}
+
+function parseFirestoreLessonComment(document: { name?: string; fields?: FirestoreFields }): LessonComment | null {
+  const fields = document.fields || {};
+  const id = readFirestoreString(fields, 'id') || document.name?.split('/').pop() || '';
+  const lessonId = readFirestoreString(fields, 'lessonId');
+  const studentId = readFirestoreString(fields, 'studentId');
+  const studentName = readFirestoreString(fields, 'studentName');
+  const text = readFirestoreString(fields, 'text');
+  const createdAt = readFirestoreNumber(fields, 'createdAt');
+  if (!id || !lessonId || !studentId || !studentName || !text || !createdAt) return null;
+  return { id, lessonId, studentId, studentName, text, createdAt };
+}
+
+function mergeLessonComments(...commentGroups: LessonComment[][]) {
+  const byId = new Map<string, LessonComment>();
+  commentGroups.flat().forEach((comment) => byId.set(comment.id, comment));
+  return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+async function fetchFirebaseLessonComments() {
+  try {
+    const response = await fetch(`${firestoreBaseUrl}/lessonComments?key=${firebaseConfig.apiKey}`);
+    if (!response.ok) return [];
+    const data = await response.json() as { documents?: Array<{ name?: string; fields?: FirestoreFields }> };
+    return (data.documents || [])
+      .map(parseFirestoreLessonComment)
+      .filter(Boolean) as LessonComment[];
+  } catch {
+    return [];
+  }
+}
+
+async function saveLessonCommentToFirebase(comment: LessonComment) {
+  try {
+    await fetch(`${firestoreBaseUrl}/lessonComments/${encodeURIComponent(comment.id)}?key=${firebaseConfig.apiKey}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serializeLessonComment(comment)),
+    });
+  } catch {
+    // Keep local storage as the fallback if Firebase is temporarily unavailable.
+  }
+}
+
+function serializeLearningProgress(studentId: string, progress: LearningProgress) {
+  const watchFields = Object.fromEntries(
+    Object.entries(progress.watchProgressByLessonId).map(([lessonId, value]) => [lessonId, firestoreInteger(value)]),
+  );
+  return {
+    fields: {
+      studentId: firestoreString(studentId),
+      currentLessonId: firestoreString(progress.currentLessonId),
+      completedLessonIds: {
+        arrayValue: {
+          values: progress.completedLessonIds.map((lessonId) => firestoreString(lessonId)),
+        },
+      },
+      watchProgressByLessonId: {
+        mapValue: { fields: watchFields },
+      },
+    },
+  };
+}
+
+function parseFirestoreLearningProgress(document: { name?: string; fields?: FirestoreFields }, lessons: LessonRecord[]) {
+  const fields = document.fields || {};
+  const studentId = readFirestoreString(fields, 'studentId') || document.name?.split('/').pop() || '';
+  if (!studentId) return null;
+  const completedLessonIds = fields.completedLessonIds?.arrayValue?.values
+    ?.map((value) => value.stringValue || '')
+    .filter(Boolean) || [];
+  const watchProgressByLessonId = Object.fromEntries(
+    Object.entries(fields.watchProgressByLessonId?.mapValue?.fields || {})
+      .map(([lessonId, value]) => [lessonId, Number(value.integerValue ?? value.doubleValue ?? 0)])
+      .filter(([, value]) => Number.isFinite(value)),
+  );
+  const progress = normalizeLearningProgress({
+    completedLessonIds,
+    currentLessonId: readFirestoreString(fields, 'currentLessonId'),
+    watchProgressByLessonId,
+  }, lessons);
+  return { studentId, progress };
+}
+
+function getProgressScore(progress: LearningProgress) {
+  const watchTotal = Object.values(progress.watchProgressByLessonId).reduce((total, value) => total + value, 0);
+  return (progress.completedLessonIds.length * 10000) + watchTotal;
+}
+
+function mergeStudentProgress(local: StudentProgressById, cloud: StudentProgressById, lessons: LessonRecord[]) {
+  const merged: StudentProgressById = {};
+  const ids = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  ids.forEach((studentId) => {
+    const localProgress = local[studentId] ? sanitizeLearningProgress(local[studentId], lessons) : undefined;
+    const cloudProgress = cloud[studentId] ? sanitizeLearningProgress(cloud[studentId], lessons) : undefined;
+    if (localProgress && cloudProgress) {
+      merged[studentId] = getProgressScore(localProgress) > getProgressScore(cloudProgress) ? localProgress : cloudProgress;
+      return;
+    }
+    if (localProgress) merged[studentId] = localProgress;
+    if (cloudProgress) merged[studentId] = cloudProgress;
+  });
+  return merged;
+}
+
+async function fetchFirebaseStudentProgress(lessons: LessonRecord[]) {
+  try {
+    const response = await fetch(`${firestoreBaseUrl}/studentProgress?key=${firebaseConfig.apiKey}`);
+    if (!response.ok) return {};
+    const data = await response.json() as { documents?: Array<{ name?: string; fields?: FirestoreFields }> };
+    return Object.fromEntries(
+      (data.documents || [])
+        .map((document) => parseFirestoreLearningProgress(document, lessons))
+        .filter(Boolean)
+        .map((item) => [item!.studentId, item!.progress]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+async function saveStudentProgressToFirebase(studentId: string, progress: LearningProgress) {
+  try {
+    await fetch(`${firestoreBaseUrl}/studentProgress/${encodeURIComponent(studentId)}?key=${firebaseConfig.apiKey}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serializeLearningProgress(studentId, progress)),
+    });
+  } catch {
+    // Keep local storage as the fallback if Firebase is temporarily unavailable.
+  }
 }
 
 function getCompletedSet(progress: LearningProgress) {
@@ -3523,9 +3708,17 @@ export default function App() {
   }, [students]);
 
   useEffect(() => {
-    const syncStoredActivity = () => {
-      const nextComments = readStoredLessonComments();
-      const nextProgressById = readStoredStudentProgress(lessons);
+    let mounted = true;
+    const syncStoredActivity = async () => {
+      const localComments = readStoredLessonComments();
+      const localProgressById = readStoredStudentProgress(lessons);
+      const [cloudComments, cloudProgressById] = await Promise.all([
+        fetchFirebaseLessonComments(),
+        fetchFirebaseStudentProgress(lessons),
+      ]);
+      if (!mounted) return;
+      const nextComments = mergeLessonComments(localComments, cloudComments);
+      const nextProgressById = mergeStudentProgress(localProgressById, cloudProgressById, lessons);
       setLessonComments((prev) => (isJsonEqual(prev, nextComments) ? prev : nextComments));
       setStudentProgressById((prev) => (isJsonEqual(prev, nextProgressById) ? prev : nextProgressById));
     };
@@ -3535,17 +3728,19 @@ export default function App() {
         || event.key === studentProgressStorageKey
         || event.key === null
       ) {
-        syncStoredActivity();
+        void syncStoredActivity();
       }
     };
     const handleVisibilityChange = () => {
-      if (!document.hidden) syncStoredActivity();
+      if (!document.hidden) void syncStoredActivity();
     };
+    void syncStoredActivity();
     window.addEventListener('storage', handleStorage);
     window.addEventListener('focus', syncStoredActivity);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     const timer = window.setInterval(syncStoredActivity, 5000);
     return () => {
+      mounted = false;
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('focus', syncStoredActivity);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -3555,10 +3750,16 @@ export default function App() {
 
   useEffect(() => {
     window.localStorage.setItem(lessonCommentStorageKey, JSON.stringify(lessonComments));
+    lessonComments.forEach((comment) => {
+      void saveLessonCommentToFirebase(comment);
+    });
   }, [lessonComments]);
 
   useEffect(() => {
     window.localStorage.setItem(studentProgressStorageKey, JSON.stringify(studentProgressById));
+    Object.entries(studentProgressById).forEach(([studentId, progress]) => {
+      void saveStudentProgressToFirebase(studentId, progress);
+    });
   }, [studentProgressById]);
 
   useEffect(() => {
