@@ -659,6 +659,30 @@ const firebaseConfig = {
 };
 
 const firestoreBaseUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
+const appEnv = import.meta.env as unknown as Record<string, string | undefined>;
+const supabaseConfig = {
+  url: (appEnv.VITE_SUPABASE_URL || appEnv.NEXT_PUBLIC_SUPABASE_URL || 'https://thkgxaxwufjzrdaqeprr.supabase.co').replace(/\/$/, ''),
+  publishableKey: appEnv.VITE_SUPABASE_PUBLISHABLE_KEY || appEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_mZOf5tErlsCmyv0kDoAwmA_o1aKlhvj',
+};
+const supabaseRestBaseUrl = `${supabaseConfig.url}/rest/v1`;
+
+type JsonObject = Record<string, unknown>;
+
+type SupabaseLessonCommentRow = {
+  id?: unknown;
+  lesson_id?: unknown;
+  student_id?: unknown;
+  student_name?: unknown;
+  text?: unknown;
+  created_at?: unknown;
+};
+
+type SupabaseStudentProgressRow = {
+  student_id?: unknown;
+  current_lesson_id?: unknown;
+  completed_lesson_ids?: unknown;
+  watch_progress_by_lesson_id?: unknown;
+};
 
 type FirestoreFields = Record<string, {
   stringValue?: string;
@@ -684,6 +708,149 @@ function firestoreString(value: string) {
 
 function firestoreInteger(value: number) {
   return { integerValue: String(Math.round(value)) };
+}
+
+function isSupabaseConfigured() {
+  return Boolean(supabaseConfig.url && supabaseConfig.publishableKey);
+}
+
+function getSupabaseHeaders(extra: Record<string, string> = {}) {
+  return {
+    apikey: supabaseConfig.publishableKey,
+    Authorization: `Bearer ${supabaseConfig.publishableKey}`,
+    ...extra,
+  };
+}
+
+function readSupabaseString(value: unknown) {
+  return typeof value === 'string' ? value : '';
+}
+
+function readSupabaseNumber(value: unknown) {
+  const parsed = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readSupabaseStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function serializeSupabaseLessonComment(comment: LessonComment) {
+  return {
+    id: comment.id,
+    lesson_id: comment.lessonId,
+    student_id: comment.studentId,
+    student_name: comment.studentName,
+    text: comment.text,
+    created_at: comment.createdAt,
+  };
+}
+
+function parseSupabaseLessonComment(row: SupabaseLessonCommentRow): LessonComment | null {
+  const id = readSupabaseString(row.id);
+  const lessonId = readSupabaseString(row.lesson_id);
+  const studentId = readSupabaseString(row.student_id);
+  const studentName = readSupabaseString(row.student_name);
+  const text = readSupabaseString(row.text);
+  const createdAt = readSupabaseNumber(row.created_at);
+  if (!id || !lessonId || !studentId || !studentName || !text || !createdAt) return null;
+  return { id, lessonId, studentId, studentName, text, createdAt };
+}
+
+async function fetchSupabaseLessonComments() {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const response = await fetch(`${supabaseRestBaseUrl}/lesson_comments?select=*&order=created_at.desc`, {
+      headers: getSupabaseHeaders(),
+    });
+    if (!response.ok) return [];
+    const data = await response.json() as SupabaseLessonCommentRow[];
+    if (!Array.isArray(data)) return [];
+    return data.map(parseSupabaseLessonComment).filter(Boolean) as LessonComment[];
+  } catch {
+    return [];
+  }
+}
+
+async function saveLessonCommentToSupabase(comment: LessonComment) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await fetch(`${supabaseRestBaseUrl}/lesson_comments?on_conflict=id`, {
+      method: 'POST',
+      headers: getSupabaseHeaders({
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      }),
+      body: JSON.stringify(serializeSupabaseLessonComment(comment)),
+    });
+  } catch {
+    // Keep local storage as the fallback if Supabase is temporarily unavailable.
+  }
+}
+
+function serializeSupabaseLearningProgress(studentId: string, progress: LearningProgress) {
+  return {
+    student_id: studentId,
+    current_lesson_id: progress.currentLessonId,
+    completed_lesson_ids: progress.completedLessonIds,
+    watch_progress_by_lesson_id: progress.watchProgressByLessonId,
+    updated_at: Date.now(),
+  };
+}
+
+function parseSupabaseLearningProgress(row: SupabaseStudentProgressRow, lessons: LessonRecord[]) {
+  const studentId = readSupabaseString(row.student_id);
+  if (!studentId) return null;
+  const watchProgressValue = row.watch_progress_by_lesson_id;
+  const watchProgressByLessonId = watchProgressValue && typeof watchProgressValue === 'object' && !Array.isArray(watchProgressValue)
+    ? Object.fromEntries(
+        Object.entries(watchProgressValue as JsonObject)
+          .map(([lessonId, value]) => [lessonId, readSupabaseNumber(value)])
+          .filter(([, value]) => Number.isFinite(value)),
+      )
+    : {};
+  const progress = normalizeLearningProgress({
+    completedLessonIds: readSupabaseStringArray(row.completed_lesson_ids),
+    currentLessonId: readSupabaseString(row.current_lesson_id),
+    watchProgressByLessonId,
+  }, lessons);
+  return { studentId, progress };
+}
+
+async function fetchSupabaseStudentProgress(lessons: LessonRecord[]) {
+  if (!isSupabaseConfigured()) return {};
+  try {
+    const response = await fetch(`${supabaseRestBaseUrl}/student_progress?select=*`, {
+      headers: getSupabaseHeaders(),
+    });
+    if (!response.ok) return {};
+    const data = await response.json() as SupabaseStudentProgressRow[];
+    if (!Array.isArray(data)) return {};
+    return Object.fromEntries(
+      data
+        .map((row) => parseSupabaseLearningProgress(row, lessons))
+        .filter(Boolean)
+        .map((item) => [item!.studentId, item!.progress]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+async function saveStudentProgressToSupabase(studentId: string, progress: LearningProgress) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await fetch(`${supabaseRestBaseUrl}/student_progress?on_conflict=student_id`, {
+      method: 'POST',
+      headers: getSupabaseHeaders({
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      }),
+      body: JSON.stringify(serializeSupabaseLearningProgress(studentId, progress)),
+    });
+  } catch {
+    // Keep local storage as the fallback if Supabase is temporarily unavailable.
+  }
 }
 
 function serializeLessonComment(comment: LessonComment) {
@@ -3715,13 +3882,19 @@ export default function App() {
     const syncStoredActivity = async () => {
       const localComments = readStoredLessonComments();
       const localProgressById = readStoredStudentProgress(lessons);
-      const [cloudComments, cloudProgressById] = await Promise.all([
+      const [firebaseComments, firebaseProgressById, supabaseComments, supabaseProgressById] = await Promise.all([
         fetchFirebaseLessonComments(),
         fetchFirebaseStudentProgress(lessons),
+        fetchSupabaseLessonComments(),
+        fetchSupabaseStudentProgress(lessons),
       ]);
       if (!mounted) return;
-      const nextComments = mergeLessonComments(localComments, cloudComments);
-      const nextProgressById = mergeStudentProgress(localProgressById, cloudProgressById, lessons);
+      const nextComments = mergeLessonComments(localComments, firebaseComments, supabaseComments);
+      const nextProgressById = mergeStudentProgress(
+        mergeStudentProgress(localProgressById, firebaseProgressById, lessons),
+        supabaseProgressById,
+        lessons,
+      );
       setLessonComments((prev) => (isJsonEqual(prev, nextComments) ? prev : nextComments));
       setStudentProgressById((prev) => (isJsonEqual(prev, nextProgressById) ? prev : nextProgressById));
     };
@@ -3755,6 +3928,7 @@ export default function App() {
     window.localStorage.setItem(lessonCommentStorageKey, JSON.stringify(lessonComments));
     lessonComments.forEach((comment) => {
       void saveLessonCommentToFirebase(comment);
+      void saveLessonCommentToSupabase(comment);
     });
   }, [lessonComments]);
 
@@ -3762,6 +3936,7 @@ export default function App() {
     window.localStorage.setItem(studentProgressStorageKey, JSON.stringify(studentProgressById));
     Object.entries(studentProgressById).forEach(([studentId, progress]) => {
       void saveStudentProgressToFirebase(studentId, progress);
+      void saveStudentProgressToSupabase(studentId, progress);
     });
   }, [studentProgressById]);
 
