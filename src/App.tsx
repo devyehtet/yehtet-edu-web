@@ -209,6 +209,7 @@ const marketingFunnelFrameworkPartOneResourceUrl = 'https://docs.google.com/spre
 const marketingFunnelFrameworkPartTwoTitle = 'Marketing Funnel Framework l Template (Part-2)';
 const marketingFunnelFrameworkPartTwoVideoUrl = 'https://vimeo.com/1201900568?share=copy&fl=sv&fe=ci';
 const understandingCustomerPsychologyVideoUrl = 'https://vimeo.com/1202908271?share=copy&fl=sv&fe=ci';
+const contentSocialMediaStrategyVideoUrl = 'https://vimeo.com/1203916268?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -223,6 +224,7 @@ const defaultLessonVideoUrls = [
   marketingFunnelFrameworkPartOneVideoUrl,
   marketingFunnelFrameworkPartTwoVideoUrl,
   understandingCustomerPsychologyVideoUrl,
+  contentSocialMediaStrategyVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
