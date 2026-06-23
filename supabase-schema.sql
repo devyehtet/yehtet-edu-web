@@ -61,6 +61,13 @@ create policy "app can update lesson comments"
     and length(text) > 0
   );
 
+drop policy if exists "app can delete lesson comments" on public.lesson_comments;
+create policy "app can delete lesson comments"
+  on public.lesson_comments
+  for delete
+  to anon
+  using (true);
+
 drop policy if exists "app can read student progress" on public.student_progress;
 create policy "app can read student progress"
   on public.student_progress
@@ -84,5 +91,5 @@ create policy "app can update student progress"
   with check (length(student_id) > 0 and length(current_lesson_id) > 0);
 
 grant usage on schema public to anon;
-grant select, insert, update on public.lesson_comments to anon;
+grant select, insert, update, delete on public.lesson_comments to anon;
 grant select, insert, update on public.student_progress to anon;

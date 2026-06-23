@@ -18,6 +18,7 @@ import {
   Lock,
   MessageCircle,
   Mic,
+  Pencil,
   PlayCircle,
   Plus,
   Radio,
@@ -25,9 +26,11 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Trash2,
   UploadCloud,
   Users,
   Video,
+  X,
 } from 'lucide-react';
 
 // =====================================================================
@@ -112,6 +115,10 @@ type LessonComment = {
   text: string;
   createdAt: number;
 };
+type CommentMutationHandlers = {
+  onUpdateComment: (commentId: string, text: string) => void;
+  onDeleteComment: (commentId: string) => void;
+};
 
 const pageSlugs: Record<PageName, string> = {
   Home: '',
@@ -190,6 +197,7 @@ const studentProgressStorageKey = 'ye-htet-digital-marketing-progress-by-student
 const lessonStorageKey = 'ye-htet-digital-marketing-lessons';
 const studentStorageKey = 'ye-htet-digital-marketing-students';
 const lessonCommentStorageKey = 'ye-htet-digital-marketing-lesson-comments';
+const deletedLessonCommentStorageKey = 'ye-htet-digital-marketing-deleted-lesson-comments';
 const firstLessonVideoUrl = 'https://vimeo.com/1195114426?fl=pl&fe=sh';
 const firstLessonDuration = '2.11 min';
 const secondLessonVideoUrl = 'https://vimeo.com/1195115453?share=copy&fl=sv&fe=ci';
@@ -788,6 +796,20 @@ async function saveLessonCommentToSupabase(comment: LessonComment) {
   }
 }
 
+async function deleteLessonCommentFromSupabase(commentId: string) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await fetch(`${supabaseRestBaseUrl}/lesson_comments?id=eq.${encodeURIComponent(commentId)}`, {
+      method: 'DELETE',
+      headers: getSupabaseHeaders({
+        Prefer: 'return=minimal',
+      }),
+    });
+  } catch {
+    // Deleted ids are kept locally so removed comments do not reappear during a temporary outage.
+  }
+}
+
 function serializeSupabaseLearningProgress(studentId: string, progress: LearningProgress) {
   return {
     student_id: studentId,
@@ -906,6 +928,16 @@ async function saveLessonCommentToFirebase(comment: LessonComment) {
     });
   } catch {
     // Keep local storage as the fallback if Firebase is temporarily unavailable.
+  }
+}
+
+async function deleteLessonCommentFromFirebase(commentId: string) {
+  try {
+    await fetch(`${firestoreBaseUrl}/lessonComments/${encodeURIComponent(commentId)}?key=${firebaseConfig.apiKey}`, {
+      method: 'DELETE',
+    });
+  } catch {
+    // Deleted ids are kept locally so removed comments do not reappear during a temporary outage.
   }
 }
 
@@ -1137,6 +1169,18 @@ function readStoredLessonComments(): LessonComment[] {
         text: comment.text as string,
         createdAt: comment.createdAt as number,
       }));
+  } catch {
+    return [];
+  }
+}
+
+function readStoredDeletedLessonCommentIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = window.localStorage.getItem(deletedLessonCommentStorageKey);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string' && Boolean(id)) : [];
   } catch {
     return [];
   }
@@ -2041,12 +2085,14 @@ function LessonCommentsPanel({
   currentStudent,
   comments,
   setComments,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   lesson: LessonRecord;
   currentStudent: Student | null;
   comments: LessonComment[];
   setComments: React.Dispatch<React.SetStateAction<LessonComment[]>>;
-}) {
+} & CommentMutationHandlers) {
   const [commentText, setCommentText] = useState('');
   const lessonComments = comments
     .filter((comment) => comment.lessonId === lesson.id)
@@ -2102,13 +2148,13 @@ function LessonCommentsPanel({
       <div className="mt-6 space-y-3">
         {lessonComments.length > 0 ? (
           lessonComments.map((comment) => (
-            <div key={comment.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-bold text-white">{comment.studentName}</p>
-                <p className="text-xs text-slate-500">{formatCommentTime(comment.createdAt)}</p>
-              </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
-            </div>
+            <CommentCard
+              key={comment.id}
+              comment={comment}
+              canManage={currentStudent?.id === comment.studentId}
+              onUpdateComment={onUpdateComment}
+              onDeleteComment={onDeleteComment}
+            />
           ))
         ) : (
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
@@ -2129,6 +2175,85 @@ function formatCommentTime(value: number) {
   });
 }
 
+function CommentCard({
+  comment,
+  contextLabel,
+  canManage,
+  onUpdateComment,
+  onDeleteComment,
+}: {
+  comment: LessonComment;
+  contextLabel?: string;
+  canManage: boolean;
+  onUpdateComment: (commentId: string, text: string) => void;
+  onDeleteComment: (commentId: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftText, setDraftText] = useState(comment.text);
+
+  useEffect(() => {
+    if (!isEditing) setDraftText(comment.text);
+  }, [comment.text, isEditing]);
+
+  const saveEdit = () => {
+    const text = draftText.trim();
+    if (!text) return;
+    onUpdateComment(comment.id, text);
+    setIsEditing(false);
+  };
+
+  const deleteComment = () => {
+    const confirmed = window.confirm('Delete this comment?');
+    if (!confirmed) return;
+    onDeleteComment(comment.id);
+  };
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-bold text-white">{comment.studentName}</p>
+          {contextLabel && <p className="mt-1 text-xs font-semibold text-emerald-300">{contextLabel}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
+          {canManage && !isEditing && (
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => setIsEditing(true)} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-300 transition hover:border-emerald-300/40 hover:text-emerald-300" title="Edit comment">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onClick={deleteComment} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-300 transition hover:border-red-300/40 hover:text-red-300" title="Delete comment">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isEditing ? (
+        <div className="mt-3 space-y-3">
+          <textarea
+            value={draftText}
+            onChange={(event) => setDraftText(event.target.value)}
+            rows={3}
+            className="w-full resize-none rounded-xl border border-white/[0.08] bg-slate-950/40 px-3 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+          />
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => { setDraftText(comment.text); setIsEditing(false); }} className={ui.btnGhost}>
+              <X className="h-4 w-4" /> Cancel
+            </button>
+            <button type="button" onClick={saveEdit} disabled={!draftText.trim()} className={cx(ui.btnPrimary, !draftText.trim() && 'cursor-not-allowed opacity-60')}>
+              <CheckCircle2 className="h-4 w-4" /> Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
+      )}
+    </div>
+  );
+}
+
 function LessonPlayerPage({
   go,
   learningProgress,
@@ -2137,6 +2262,8 @@ function LessonPlayerPage({
   currentStudent,
   lessonComments,
   setLessonComments,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   go: (v: PageName) => void;
   learningProgress: LearningProgress;
@@ -2145,7 +2272,7 @@ function LessonPlayerPage({
   currentStudent: Student | null;
   lessonComments: LessonComment[];
   setLessonComments: React.Dispatch<React.SetStateAction<LessonComment[]>>;
-}) {
+} & CommentMutationHandlers) {
   const [activeLessonId, setActiveLessonId] = useState(getCurrentLesson(learningProgress, lessons).id);
   const [savedMessage, setSavedMessage] = useState('');
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) || getCurrentLesson(learningProgress, lessons);
@@ -2267,6 +2394,8 @@ function LessonPlayerPage({
             currentStudent={currentStudent}
             comments={lessonComments}
             setComments={setLessonComments}
+            onUpdateComment={onUpdateComment}
+            onDeleteComment={onDeleteComment}
           />
 
           <section className="grid gap-4 lg:grid-cols-3">
@@ -2420,13 +2549,15 @@ function ReportsPage({
   lessons,
   studentProgressById,
   lessonComments,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   go: (v: PageName) => void;
   students: Student[];
   lessons: LessonRecord[];
   studentProgressById: StudentProgressById;
   lessonComments: LessonComment[];
-}) {
+} & CommentMutationHandlers) {
   return (
     <div className={ui.page}>
       <BackLink go={go} to="Admin Panel" label="Back to admin panel" />
@@ -2440,6 +2571,8 @@ function ReportsPage({
         lessons={lessons}
         studentProgressById={studentProgressById}
         lessonComments={lessonComments}
+        onUpdateComment={onUpdateComment}
+        onDeleteComment={onDeleteComment}
       />
     </div>
   );
@@ -2586,6 +2719,8 @@ function AdminPanelPage({
   setStudents,
   studentProgressById,
   lessonComments,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   go: (v: PageName) => void;
   meetings: LiveClassMeeting[];
@@ -2597,7 +2732,7 @@ function AdminPanelPage({
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   studentProgressById: StudentProgressById;
   lessonComments: LessonComment[];
-}) {
+} & CommentMutationHandlers) {
   const adminMenu = ['Dashboard', 'Students', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
@@ -2876,6 +3011,8 @@ function AdminPanelPage({
               lessons={lessons}
               studentProgressById={studentProgressById}
               lessonComments={lessonComments}
+              onUpdateComment={onUpdateComment}
+              onDeleteComment={onDeleteComment}
               onSelectStudent={(id) => { setSelectedStudentId(id); setActiveAction(null); }}
               onCreateStudent={() => openAction('Add Student')}
               onEditStudent={(id) => {
@@ -2893,6 +3030,8 @@ function AdminPanelPage({
               onSelectLesson={(id) => { setSelectedLessonId(id); setActiveAction(null); setSavedMessage(''); }}
               onCreateLesson={() => openAction('Add Lesson')}
               onEditLesson={(lesson) => { setSelectedLessonId(lesson.id); openAction(`Edit ${lesson.title}`); }}
+              onUpdateComment={onUpdateComment}
+              onDeleteComment={onDeleteComment}
             />
           ) : adminActive === 'Reports' ? (
             <StudentActivityReport
@@ -2900,6 +3039,8 @@ function AdminPanelPage({
               lessons={lessons}
               studentProgressById={studentProgressById}
               lessonComments={lessonComments}
+              onUpdateComment={onUpdateComment}
+              onDeleteComment={onDeleteComment}
             />
           ) : adminActive === 'Meetings' ? (
             <div className="space-y-6">
@@ -3027,6 +3168,8 @@ function LessonManagerAdmin({
   onSelectLesson,
   onCreateLesson,
   onEditLesson,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   lessons: LessonRecord[];
   lessonComments: LessonComment[];
@@ -3035,7 +3178,7 @@ function LessonManagerAdmin({
   onSelectLesson: (id: string) => void;
   onCreateLesson: () => void;
   onEditLesson: (lesson: LessonRecord) => void;
-}) {
+} & CommentMutationHandlers) {
   const selectedVideoUrl = selectedLesson ? getLessonVideoUrl(selectedLesson) : '';
   const selectedPreviewUrl = selectedLesson ? getEmbeddableLessonUrl(selectedVideoUrl, `admin-preview-${selectedLesson.id}`) : '';
   const selectedPreviewIsVimeo = selectedLesson ? isVimeoLessonUrl(selectedVideoUrl) : false;
@@ -3183,13 +3326,13 @@ function LessonManagerAdmin({
               <div className="mt-4 max-h-[280px] space-y-2 overflow-y-auto pr-1">
                 {selectedLessonComments.length > 0 ? (
                   selectedLessonComments.map((comment) => (
-                    <div key={comment.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-white">{comment.studentName}</p>
-                        <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
-                    </div>
+                    <CommentCard
+                      key={comment.id}
+                      comment={comment}
+                      canManage
+                      onUpdateComment={onUpdateComment}
+                      onDeleteComment={onDeleteComment}
+                    />
                   ))
                 ) : (
                   <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-400">
@@ -3234,6 +3377,8 @@ function StudentDirectory({
   onSelectStudent,
   onCreateStudent,
   onEditStudent,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   students: Student[];
   selectedStudent: Student;
@@ -3243,7 +3388,7 @@ function StudentDirectory({
   onSelectStudent: (id: string) => void;
   onCreateStudent: () => void;
   onEditStudent: (id: string) => void;
-}) {
+} & CommentMutationHandlers) {
   const selectedProgress = getStudentProgress(selectedStudent.id, studentProgressById, lessons);
   const selectedProgressPercent = getCourseProgressPercent(selectedProgress, lessons);
   const selectedComments = lessonComments.filter((comment) => comment.studentId === selectedStudent.id);
@@ -3362,6 +3507,8 @@ function StudentDirectory({
           lessons={lessons}
           progress={selectedProgress}
           comments={selectedComments}
+          onUpdateComment={onUpdateComment}
+          onDeleteComment={onDeleteComment}
         />
       </aside>
     </div>
@@ -3373,12 +3520,14 @@ function StudentActivityDetail({
   lessons,
   progress,
   comments,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   student: Student;
   lessons: LessonRecord[];
   progress: LearningProgress;
   comments: LessonComment[];
-}) {
+} & CommentMutationHandlers) {
   const completed = getCompletedSet(progress);
   const lessonTitleById = new Map(lessons.map((lesson) => [lesson.id, lesson.title]));
   const activeLessons = lessons.filter((lesson) => completed.has(lesson.id) || (progress.watchProgressByLessonId[lesson.id] || 0) > 0);
@@ -3427,13 +3576,14 @@ function StudentActivityDetail({
         <div className="mt-4 max-h-[260px] space-y-2 overflow-y-auto pr-1">
           {recentComments.length > 0 ? (
             recentComments.map((comment) => (
-              <div key={comment.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-emerald-300">{lessonTitleById.get(comment.lessonId) || 'Unknown lesson'}</p>
-                  <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
-              </div>
+              <CommentCard
+                key={comment.id}
+                comment={comment}
+                contextLabel={lessonTitleById.get(comment.lessonId) || 'Unknown lesson'}
+                canManage
+                onUpdateComment={onUpdateComment}
+                onDeleteComment={onDeleteComment}
+              />
             ))
           ) : (
             <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-400">
@@ -3451,12 +3601,14 @@ function StudentActivityReport({
   lessons,
   studentProgressById,
   lessonComments,
+  onUpdateComment,
+  onDeleteComment,
 }: {
   students: Student[];
   lessons: LessonRecord[];
   studentProgressById: StudentProgressById;
   lessonComments: LessonComment[];
-}) {
+} & CommentMutationHandlers) {
   const lessonTitleById = new Map(lessons.map((lesson) => [lesson.id, lesson.title]));
   const progressRows = students.map((student) => {
     const progress = getStudentProgress(student.id, studentProgressById, lessons);
@@ -3543,16 +3695,14 @@ function StudentActivityReport({
         <div className="space-y-3">
           {latestComments.length > 0 ? (
             latestComments.map((comment) => (
-              <div key={comment.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-bold text-white">{comment.studentName}</p>
-                    <p className="mt-1 text-xs text-emerald-300">{lessonTitleById.get(comment.lessonId) || 'Unknown lesson'}</p>
-                  </div>
-                  <p className="text-xs text-slate-500">{formatCommentTime(comment.createdAt)}</p>
-                </div>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
-              </div>
+              <CommentCard
+                key={comment.id}
+                comment={comment}
+                contextLabel={lessonTitleById.get(comment.lessonId) || 'Unknown lesson'}
+                canManage
+                onUpdateComment={onUpdateComment}
+                onDeleteComment={onDeleteComment}
+              />
             ))
           ) : (
             <p className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
@@ -3583,13 +3733,13 @@ function StudentActivityReport({
                 </div>
                 <div className="mt-4 space-y-2">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="rounded-xl border border-white/[0.05] bg-slate-950/30 px-3 py-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-white">{comment.studentName}</p>
-                        <p className="text-[11px] text-slate-500">{formatCommentTime(comment.createdAt)}</p>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.text}</p>
-                    </div>
+                    <CommentCard
+                      key={comment.id}
+                      comment={comment}
+                      canManage
+                      onUpdateComment={onUpdateComment}
+                      onDeleteComment={onDeleteComment}
+                    />
                   ))}
                 </div>
               </div>
@@ -3842,6 +3992,7 @@ export default function App() {
   const [students, setStudents] = useState<Student[]>(() => readStoredStudents());
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(null);
   const [lessonComments, setLessonComments] = useState<LessonComment[]>(() => readStoredLessonComments());
+  const [deletedLessonCommentIds, setDeletedLessonCommentIds] = useState<string[]>(() => readStoredDeletedLessonCommentIds());
   const [studentProgressById, setStudentProgressById] = useState<StudentProgressById>(() => readStoredStudentProgress(lessons));
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
   const currentStudent = students.find((student) => student.id === currentStudentId) || null;
@@ -3878,6 +4029,10 @@ export default function App() {
   }, [students]);
 
   useEffect(() => {
+    window.localStorage.setItem(deletedLessonCommentStorageKey, JSON.stringify(deletedLessonCommentIds));
+  }, [deletedLessonCommentIds]);
+
+  useEffect(() => {
     let mounted = true;
     const syncStoredActivity = async () => {
       const localComments = readStoredLessonComments();
@@ -3889,7 +4044,9 @@ export default function App() {
         fetchSupabaseStudentProgress(lessons),
       ]);
       if (!mounted) return;
-      const nextComments = mergeLessonComments(localComments, firebaseComments, supabaseComments);
+      const deletedIds = new Set(deletedLessonCommentIds);
+      const nextComments = mergeLessonComments(localComments, firebaseComments, supabaseComments)
+        .filter((comment) => !deletedIds.has(comment.id));
       const nextProgressById = mergeStudentProgress(
         mergeStudentProgress(localProgressById, firebaseProgressById, lessons),
         supabaseProgressById,
@@ -3901,9 +4058,13 @@ export default function App() {
     const handleStorage = (event: StorageEvent) => {
       if (
         event.key === lessonCommentStorageKey
+        || event.key === deletedLessonCommentStorageKey
         || event.key === studentProgressStorageKey
         || event.key === null
       ) {
+        if (event.key === deletedLessonCommentStorageKey || event.key === null) {
+          setDeletedLessonCommentIds(readStoredDeletedLessonCommentIds());
+        }
         void syncStoredActivity();
       }
     };
@@ -3922,7 +4083,7 @@ export default function App() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.clearInterval(timer);
     };
-  }, [lessons]);
+  }, [deletedLessonCommentIds, lessons]);
 
   useEffect(() => {
     window.localStorage.setItem(lessonCommentStorageKey, JSON.stringify(lessonComments));
@@ -3956,6 +4117,21 @@ export default function App() {
         : { ...prev, [currentStudentId]: sanitized }
     ));
   }, [learningProgress, currentStudentId, lessons]);
+
+  const updateLessonComment = (commentId: string, text: string) => {
+    const nextText = text.trim();
+    if (!nextText) return;
+    setLessonComments((prev) => prev.map((comment) => (
+      comment.id === commentId ? { ...comment, text: nextText } : comment
+    )));
+  };
+
+  const deleteLessonComment = (commentId: string) => {
+    setDeletedLessonCommentIds((prev) => (prev.includes(commentId) ? prev : [...prev, commentId]));
+    setLessonComments((prev) => prev.filter((comment) => comment.id !== commentId));
+    void deleteLessonCommentFromFirebase(commentId);
+    void deleteLessonCommentFromSupabase(commentId);
+  };
 
   const go = (page: PageName) => {
     const next = getNextPage(page, isLoggedIn, role);
@@ -4009,13 +4185,13 @@ export default function App() {
       {active === 'Courses' && <CoursesPage go={go} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} />}
-      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} studentProgressById={studentProgressById} lessonComments={lessonComments} />}
+      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
-      {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} />}
+      {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Quiz' && <QuizPage go={go} />}
       {active === 'Assignments' && <AssignmentsPage go={go} />}
       {active === 'Resources' && <ResourcesPage go={go} />}
-      {active === 'Reports' && <ReportsPage go={go} students={students} lessons={lessons} studentProgressById={studentProgressById} lessonComments={lessonComments} />}
+      {active === 'Reports' && <ReportsPage go={go} students={students} lessons={lessons} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Live Meeting' && <LiveMeetingPage go={go} meetings={liveMeetings} initialMeetingId={activeMeetingId} />}
       {active === 'Login' && <LoginPage login={login} />}
     </Shell>
