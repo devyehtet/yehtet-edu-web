@@ -1099,6 +1099,7 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-006', name: 'Yamon Zin', email: 'yamonzin14@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-007', name: 'Ye Thu Leo', email: 'yethu.leo.mm@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-008', name: 'Htet Ben', email: 'htetben7@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 22, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-009', name: 'Thet Paing Phyo', email: 'thetpaingphyo70@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 24, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
 const demoStudents: Student[] = [
