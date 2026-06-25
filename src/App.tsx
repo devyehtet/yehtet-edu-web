@@ -219,6 +219,7 @@ const marketingFunnelFrameworkPartTwoVideoUrl = 'https://vimeo.com/1201900568?sh
 const understandingCustomerPsychologyVideoUrl = 'https://vimeo.com/1202908271?share=copy&fl=sv&fe=ci';
 const contentSocialMediaStrategyVideoUrl = 'https://vimeo.com/1203916268?share=copy&fl=sv&fe=ci';
 const organicSocialMediaStrategyVideoUrl = 'https://vimeo.com/1204279505?share=copy&fl=sv&fe=ci';
+const socialMediaAlgorithmsVideoUrl = 'https://vimeo.com/1204621767?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -235,6 +236,7 @@ const defaultLessonVideoUrls = [
   understandingCustomerPsychologyVideoUrl,
   contentSocialMediaStrategyVideoUrl,
   organicSocialMediaStrategyVideoUrl,
+  socialMediaAlgorithmsVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
