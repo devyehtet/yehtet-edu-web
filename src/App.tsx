@@ -221,6 +221,7 @@ const contentSocialMediaStrategyVideoUrl = 'https://vimeo.com/1203916268?share=c
 const organicSocialMediaStrategyVideoUrl = 'https://vimeo.com/1204279505?share=copy&fl=sv&fe=ci';
 const socialMediaAlgorithmsVideoUrl = 'https://vimeo.com/1204621767?share=copy&fl=sv&fe=ci';
 const introductionToMetaAdsVideoUrl = 'https://vimeo.com/1204870302?share=copy&fl=sv&fe=ci';
+const metaAdsObjectivesVideoUrl = 'https://vimeo.com/1206212829?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -239,6 +240,7 @@ const defaultLessonVideoUrls = [
   organicSocialMediaStrategyVideoUrl,
   socialMediaAlgorithmsVideoUrl,
   introductionToMetaAdsVideoUrl,
+  metaAdsObjectivesVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
