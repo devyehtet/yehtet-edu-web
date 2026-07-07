@@ -223,6 +223,7 @@ const socialMediaAlgorithmsVideoUrl = 'https://vimeo.com/1204621767?share=copy&f
 const introductionToMetaAdsVideoUrl = 'https://vimeo.com/1204870302?share=copy&fl=sv&fe=ci';
 const metaAdsObjectivesVideoUrl = 'https://vimeo.com/1206212829?share=copy&fl=sv&fe=ci';
 const digitalMarketingFunnelStudyNotesVideoUrl = 'https://vimeo.com/1206540165?share=copy&fl=sv&fe=ci';
+const metaAdsCampaignStructureVideoUrl = 'https://vimeo.com/1207845244?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -243,6 +244,7 @@ const defaultLessonVideoUrls = [
   introductionToMetaAdsVideoUrl,
   metaAdsObjectivesVideoUrl,
   digitalMarketingFunnelStudyNotesVideoUrl,
+  metaAdsCampaignStructureVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
@@ -349,7 +351,6 @@ const digitalMarketingLessons = [
   'Meta Ads Objectives and Business Goals',
   'Digital Marketing Funnel Study Notes',
   'Meta Ads Campaign Structure',
-  'Campaign, Ad Set, and Ad Level Explained',
   'Campaign Budget Optimization Explained',
   'Learning Phase and Campaign Performance',
   'Estimated Ad Recall Lift Explained',
@@ -381,7 +382,7 @@ const digitalMarketingLessons = [
 ];
 
 const courseCards = [
-  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '48 lessons', modules: '8 modules' },
+  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '47 lessons', modules: '8 modules' },
   { title: 'Digital Media Planning & Buying', level: 'Intermediate to Professional', lessons: 'Coming soon', modules: 'Media planning modules' },
   { title: 'Campaign Portfolio & Capstone Support', level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
 ];
@@ -389,9 +390,9 @@ const courseCards = [
 const modules = [
   { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 12) },
   { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(12, 18) },
-  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(18, 27) },
-  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(27, 38) },
-  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(38, 48) },
+  { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(18, 26) },
+  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(26, 37) },
+  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(37, 47) },
 ];
 
 const stableLessonIdsByTitle: Record<string, string> = {
@@ -405,10 +406,39 @@ const stableLessonIdsByTitle: Record<string, string> = {
   'Introduction to Meta Ads': 'm2-l5',
   'Meta Ads Objectives and Business Goals': 'm2-l6',
   'Digital Marketing Funnel Study Notes': 'm2-l7',
+  'Meta Ads Campaign Structure': 'm3-l1',
+  'Campaign Budget Optimization Explained': 'm3-l3',
+  'Learning Phase and Campaign Performance': 'm3-l4',
+  'Estimated Ad Recall Lift Explained': 'm3-l5',
+  'Meta Ads Budget and Bidding Strategies': 'm3-l6',
+  'Audience Targeting in Meta Ads': 'm3-l7',
+  'Creative Strategy for Meta Ads': 'm3-l8',
+  'TikTok Ads Overview and Creative Best Practices': 'm3-l9',
+  'TikTok Targeting and Scaling Strategy': 'm4-l1',
+  'The Google Ads Ecosystem': 'm4-l2',
+  'Search Intent and Keyword Strategy': 'm4-l3',
+  'Google Ads Basics: Your Digital Storefront': 'm4-l4',
+  'Performance Max: AI-Powered Campaigns': 'm4-l5',
+  'SEO Fundamentals': 'm4-l6',
+  'SEO vs SEM: Organic and Paid Search': 'm4-l7',
+  'Analytics and Data-Driven Decision Making': 'm4-l8',
+  'GA4 Basics: Your Marketing Command Center': 'm4-l9',
+  'Tracking and Pixel Fundamentals': 'm4-l10',
+  'Full-Funnel Budget Allocation Strategy': 'm4-l11',
+  'Advanced Optimization Beyond A/B Testing': 'm5-l1',
+  'The Optimization Stack That Scales': 'm5-l2',
+  'Cross-Platform Marketing Strategy': 'm5-l3',
+  'Platform Integration and 360 Customer View': 'm5-l4',
+  'Digital Marketing Career Paths': 'm5-l5',
+  'Specialized Digital Marketing Career Trajectories': 'm5-l6',
+  'Capstone Project: Portfolio Masterpiece': 'm5-l7',
+  'Building Your Marketing Portfolio': 'm5-l8',
+  'Your Digital Marketing Future Starts Now': 'm5-l9',
+  'Your Future is Digital, Strategic, and Yours': 'm5-l10',
 };
 
-const retiredLessonIds = new Set(['m2-l2']);
-const retiredLessonTitles = new Set(['Mastering Social Media in 2025', 'Mastering Social Media in 2026']);
+const retiredLessonIds = new Set(['m2-l2', 'm3-l2']);
+const retiredLessonTitles = new Set(['Mastering Social Media in 2025', 'Mastering Social Media in 2026', 'Campaign, Ad Set, and Ad Level Explained']);
 
 const lessonResourceUrlsByTitle: Record<string, string> = {
   [ecosystemMapTemplateTitle]: ecosystemMapTemplateResourceUrl,
@@ -1096,7 +1126,7 @@ const adminStats: Array<{ label: string; value: string; icon: IconType }> = [
 ];
 
 const homeStats: Array<{ label: string; value: string; icon: IconType }> = [
-  { label: 'Lessons', value: '48', icon: PlayCircle },
+  { label: 'Lessons', value: '47', icon: PlayCircle },
   { label: 'Modules', value: '8+', icon: BookOpen },
   { label: 'Live Class', value: 'Weekly', icon: CalendarDays },
   { label: 'Next Course', value: 'Media Buying', icon: ArrowRight },
@@ -1489,7 +1519,7 @@ function HomePage({ go }: { go: (v: PageName) => void }) {
             <div>
               <p className={ui.eyebrow}>Featured course</p>
               <h2 className="mt-2 text-xl font-bold text-white">Digital Marketing — Beginner to Professional</h2>
-              <p className="mt-2 text-sm text-slate-400">48 lessons · 8 modules · Capstone project</p>
+              <p className="mt-2 text-sm text-slate-400">47 lessons · 8 modules · Capstone project</p>
             </div>
             <LogoMark size="md" />
           </div>
@@ -1705,7 +1735,7 @@ function CourseDetailPage({ go }: { go: (v: PageName) => void }) {
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Metric icon={BookOpen} label="Modules" value="8+" detail="Structured roadmap" />
-        <Metric icon={PlayCircle} label="Video lessons" value="48" detail="Vimeo + progress tracking" />
+        <Metric icon={PlayCircle} label="Video lessons" value="47" detail="Vimeo + progress tracking" />
         <Metric icon={CalendarDays} label="Next course" value="Media Buying" detail="Continue the path" />
       </section>
 
@@ -2724,7 +2754,7 @@ function LiveMeetingPage({
 const adminContent: Record<string, { title: string; description: string; primaryAction: string; cards: Array<{ title: string; items: string[] }> }> = {
   Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Reports', items: ['Student progress percentage', 'Video watch history', 'Quiz score report', 'Assignment review status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
-  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '48 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
+  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '47 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
   Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
   Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
