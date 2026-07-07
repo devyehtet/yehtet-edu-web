@@ -447,6 +447,10 @@ const lessonResourceUrlsByTitle: Record<string, string> = {
   [marketingFunnelFrameworkPartTwoTitle]: marketingFunnelFrameworkPartOneResourceUrl,
 };
 
+const lessonDurationsByTitle: Record<string, string> = {
+  'Meta Ads Campaign Structure': '45 min',
+};
+
 const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
   module.lessons.map((title, lessonIndex) => {
     const globalIndex = modules.slice(0, moduleIndex).reduce((total, item) => total + item.lessons.length, 0) + lessonIndex;
@@ -459,7 +463,7 @@ const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
       moduleIndex,
       lessonIndex,
       globalIndex,
-      duration: globalIndex === 0 ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`,
+      duration: lessonDurationsByTitle[title] || (globalIndex === 0 ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`),
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
       resource: resourceUrl ? title : `${module.name} checklist`,
@@ -517,6 +521,7 @@ function readStoredLessons(): LessonRecord[] {
         && Boolean(defaultLessonVideoUrl)
         && storedLesson?.videoUrl
         && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
+      const enforcedLessonDuration = lessonDurationsByTitle[lesson.title];
       return normalizeLessonRecord({
         ...lesson,
         ...storedLesson,
@@ -524,6 +529,7 @@ function readStoredLessons(): LessonRecord[] {
         ...(shouldUseNewFirstLessonDuration ? { duration: firstLessonDuration } : {}),
         ...(shouldUseNewSecondLessonVideo ? { videoUrl: secondLessonVideoUrl } : {}),
         ...(shouldUseNewDefaultLessonVideo ? { videoUrl: defaultLessonVideoUrl } : {}),
+        ...(enforcedLessonDuration ? { duration: enforcedLessonDuration } : {}),
       }, lesson);
     });
     const customLessons = parsed
