@@ -225,6 +225,7 @@ const metaAdsObjectivesVideoUrl = 'https://vimeo.com/1206212829?share=copy&fl=sv
 const digitalMarketingFunnelStudyNotesVideoUrl = 'https://vimeo.com/1206540165?share=copy&fl=sv&fe=ci';
 const metaAdsCampaignStructureVideoUrl = 'https://vimeo.com/1207845244?share=copy&fl=sv&fe=ci';
 const campaignBudgetOptimizationVideoUrl = 'https://vimeo.com/1211967521?share=copy&fl=sv&fe=ci';
+const learningPhaseCampaignPerformanceVideoUrl = 'https://vimeo.com/1212277196?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -247,6 +248,7 @@ const defaultLessonVideoUrls = [
   digitalMarketingFunnelStudyNotesVideoUrl,
   metaAdsCampaignStructureVideoUrl,
   campaignBudgetOptimizationVideoUrl,
+  learningPhaseCampaignPerformanceVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
