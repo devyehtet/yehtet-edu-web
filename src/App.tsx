@@ -68,6 +68,17 @@ type Student = {
   assignments: string;
   quizScore: string;
 };
+type TuitionPaymentRecord = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  course: string;
+  tuitionFee: number;
+  paidAmount: number;
+  paidDate: string;
+  note?: string;
+};
 
 type Role = 'admin' | 'student' | null;
 type LoginRequest = { role: 'admin' | 'student'; username: string; password: string };
@@ -1174,6 +1185,20 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-013', name: 'Zwe Zarni Hein', email: 'zwezarnihein1@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 2, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
+const tuitionPaymentRecords: TuitionPaymentRecord[] = [
+  {
+    id: 'PAY-STU-SEED-013-2026-08-02',
+    studentId: 'STU-SEED-013',
+    studentName: 'Zwe Zarni Hein',
+    studentEmail: 'zwezarnihein1@gmail.com',
+    course: defaultCourseTitle,
+    tuitionFee: 620000,
+    paidAmount: 310000,
+    paidDate: '2nd August 2026',
+    note: 'First installment',
+  },
+];
+
 const demoStudents: Student[] = [
   { id: 'STU-001', name: 'Aung Min Thu', email: 'aungmin@example.com', course: defaultCourseTitle, progress: 72, status: 'Active', lastActive: 'Today, 09:30 AM', joined: 'Jan 12, 2026', assignments: '4 / 6 submitted', quizScore: '86% avg' },
   { id: 'STU-002', name: 'May Zin Htet', email: 'mayzin@example.com', course: defaultCourseTitle, progress: 38, status: 'Active', lastActive: 'Yesterday, 08:10 PM', joined: 'Jan 15, 2026', assignments: '2 / 6 submitted', quizScore: '78% avg' },
@@ -1216,6 +1241,28 @@ function readStoredStudents(): Student[] {
   } catch {
     return defaultStudents;
   }
+}
+
+function formatMmk(amount: number) {
+  return `${new Intl.NumberFormat('en-US').format(amount)} MMK`;
+}
+
+function getTuitionBalance(payment: TuitionPaymentRecord) {
+  return Math.max(payment.tuitionFee - payment.paidAmount, 0);
+}
+
+function getTuitionPaymentStatus(payment: TuitionPaymentRecord) {
+  if (payment.paidAmount >= payment.tuitionFee) return 'Paid';
+  if (payment.paidAmount > 0) return 'Partial';
+  return 'Unpaid';
+}
+
+function getStudentTuitionPayment(student: Student, payments: TuitionPaymentRecord[]) {
+  const studentEmail = student.email.toLowerCase();
+  return payments.find((payment) => (
+    payment.studentId === student.id
+    || payment.studentEmail.toLowerCase() === studentEmail
+  ));
 }
 
 function readStoredLessonComments(): LessonComment[] {
@@ -2769,8 +2816,9 @@ function LiveMeetingPage({
 // =====================================================================
 
 const adminContent: Record<string, { title: string; description: string; primaryAction: string; cards: Array<{ title: string; items: string[] }> }> = {
-  Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Reports', items: ['Student progress percentage', 'Video watch history', 'Quiz score report', 'Assignment review status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
+  Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Payments', items: ['Enrollment fee ledger', 'Paid amount and balance', 'Payment date', 'Course payment status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
+  Payments: { title: 'Enrollment Payment Ledger', description: 'Review student course fees, payment dates, paid amounts, and remaining balances.', primaryAction: 'Record Payment', cards: [] },
   Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '48 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
   Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
@@ -2790,6 +2838,7 @@ function AdminPanelPage({
   setLessons,
   students,
   setStudents,
+  tuitionPayments,
   studentProgressById,
   lessonComments,
   onUpdateComment,
@@ -2803,10 +2852,11 @@ function AdminPanelPage({
   setLessons: React.Dispatch<React.SetStateAction<LessonRecord[]>>;
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  tuitionPayments: TuitionPaymentRecord[];
   studentProgressById: StudentProgressById;
   lessonComments: LessonComment[];
 } & CommentMutationHandlers) {
-  const adminMenu = ['Dashboard', 'Students', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
+  const adminMenu = ['Dashboard', 'Students', 'Payments', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
@@ -3040,7 +3090,7 @@ function AdminPanelPage({
             title={current.title}
             description={current.description}
             actions={
-              adminActive === 'Meetings' ? (
+              adminActive === 'Payments' ? undefined : adminActive === 'Meetings' ? (
                 <>
                   <button onClick={startInstantMeeting} className={ui.btnPrimary}>
                     <Radio className="h-4 w-4" /> Start instant class
@@ -3081,6 +3131,7 @@ function AdminPanelPage({
             <StudentDirectory
               students={students}
               selectedStudent={selectedStudent}
+              tuitionPayments={tuitionPayments}
               lessons={lessons}
               studentProgressById={studentProgressById}
               lessonComments={lessonComments}
@@ -3094,6 +3145,8 @@ function AdminPanelPage({
                 openAction(`Edit ${studentToEdit.name}`);
               }}
             />
+          ) : adminActive === 'Payments' ? (
+            <TuitionPaymentsAdmin students={students} payments={tuitionPayments} />
           ) : adminActive === 'Lessons' ? (
             <LessonManagerAdmin
               lessons={lessons}
@@ -3222,7 +3275,20 @@ function AdminPanelPage({
               <StatRow stats={adminStats} />
               <div className="grid gap-4 lg:grid-cols-2">
                 {current.cards.map((card) => (
-                  <Panel key={card.title} title={card.title} items={card.items} onAction={() => openAction(card.title)} />
+                  <Panel
+                    key={card.title}
+                    title={card.title}
+                    items={card.items}
+                    onAction={() => {
+                      if (card.title === 'Payments') {
+                        setAdminActive('Payments');
+                        setActiveAction(null);
+                        setSavedMessage('');
+                        return;
+                      }
+                      openAction(card.title);
+                    }}
+                  />
                 ))}
               </div>
             </>
@@ -3441,9 +3507,98 @@ function LessonMetaField({ label, value, mono = false }: { label: string; value:
   );
 }
 
+function TuitionPaymentsAdmin({ students, payments }: { students: Student[]; payments: TuitionPaymentRecord[] }) {
+  const rows = payments.map((payment) => {
+    const student = students.find((item) => (
+      item.id === payment.studentId
+      || item.email.toLowerCase() === payment.studentEmail.toLowerCase()
+    ));
+    return { payment, student };
+  });
+  const totalTuition = payments.reduce((total, payment) => total + payment.tuitionFee, 0);
+  const totalPaid = payments.reduce((total, payment) => total + payment.paidAmount, 0);
+  const totalBalance = payments.reduce((total, payment) => total + getTuitionBalance(payment), 0);
+
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-3 md:grid-cols-4">
+        <ActivityMetric label="Payment records" value={`${payments.length}`} />
+        <ActivityMetric label="Total tuition" value={formatMmk(totalTuition)} />
+        <ActivityMetric label="Total paid" value={formatMmk(totalPaid)} />
+        <ActivityMetric label="Balance left" value={formatMmk(totalBalance)} />
+      </section>
+
+      <section className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={ui.eyebrow}>Enrollment fees</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>Student payment records</h2>
+          </div>
+          <span className={ui.chipMuted}>{formatMmk(totalBalance)} balance</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-[1040px] w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                <th className="py-3 pr-4 font-medium">Student</th>
+                <th className="py-3 pr-4 font-medium">Course</th>
+                <th className="py-3 pr-4 font-medium">Course fee</th>
+                <th className="py-3 pr-4 font-medium">Paid</th>
+                <th className="py-3 pr-4 font-medium">Balance</th>
+                <th className="py-3 pr-4 font-medium">Paid date</th>
+                <th className="py-3 pr-4 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ payment, student }) => {
+                const balance = getTuitionBalance(payment);
+                const status = getTuitionPaymentStatus(payment);
+                const paidPercent = payment.tuitionFee > 0 ? Math.round((payment.paidAmount / payment.tuitionFee) * 100) : 0;
+                return (
+                  <tr key={payment.id} className="border-b border-white/[0.04]">
+                    <td className="py-4 pr-4">
+                      <p className="font-medium text-white">{student?.name || payment.studentName}</p>
+                      <p className="text-xs text-slate-500">{student?.email || payment.studentEmail}</p>
+                    </td>
+                    <td className="max-w-[260px] py-4 pr-4 text-slate-300">{payment.course}</td>
+                    <td className="py-4 pr-4 font-medium text-slate-200">{formatMmk(payment.tuitionFee)}</td>
+                    <td className="py-4 pr-4">
+                      <div className="space-y-2">
+                        <p className="font-medium text-emerald-300">{formatMmk(payment.paidAmount)}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24"><ProgressBar value={paidPercent} /></div>
+                          <span className="text-xs font-medium text-slate-400">{paidPercent}%</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 pr-4 font-medium text-slate-200">{formatMmk(balance)}</td>
+                    <td className="py-4 pr-4 text-slate-400">{payment.paidDate}</td>
+                    <td className="py-4 pr-4">
+                      <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', status === 'Paid' ? 'bg-emerald-300/15 text-emerald-300' : status === 'Partial' ? 'bg-amber-300/15 text-amber-300' : 'bg-slate-300/10 text-slate-300')}>
+                        {status}
+                      </span>
+                      {payment.note && <p className="mt-2 text-xs text-slate-500">{payment.note}</p>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {payments.length === 0 && (
+          <p className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-slate-400">
+            No enrollment payments have been recorded yet.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function StudentDirectory({
   students,
   selectedStudent,
+  tuitionPayments,
   lessons,
   studentProgressById,
   lessonComments,
@@ -3455,6 +3610,7 @@ function StudentDirectory({
 }: {
   students: Student[];
   selectedStudent: Student;
+  tuitionPayments: TuitionPaymentRecord[];
   lessons: LessonRecord[];
   studentProgressById: StudentProgressById;
   lessonComments: LessonComment[];
@@ -3465,6 +3621,7 @@ function StudentDirectory({
   const selectedProgress = getStudentProgress(selectedStudent.id, studentProgressById, lessons);
   const selectedProgressPercent = getCourseProgressPercent(selectedProgress, lessons);
   const selectedComments = lessonComments.filter((comment) => comment.studentId === selectedStudent.id);
+  const selectedPayment = getStudentTuitionPayment(selectedStudent, tuitionPayments);
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
       <div className={ui.card}>
@@ -3478,11 +3635,12 @@ function StudentDirectory({
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[860px] w-full border-collapse text-left text-sm">
+          <table className="min-w-[980px] w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
                 <th className="py-3 pr-4 font-medium">Student</th>
                 <th className="py-3 pr-4 font-medium">Progress</th>
+                <th className="py-3 pr-4 font-medium">Payment</th>
                 <th className="py-3 pr-4 font-medium">Comments</th>
                 <th className="py-3 pr-4 font-medium">Status</th>
                 <th className="py-3 pr-4 font-medium">Last active</th>
@@ -3495,6 +3653,7 @@ function StudentDirectory({
                 const progress = getStudentProgress(student.id, studentProgressById, lessons);
                 const progressPercent = getCourseProgressPercent(progress, lessons);
                 const commentCount = lessonComments.filter((comment) => comment.studentId === student.id).length;
+                const payment = getStudentTuitionPayment(student, tuitionPayments);
                 return (
                   <tr
                     key={student.id}
@@ -3515,6 +3674,16 @@ function StudentDirectory({
                         <div className="w-20"><ProgressBar value={progressPercent} /></div>
                         <span className="text-xs font-medium text-slate-400">{progressPercent}%</span>
                       </div>
+                    </td>
+                    <td className="py-4 pr-4">
+                      {payment ? (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-300">{getTuitionPaymentStatus(payment)}</p>
+                          <p className="text-xs text-slate-500">Balance {formatMmk(getTuitionBalance(payment))}</p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">No record</span>
+                      )}
                     </td>
                     <td className="py-4 pr-4 text-slate-400">{commentCount}</td>
                     <td className="py-4 pr-4">
@@ -3560,6 +3729,25 @@ function StudentDirectory({
           <ProfileField label="Status" value={selectedStudent.status} />
           <ProfileField label="Assignments" value={selectedStudent.assignments} />
           <ProfileField label="Quiz score" value={selectedStudent.quizScore} />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className={ui.eyebrow}>Payment</p>
+            <span className={selectedPayment ? cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', getTuitionPaymentStatus(selectedPayment) === 'Paid' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300') : ui.chipMuted}>
+              {selectedPayment ? getTuitionPaymentStatus(selectedPayment) : 'No record'}
+            </span>
+          </div>
+          {selectedPayment ? (
+            <div className="mt-4 space-y-2">
+              <ProfileField label="Course fee" value={formatMmk(selectedPayment.tuitionFee)} />
+              <ProfileField label="Paid" value={formatMmk(selectedPayment.paidAmount)} />
+              <ProfileField label="Balance" value={formatMmk(getTuitionBalance(selectedPayment))} />
+              <ProfileField label="Paid date" value={selectedPayment.paidDate} />
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-slate-400">No course enrollment payment has been recorded for this student yet.</p>
+          )}
         </div>
 
         <div className="mt-6">
@@ -4258,7 +4446,7 @@ export default function App() {
       {active === 'Courses' && <CoursesPage go={go} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} />}
-      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
+      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPaymentRecords} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Quiz' && <QuizPage go={go} />}
