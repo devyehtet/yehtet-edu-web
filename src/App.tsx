@@ -242,6 +242,7 @@ const createMetaBusinessSuiteAdAccountVideoUrl = 'https://vimeo.com/1213885142?s
 const metaSaveAudienceCreateVideoUrl = 'https://vimeo.com/1217918769?share=copy&fl=sv&fe=ci';
 const metaAwarenessCampaignVideoUrl = 'https://vimeo.com/1217941282?share=copy&fl=sv&fe=ci';
 const webDevelopingMetaPixelInstallVideoUrl = 'https://vimeo.com/1218834233?share=copy&fl=sv&fe=ci';
+const webDevelopingMetaPixelInstallResourceUrl = 'https://drive.google.com/file/d/1EUScXpBgjTJuutqK-5uNkGedK3_cZ9i7/view?usp=sharing';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -478,6 +479,7 @@ const lessonResourceUrlsByTitle: Record<string, string> = {
   [ecosystemMapTemplatePartTwoTitle]: ecosystemMapTemplateResourceUrl,
   [marketingFunnelFrameworkPartOneTitle]: marketingFunnelFrameworkPartOneResourceUrl,
   [marketingFunnelFrameworkPartTwoTitle]: marketingFunnelFrameworkPartOneResourceUrl,
+  'Web Developing & Meta Pixel Install': webDevelopingMetaPixelInstallResourceUrl,
 };
 
 const lessonDurationsByTitle: Record<string, string> = {
