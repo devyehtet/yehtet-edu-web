@@ -118,6 +118,25 @@ type LessonRecord = {
   videoUrl: string;
   requiredWatchPercentage: number;
 };
+type CourseModule = {
+  title: string;
+  name: string;
+  status: 'Completed' | 'In progress' | 'Locked';
+  progress: number;
+  lessons: string[];
+};
+type CourseCardRecord = {
+  title: string;
+  level: string;
+  lessons: string;
+  modules: string;
+};
+type CourseDetailConfig = {
+  title: string;
+  description: string;
+  modules: CourseModule[];
+  metrics: Array<{ icon: IconType; label: string; value: string; detail: string }>;
+};
 type LessonComment = {
   id: string;
   lessonId: string;
@@ -365,6 +384,10 @@ function getJitsiMeetingUrl(meeting: LiveClassMeeting) {
 // Static data
 // =====================================================================
 
+const defaultCourseTitle = 'Digital Marketing Beginner to Professional';
+const mediaPlanningBuyingCourseTitle = 'Digital Media Planning & Buying';
+const capstoneSupportCourseTitle = 'Campaign Portfolio & Capstone Support';
+
 const digitalMarketingLessons = [
   'Digital Marketing: Beginner to Professional',
   'Course Overview: What You Will Learn',
@@ -423,19 +446,364 @@ const digitalMarketingLessons = [
   'Your Future is Digital, Strategic, and Yours',
 ];
 
-const courseCards = [
-  { title: 'Digital Marketing Beginner to Professional', level: 'Beginner to Professional', lessons: '55 lessons', modules: '8 modules' },
-  { title: 'Digital Media Planning & Buying', level: 'Intermediate to Professional', lessons: 'Coming soon', modules: 'Media planning modules' },
-  { title: 'Campaign Portfolio & Capstone Support', level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
-];
-
-const modules = [
+const modules: CourseModule[] = [
   { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 12) },
   { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(12, 18) },
   { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(18, 34) },
   { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(34, 45) },
   { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(45, 55) },
 ];
+
+const mediaPlanningBuyingModules: CourseModule[] = [
+  {
+    title: 'Module 01',
+    name: 'Media Planning & Buying Foundation',
+    status: 'Completed',
+    progress: 100,
+    lessons: [
+      'Media Planning နဲ့ Media Buying ကွာခြားချက်',
+      'Business Goal၊ Marketing Goal နဲ့ Campaign Goal',
+      'Campaign မစတင်မီ Planning လုပ်ရခြင်း',
+      'Media Buyer တစ်ယောက်၏ အဓိကတာဝန်များ',
+      'Class Activity: Business Objective ခွဲခြမ်းစိတ်ဖြာခြင်း',
+    ],
+  },
+  {
+    title: 'Module 02',
+    name: 'Funnel, Objective & Campaign Brief',
+    status: 'In progress',
+    progress: 20,
+    lessons: [
+      'Awareness၊ Consideration၊ Conversion၊ Retention Funnel',
+      'Funnel Stage အလိုက် Customer Behavior',
+      'Funnel Stage အလိုက် Campaign Objective ရွေးချယ်ခြင်း',
+      'Awareness၊ Traffic၊ Engagement၊ Leads နဲ့ Sales Objective များ',
+      'Class Activity: Business တစ်ခုအတွက် Funnel Mapping ပြုလုပ်ခြင်း',
+      'Product သို့မဟုတ် Service ကို နားလည်ခြင်း',
+      'Target Market သတ်မှတ်ခြင်း',
+      'Offer၊ Price၊ Promotion နဲ့ Guarantee',
+      'Sales Process ကို လေ့လာခြင်း',
+      'Campaign Objective၊ Platform၊ Audience၊ Budget၊ KPI နဲ့ Creative Direction',
+      'Assignment: Simple Campaign Brief တည်ဆောက်ခြင်း',
+    ],
+  },
+  {
+    title: 'Module 03',
+    name: 'Audience Research & Customer Persona',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Demographic Targeting',
+      'Interest-Based Targeting',
+      'Behavior-Based Targeting',
+      'Intent-Based Targeting',
+      'Cold၊ Warm နဲ့ Hot Audience',
+      'Class Activity: Business တစ်ခုအတွက် Target Audience ရွေးချယ်ခြင်း',
+      'Unaware',
+      'Problem-Aware',
+      'Solution-Aware',
+      'Product-Aware',
+      'Ready to Buy',
+      'Pain Points၊ Goals၊ Objections နဲ့ Preferred Channels',
+      'Assignment: Customer Persona တည်ဆောက်ခြင်း',
+    ],
+  },
+  {
+    title: 'Module 04',
+    name: 'Platform Behavior & Audience Strategy',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Demand Creation နဲ့ Demand Capture',
+      'Meta မှာ Audience Behavior',
+      'Google မှာ Search Intent',
+      'TikTok မှာ Content Discovery Behavior',
+      'Interest၊ Lookalike နဲ့ Keyword Audience',
+      'Assignment: Audience Strategy Sheet တည်ဆောက်ခြင်း',
+    ],
+  },
+  {
+    title: 'Module 05',
+    name: 'Budget Planning, KPI & Forecasting',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Total Media Budget သတ်မှတ်ခြင်း',
+      'Platform အလိုက် Budget ခွဲဝေခြင်း',
+      'Funnel Stage အလိုက် Budget Allocation',
+      'Testing Budget နဲ့ Scaling Budget',
+      'Daily၊ Weekly နဲ့ Monthly Budget',
+      'Class Activity: Monthly Budget Plan တည်ဆောက်ခြင်း',
+      'CPM၊ CPC၊ CTR၊ CPL၊ CPA နဲ့ ROAS',
+      'KPI Formula များတွက်ချက်ခြင်း',
+      'Budget အပေါ်အခြေခံပြီး Result ခန့်မှန်းခြင်း',
+      'Expected Leads နဲ့ Expected Sales',
+      'Revenue နဲ့ ROAS Forecast',
+      'Class Activity: Expected Leads and Sales တွက်ချက်ခြင်း',
+      'Daily Spending Cap',
+      'Planned Spend နဲ့ Actual Spend နှိုင်းယှဉ်ခြင်း',
+      'Campaign Performance Signals',
+      'Budget တိုးသင့်သည့်အချိန်',
+      'Budget လျှော့ချသင့်သည့်အချိန်',
+      'Testing Period နဲ့ Learning Phase',
+      'Assignment: Budget and KPI Forecast Plan',
+    ],
+  },
+  {
+    title: 'Module 06',
+    name: 'Meta Ads Planning & Buying',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Campaign၊ Ad Set နဲ့ Ad Level',
+      'Meta ODAX Objectives',
+      'Awareness',
+      'Traffic',
+      'Engagement',
+      'Leads',
+      'App Promotion',
+      'Sales',
+      'Legacy Objectives နဲ့ ODAX Objectives ကွာခြားချက်',
+      'Location၊ Age၊ Gender နဲ့ Language',
+      'Interest နဲ့ Behavior Targeting',
+      'Custom Audience',
+      'Lookalike Audience',
+      'Retargeting Audience',
+      'Meta Pixel နဲ့ Conversions API',
+      'Standard Events',
+      'Class Activity: Meta Audience Structure တည်ဆောက်ခြင်း',
+      'ABO နဲ့ CBO Budget Setup',
+      'Advantage+ Placements',
+      'Feed၊ Stories၊ Reels၊ Marketplace နဲ့ Messenger',
+      'Image၊ Video၊ Carousel၊ Collection နဲ့ Instant Experience',
+      'Campaign Structure ရေးဆွဲခြင်း',
+      'Meta Campaign Optimization',
+      'Assignment: Meta Campaign Structure တည်ဆောက်ခြင်း',
+      'Awareness Campaign Setup and Buying',
+      'Traffic Campaign Setup and Buying',
+      'Engagement Campaign Setup and Buying',
+      'Leads Campaign Setup and Buying',
+      'App Promotion Campaign Setup and Buying',
+      'Sales Campaign Setup and Buying',
+      'Conversion Locations and Optimization Goals',
+      'Legacy 11 Objectives to ODAX 6',
+    ],
+  },
+  {
+    title: 'Module 07',
+    name: 'Google Ads Planning & Buying',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Google Ads Account Structure',
+      'Account၊ Campaign၊ Ad Group၊ Keyword နဲ့ Ad',
+      'Search Campaign',
+      'Display Campaign',
+      'Shopping Campaign',
+      'Video Campaign',
+      'Performance Max',
+      'Demand Gen',
+      'Google Demand Capture Concept',
+      'Search Intent',
+      'Informational၊ Commercial နဲ့ Transactional Intent',
+      'Broad Match',
+      'Phrase Match',
+      'Exact Match',
+      'Negative Keywords',
+      'Keyword Grouping နဲ့ Ad Group Structure',
+      'Search Placements',
+      'Responsive Search Ads',
+      'Headlines နဲ့ Descriptions',
+      'Quality Score',
+      'Expected CTR',
+      'Ad Relevance',
+      'Landing Page Experience',
+      'Remarketing၊ In-Market၊ Affinity နဲ့ Customer Match',
+      'Google Tag၊ GA4 နဲ့ Enhanced Conversions',
+      'Assignment: Google Search Campaign Plan',
+      'Sales Campaigns',
+      'Leads Campaigns',
+      'Website Traffic Campaigns',
+      'Product and Brand Consideration',
+      'Brand Awareness and Reach',
+      'App Promotion Campaigns',
+      'Local Store Visits and Promotions',
+      'Objective and Campaign Type Mapping',
+    ],
+  },
+  {
+    title: 'Module 08',
+    name: 'TikTok Ads Planning & Buying',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'TikTok Campaign Structure',
+      'Campaign၊ Ad Group နဲ့ Ad',
+      'TikTok နဲ့ Meta Ads ကွာခြားချက်',
+      'Creative-first Advertising',
+      'Native Video နဲ့ UGC Content',
+      'TikTok Campaign Objectives',
+      'Location နဲ့ Demographic Targeting',
+      'Interest Targeting',
+      'Behavior Targeting',
+      'Custom Audience',
+      'Lookalike Audience',
+      'TikTok Pixel နဲ့ Events API',
+      'Standard Events',
+      'Spark Ads',
+      'Class Activity: TikTok Campaign Structure တည်ဆောက်ခြင်း',
+      'First Three Seconds Hook',
+      'Problem၊ Solution၊ Proof နဲ့ CTA',
+      'UGC-Style Content',
+      'Problem-Solution Creative',
+      'Testimonial Creative',
+      'In-Feed၊ TopView နဲ့ Spark Ads',
+      'Assignment: TikTok Campaign Plan',
+      'Reach Campaigns',
+      'Traffic Campaigns',
+      'Video Views Campaigns',
+      'Community Interaction Campaigns',
+      'Product Sales Campaigns',
+      'Website Conversions Campaigns',
+      'Lead Generation Campaigns',
+      'App Promotion Campaigns',
+      'Funnel Stage and Objective Mapping',
+    ],
+  },
+  {
+    title: 'Module 09',
+    name: 'Testing, Creative & Optimization',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'A/B Testing Foundation',
+      'Creative Testing',
+      'Audience Testing',
+      'Offer Testing',
+      'Copy Testing',
+      'Landing Page Testing',
+      'Variable တစ်မျိုးချင်းစီ စမ်းသပ်ခြင်း',
+      'Winning Signal သတ်မှတ်ခြင်း',
+      'Statistical Significance အခြေခံ',
+      'Performance Creative Formula',
+      'Hook၊ Message နဲ့ CTA',
+      'Static Image Ads',
+      'Video Ads',
+      'UGC နဲ့ Testimonial Ads',
+      'Creative Angle နဲ့ Value Proposition',
+      'Performance အလိုက် Creative ရွေးချယ်ခြင်း',
+      'Low CTR Diagnosis',
+      'High CPC Diagnosis',
+      'High CPL နဲ့ CPA Diagnosis',
+      'Poor Lead Quality',
+      'Low Sales နဲ့ Funnel Problems',
+      'Kill၊ Keep နဲ့ Scale Framework',
+      'Budget Scaling',
+      'Creative Refresh',
+      'Class Activity: Campaign Problem Diagnosis',
+    ],
+  },
+  {
+    title: 'Module 10',
+    name: 'Reporting & Media Plan Framework',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Daily Optimization Report',
+      'Weekly Performance Review',
+      'Monthly Strategy Report',
+      'Spend၊ CPL၊ CPA နဲ့ ROAS',
+      'Campaign Wins နဲ့ Losses',
+      'Testing Results',
+      'Next-step Recommendations',
+      'Class Activity: Weekly Report တည်ဆောက်ခြင်း',
+      'Business Overview',
+      'Campaign Objective',
+      'Target Audience',
+      'Funnel Strategy',
+      'Platform Strategy',
+      'Budget Allocation',
+      'KPI Forecast',
+      'Creative Direction',
+      'Optimization Plan',
+      'Reporting Plan',
+    ],
+  },
+  {
+    title: 'Module 11',
+    name: 'Client-Ready Media Plan Capstone',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Real Business တစ်ခုရွေးချယ်ခြင်း',
+      'Meta Strategy',
+      'Google Strategy',
+      'TikTok Strategy',
+      'Budget Split',
+      'KPI Forecast',
+      'Creative Direction',
+      'Reporting Plan',
+      'Client-ready Media Plan တင်ပြခြင်း',
+    ],
+  },
+];
+
+const capstoneSupportModules: CourseModule[] = [
+  {
+    title: 'Capstone',
+    name: 'Portfolio Project Support',
+    status: 'Locked',
+    progress: 0,
+    lessons: [
+      'Choose one campaign project',
+      'Prepare campaign objective and media plan',
+      'Build creative direction and reporting outline',
+      'Present a portfolio-ready case study',
+    ],
+  },
+];
+
+const getCourseLessonCount = (courseModules: CourseModule[]) => courseModules.reduce((total, module) => total + module.lessons.length, 0);
+const mediaPlanningBuyingLessonCount = getCourseLessonCount(mediaPlanningBuyingModules);
+
+const courseCards: CourseCardRecord[] = [
+  { title: defaultCourseTitle, level: 'Beginner to Professional', lessons: '55 lessons', modules: '8 modules' },
+  { title: mediaPlanningBuyingCourseTitle, level: 'Intermediate to Professional', lessons: `${mediaPlanningBuyingLessonCount} topics`, modules: `${mediaPlanningBuyingModules.length} modules` },
+  { title: capstoneSupportCourseTitle, level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
+];
+
+const courseDetailsByTitle: Record<string, CourseDetailConfig> = {
+  [defaultCourseTitle]: {
+    title: 'Digital Marketing — Beginner to Professional.',
+    description: 'Start with foundation, continue through paid ads, SEO, analytics, optimization, and finish with your portfolio project.',
+    modules,
+    metrics: [
+      { icon: BookOpen, label: 'Modules', value: '8+', detail: 'Structured roadmap' },
+      { icon: PlayCircle, label: 'Video lessons', value: '55', detail: 'Vimeo + progress tracking' },
+      { icon: CalendarDays, label: 'Next course', value: 'Media Buying', detail: 'Continue the path' },
+    ],
+  },
+  [mediaPlanningBuyingCourseTitle]: {
+    title: 'Digital Media Planning & Buying.',
+    description: 'Learn campaign planning, budget allocation, audience strategy, buying setup, optimization, reporting, and client-ready media plan delivery across Meta, Google, and TikTok.',
+    modules: mediaPlanningBuyingModules,
+    metrics: [
+      { icon: BookOpen, label: 'Modules', value: `${mediaPlanningBuyingModules.length}`, detail: 'Planning to capstone' },
+      { icon: ClipboardCheck, label: 'Topics', value: `${mediaPlanningBuyingLessonCount}`, detail: 'Activities + assignments' },
+      { icon: BarChart3, label: 'Platforms', value: '3', detail: 'Meta, Google, TikTok' },
+    ],
+  },
+  [capstoneSupportCourseTitle]: {
+    title: 'Campaign Portfolio & Capstone Support.',
+    description: 'Turn your campaign strategy into a portfolio-ready case study with media plan, creative direction, and reporting summary.',
+    modules: capstoneSupportModules,
+    metrics: [
+      { icon: BookOpen, label: 'Module', value: '1', detail: 'Guided support' },
+      { icon: ClipboardCheck, label: 'Deliverable', value: '1', detail: 'Portfolio project' },
+      { icon: GraduationCap, label: 'Outcome', value: 'Case', detail: 'Client-ready work' },
+    ],
+  },
+};
 
 const stableLessonIdsByTitle: Record<string, string> = {
   [ecosystemMapTemplateTitle]: 'm1-l8-ecosystem-map-template',
@@ -1196,7 +1564,6 @@ const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
   { title: 'Next course path', text: 'Finish this course first, then continue to Digital Media Planning & Buying.', icon: Video },
 ];
 
-const defaultCourseTitle = 'Digital Marketing Beginner to Professional';
 const seededStudentPassword = 'yehtet3Du';
 
 const seededStudentAccounts: Student[] = [
@@ -1612,7 +1979,12 @@ function BackLink({ go, to, label }: { go: (v: PageName) => void; to: PageName; 
 // Home page
 // =====================================================================
 
-function HomePage({ go }: { go: (v: PageName) => void }) {
+function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectCourse: (courseTitle: string) => void }) {
+  const viewCourse = (courseTitle: string) => {
+    onSelectCourse(courseTitle);
+    go('Course Detail');
+  };
+
   return (
     <div className={ui.page}>
       {/* Hero — one focused message */}
@@ -1656,7 +2028,7 @@ function HomePage({ go }: { go: (v: PageName) => void }) {
             <button onClick={() => go('Login')} className={ui.btnPrimary}>
               Student login
             </button>
-            <button onClick={() => go('Course Detail')} className={ui.btnGhost}>
+            <button onClick={() => viewCourse(defaultCourseTitle)} className={ui.btnGhost}>
               Course detail
             </button>
           </div>
@@ -1673,7 +2045,7 @@ function HomePage({ go }: { go: (v: PageName) => void }) {
         <PageHeader eyebrow="Courses" title="Three programs to build your career." description="Pick the right starting point — from foundation to capstone — and follow the lessons assigned to your account." />
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {courseCards.map((course) => (
-            <CourseCard key={course.title} course={course} go={go} />
+            <CourseCard key={course.title} course={course} onViewDetail={viewCourse} />
           ))}
         </div>
       </section>
@@ -1732,7 +2104,7 @@ function HomePage({ go }: { go: (v: PageName) => void }) {
   );
 }
 
-function CourseCard({ course, go }: { course: (typeof courseCards)[number]; go: (v: PageName) => void }) {
+function CourseCard({ course, onViewDetail }: { course: CourseCardRecord; onViewDetail: (courseTitle: string) => void }) {
   return (
     <div className={cx(ui.card, 'flex h-full flex-col')}>
       <div className="flex items-center justify-between">
@@ -1744,7 +2116,7 @@ function CourseCard({ course, go }: { course: (typeof courseCards)[number]; go: 
       <h3 className={cx(ui.h3, 'mt-5')}>{course.title}</h3>
       <p className={cx(ui.bodySm, 'mt-2')}>{course.level}</p>
       <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
-      <button onClick={() => go('Course Detail')} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-300 transition hover:text-emerald-200">
+      <button onClick={() => onViewDetail(course.title)} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-300 transition hover:text-emerald-200">
         View detail <ArrowRight className="h-4 w-4" />
       </button>
     </div>
@@ -1820,7 +2192,12 @@ function RuleCard({ title, items }: { title: string; items: string[] }) {
 // Courses listing
 // =====================================================================
 
-function CoursesPage({ go }: { go: (v: PageName) => void }) {
+function CoursesPage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectCourse: (courseTitle: string) => void }) {
+  const viewCourse = (courseTitle: string) => {
+    onSelectCourse(courseTitle);
+    go('Course Detail');
+  };
+
   return (
     <div className={ui.page}>
       <PageHeader
@@ -1830,7 +2207,7 @@ function CoursesPage({ go }: { go: (v: PageName) => void }) {
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courseCards.map((course) => (
-          <CourseCard key={course.title} course={course} go={go} />
+          <CourseCard key={course.title} course={course} onViewDetail={viewCourse} />
         ))}
       </div>
     </div>
@@ -1841,13 +2218,15 @@ function CoursesPage({ go }: { go: (v: PageName) => void }) {
 // Course detail
 // =====================================================================
 
-function CourseDetailPage({ go }: { go: (v: PageName) => void }) {
+function CourseDetailPage({ go, courseTitle }: { go: (v: PageName) => void; courseTitle: string }) {
+  const courseDetail = courseDetailsByTitle[courseTitle] || courseDetailsByTitle[defaultCourseTitle];
+
   return (
     <div className={ui.page}>
       <PageHeader
         eyebrow="Course detail"
-        title="Digital Marketing — Beginner to Professional."
-        description="Start with foundation, continue through paid ads, SEO, analytics, optimization, and finish with your portfolio project."
+        title={courseDetail.title}
+        description={courseDetail.description}
         actions={
           <button onClick={() => go('Login')} className={ui.btnPrimary}>
             Login to continue <ArrowRight className="h-4 w-4" />
@@ -1856,15 +2235,15 @@ function CourseDetailPage({ go }: { go: (v: PageName) => void }) {
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <Metric icon={BookOpen} label="Modules" value="8+" detail="Structured roadmap" />
-        <Metric icon={PlayCircle} label="Video lessons" value="55" detail="Vimeo + progress tracking" />
-        <Metric icon={CalendarDays} label="Next course" value="Media Buying" detail="Continue the path" />
+        {courseDetail.metrics.map((metric) => (
+          <Metric key={metric.label} icon={metric.icon} label={metric.label} value={metric.value} detail={metric.detail} />
+        ))}
       </section>
 
       <section>
         <PageHeader eyebrow="Curriculum" title="Course modules and lessons." description="Complete each module to unlock the next. Click a module to expand its lesson list." />
         <div className="mt-8 space-y-3">
-          {modules.map((module, index) => (
+          {courseDetail.modules.map((module, index) => (
             <ModuleAccordion key={module.title} module={module} index={index} />
           ))}
         </div>
@@ -1891,7 +2270,7 @@ function Metric({ icon: Icon, label, value, detail }: { icon: IconType; label: s
   );
 }
 
-function ModuleAccordion({ module, index }: { module: (typeof modules)[number]; index: number }) {
+function ModuleAccordion({ module, index }: { module: CourseModule; index: number }) {
   const [open, setOpen] = useState(index === 1); // open the in-progress module
   const isLocked = module.status === 'Locked';
   const statusTone =
@@ -2877,7 +3256,7 @@ const adminContent: Record<string, { title: string; description: string; primary
   Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Payments', items: ['Enrollment fee ledger', 'Paid amount and balance', 'Payment date', 'Course payment status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
   Payments: { title: 'Enrollment Payment Ledger', description: 'Review student course fees, payment dates, paid amounts, and remaining balances.', primaryAction: 'Record Payment', cards: [] },
-  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: ['Digital Marketing Beginner to Professional', '55 lessons', '8+ modules', 'Capstone project'] }, { title: 'Next Course', items: ['Digital Media Planning & Buying', 'Planning framework', 'Buying strategy', 'Campaign workflow'] }] },
+  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: [defaultCourseTitle, '55 lessons', '8+ modules', 'Capstone project'] }, { title: mediaPlanningBuyingCourseTitle, items: [`${mediaPlanningBuyingModules.length} modules`, `${mediaPlanningBuyingLessonCount} topics`, 'Meta, Google & TikTok buying', 'Client-ready media plan'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
   Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
   Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
@@ -4310,6 +4689,7 @@ export default function App() {
   const [lessons, setLessons] = useState<LessonRecord[]>(() => readStoredLessons());
   const [students, setStudents] = useState<Student[]>(() => readStoredStudents());
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(null);
+  const [selectedCourseTitle, setSelectedCourseTitle] = useState(defaultCourseTitle);
   const [lessonComments, setLessonComments] = useState<LessonComment[]>(() => readStoredLessonComments());
   const [deletedLessonCommentIds, setDeletedLessonCommentIds] = useState<string[]>(() => readStoredDeletedLessonCommentIds());
   const [studentProgressById, setStudentProgressById] = useState<StudentProgressById>(() => readStoredStudentProgress(lessons));
@@ -4479,6 +4859,7 @@ export default function App() {
       const student = students.find((item) => item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
       if (student) {
         setLearningProgress(studentProgressById[student.id] || readStoredLearningProgress(lessons));
+        setSelectedCourseTitle(courseDetailsByTitle[student.course] ? student.course : defaultCourseTitle);
         setIsLoggedIn(true);
         setRole('student');
         setCurrentStudentId(student.id);
@@ -4495,15 +4876,16 @@ export default function App() {
     setIsLoggedIn(false);
     setRole(null);
     setCurrentStudentId(null);
+    setSelectedCourseTitle(defaultCourseTitle);
     setActive('Home');
   };
 
   return (
     <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout}>
-      {active === 'Home' && <HomePage go={go} />}
-      {active === 'Courses' && <CoursesPage go={go} />}
+      {active === 'Home' && <HomePage go={go} onSelectCourse={setSelectedCourseTitle} />}
+      {active === 'Courses' && <CoursesPage go={go} onSelectCourse={setSelectedCourseTitle} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
-      {active === 'Course Detail' && <CourseDetailPage go={go} />}
+      {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPaymentRecords} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
