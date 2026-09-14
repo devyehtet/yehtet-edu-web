@@ -15,6 +15,7 @@ import {
   ExternalLink,
   GraduationCap,
   LayoutDashboard,
+  ListFilter,
   Lock,
   MessageCircle,
   Mic,
@@ -23,6 +24,7 @@ import {
   Plus,
   Radio,
   ScreenShare,
+  Search,
   Send,
   Settings,
   ShieldCheck,
@@ -59,6 +61,7 @@ type Student = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   password?: string;
   course: string;
   progress: number;
@@ -1547,15 +1550,8 @@ function getModuleLearningState(moduleIndex: number, progress: LearningProgress,
   return { completedCount, progressValue, status };
 }
 
-const adminStats: Array<{ label: string; value: string; icon: IconType }> = [
-  { label: 'Total Students', value: '128', icon: Users },
-  { label: 'Published Courses', value: '12', icon: BookOpen },
-  { label: 'Pending Assignments', value: '34', icon: ClipboardCheck },
-  { label: 'Avg Completion', value: '76%', icon: BarChart3 },
-];
-
 const homeStats: Array<{ label: string; value: string; icon: IconType }> = [
-  { label: 'Lessons', value: '52', icon: PlayCircle },
+  { label: 'Lessons', value: '56', icon: PlayCircle },
   { label: 'Modules', value: '8+', icon: BookOpen },
   { label: 'Live Class', value: 'Weekly', icon: CalendarDays },
   { label: 'Next Course', value: 'Media Buying', icon: ArrowRight },
@@ -1613,6 +1609,7 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-040', name: 'Phyo Thandar Aung', email: 'phyothandaraung141@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-041', name: 'Cham Myae Quo', email: 'chammyaequo@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-042', name: 'Morgen Dzyna', email: 'morgen.dzyna@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-043', name: 'Thin Htoo Htike', email: 'thinhtoo9122005@gmail.com', phone: '09796156976', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 14, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
 const tuitionPaymentRecords: TuitionPaymentRecord[] = [
@@ -1626,6 +1623,17 @@ const tuitionPaymentRecords: TuitionPaymentRecord[] = [
     paidAmount: 310000,
     paidDate: '2nd August 2026',
     note: 'First installment',
+  },
+  {
+    id: 'PAY-STU-SEED-043-2026-09-14',
+    studentId: 'STU-SEED-043',
+    studentName: 'Thin Htoo Htike',
+    studentEmail: 'thinhtoo9122005@gmail.com',
+    course: mediaPlanningBuyingCourseTitle,
+    tuitionFee: 350000,
+    paidAmount: 300000,
+    paidDate: '14th September 2026',
+    note: 'Partial payment',
   },
 ];
 
@@ -1643,6 +1651,7 @@ function normalizeStoredStudent(student: Partial<Student>, index: number): Stude
     id: typeof student.id === 'string' && student.id ? student.id : `STU-${String(index + 1).padStart(3, '0')}`,
     name: typeof student.name === 'string' && student.name ? student.name : 'Unnamed Student',
     email: typeof student.email === 'string' ? student.email.toLowerCase() : '',
+    phone: typeof student.phone === 'string' ? student.phone : '',
     password: typeof student.password === 'string' ? student.password : '',
     course: typeof student.course === 'string' && student.course ? student.course : defaultCourseTitle,
     progress: typeof student.progress === 'number' ? student.progress : 0,
@@ -3314,6 +3323,18 @@ function AdminPanelPage({
   const current = adminContent[adminActive] || adminContent.Dashboard;
   const selectedStudent = students.find((s) => s.id === selectedStudentId) || students[0] || defaultStudents[0];
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) || lessons[0];
+  const activeStudentCount = students.filter((student) => student.status === 'Active').length;
+  const averageStudentProgress = students.length
+    ? Math.round(students.reduce((total, student) => (
+      total + getCourseProgressPercent(getStudentProgress(student.id, studentProgressById, lessons), lessons)
+    ), 0) / students.length)
+    : 0;
+  const adminOverviewStats: Array<{ label: string; value: string; icon: IconType }> = [
+    { label: 'Students', value: `${students.length}`, icon: Users },
+    { label: 'Active Accounts', value: `${activeStudentCount}`, icon: ShieldCheck },
+    { label: 'Avg Progress', value: `${averageStudentProgress}%`, icon: BarChart3 },
+    { label: 'Student Comments', value: `${lessonComments.length}`, icon: MessageCircle },
+  ];
   const isMeetingSetupOpen = adminActive === 'Meetings' && activeAction === current.primaryAction;
   const openAction = (name: string) => { setActiveAction(name); setSavedMessage(''); };
   const isEditingAction = Boolean(activeAction?.toLowerCase().startsWith('edit'));
@@ -3322,6 +3343,7 @@ function AdminPanelPage({
       ? {
           'Student name': selectedStudent.name,
           'Email address': selectedStudent.email,
+          'Phone number': selectedStudent.phone || '',
           'Temporary password': '',
           'Assigned course': selectedStudent.course,
         }
@@ -3405,6 +3427,7 @@ function AdminPanelPage({
   const saveStudentAction = (values: Record<string, string>) => {
     const name = values['Student name']?.trim();
     const email = values['Email address']?.trim().toLowerCase();
+    const phone = values['Phone number']?.trim();
     const password = values['Temporary password']?.trim();
     const course = values['Assigned course']?.trim() || 'Digital Marketing Beginner to Professional';
 
@@ -3416,11 +3439,18 @@ function AdminPanelPage({
       setSavedMessage('Please enter a temporary password for this student.');
       return;
     }
+    const duplicateEmail = students.some((student) => (
+      student.email.toLowerCase() === email && (!isEditingAction || student.id !== selectedStudent.id)
+    ));
+    if (duplicateEmail) {
+      setSavedMessage('This email already has a student account.');
+      return;
+    }
 
     if (isEditingAction && selectedStudent) {
       setStudents((prev) => prev.map((student) => (
         student.id === selectedStudent.id
-          ? { ...student, name, email, password: password || student.password, course }
+          ? { ...student, name, email, phone, password: password || student.password, course }
           : student
       )));
       setSavedMessage(`${name} account updated successfully.`);
@@ -3432,6 +3462,7 @@ function AdminPanelPage({
       id: `STU-${Date.now().toString().slice(-6)}`,
       name,
       email,
+      phone,
       password,
       course,
       progress: 0,
@@ -3714,7 +3745,7 @@ function AdminPanelPage({
             </div>
           ) : (
             <>
-              <StatRow stats={adminStats} />
+              <StatRow stats={adminOverviewStats} />
               <div className="grid gap-4 lg:grid-cols-2">
                 {current.cards.map((card) => (
                   <Panel
@@ -4060,160 +4091,279 @@ function StudentDirectory({
   onCreateStudent: () => void;
   onEditStudent: (id: string) => void;
 } & CommentMutationHandlers) {
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | Student['status']>('All');
+  const [courseFilter, setCourseFilter] = useState('All');
+  const [paymentFilter, setPaymentFilter] = useState('All');
+
+  const studentRows = students.map((student) => {
+    const progress = getStudentProgress(student.id, studentProgressById, lessons);
+    const payment = getStudentTuitionPayment(student, tuitionPayments);
+    return {
+      student,
+      progress,
+      progressPercent: getCourseProgressPercent(progress, lessons),
+      completedCount: getCompletedSet(progress).size,
+      commentCount: lessonComments.filter((comment) => comment.studentId === student.id).length,
+      payment,
+      paymentStatus: payment ? getTuitionPaymentStatus(payment) : 'No record',
+      currentLesson: getCurrentLesson(progress, lessons),
+    };
+  });
+  const normalizedSearch = searchText.trim().toLowerCase();
+  const courseOptions = ['All', ...Array.from(new Set(students.map((student) => student.course).filter(Boolean))).sort()];
+  const paymentOptions = ['All', 'Paid', 'Partial', 'Unpaid', 'No record'];
+  const filteredRows = studentRows.filter(({ student, paymentStatus }) => {
+    const matchesSearch = !normalizedSearch || [student.name, student.email, student.phone || '', student.id, student.course]
+      .some((value) => value.toLowerCase().includes(normalizedSearch));
+    const matchesStatus = statusFilter === 'All' || student.status === statusFilter;
+    const matchesCourse = courseFilter === 'All' || student.course === courseFilter;
+    const matchesPayment = paymentFilter === 'All' || paymentStatus === paymentFilter;
+    return matchesSearch && matchesStatus && matchesCourse && matchesPayment;
+  });
   const selectedProgress = getStudentProgress(selectedStudent.id, studentProgressById, lessons);
   const selectedProgressPercent = getCourseProgressPercent(selectedProgress, lessons);
+  const selectedCompletedCount = getCompletedSet(selectedProgress).size;
+  const selectedCurrentLesson = getCurrentLesson(selectedProgress, lessons);
   const selectedComments = lessonComments.filter((comment) => comment.studentId === selectedStudent.id);
   const selectedPayment = getStudentTuitionPayment(selectedStudent, tuitionPayments);
+  const selectedPaymentStatus = selectedPayment ? getTuitionPaymentStatus(selectedPayment) : 'No record';
+  const activeCount = studentRows.filter(({ student }) => student.status === 'Active').length;
+  const averageProgress = studentRows.length
+    ? Math.round(studentRows.reduce((total, row) => total + row.progressPercent, 0) / studentRows.length)
+    : 0;
+  const totalBalance = tuitionPayments.reduce((total, payment) => total + getTuitionBalance(payment), 0);
+  const resetFilters = () => {
+    setSearchText('');
+    setStatusFilter('All');
+    setCourseFilter('All');
+    setPaymentFilter('All');
+  };
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
-      <div className={ui.card}>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className={ui.eyebrow}>All students</p>
-            <h2 className={cx(ui.h3, 'mt-2')}>{students.length} students</h2>
-          </div>
-          <button onClick={onCreateStudent} className={ui.btnPrimary}>
-            <Plus className="h-4 w-4" /> Add student
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-[980px] w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
-                <th className="py-3 pr-4 font-medium">Student</th>
-                <th className="py-3 pr-4 font-medium">Progress</th>
-                <th className="py-3 pr-4 font-medium">Payment</th>
-                <th className="py-3 pr-4 font-medium">Comments</th>
-                <th className="py-3 pr-4 font-medium">Status</th>
-                <th className="py-3 pr-4 font-medium">Last active</th>
-                <th className="py-3 pr-4 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => {
-                const isSelected = student.id === selectedStudent.id;
-                const progress = getStudentProgress(student.id, studentProgressById, lessons);
-                const progressPercent = getCourseProgressPercent(progress, lessons);
-                const commentCount = lessonComments.filter((comment) => comment.studentId === student.id).length;
-                const payment = getStudentTuitionPayment(student, tuitionPayments);
-                return (
-                  <tr
-                    key={student.id}
-                    onClick={() => onSelectStudent(student.id)}
-                    className={cx('cursor-pointer border-b border-white/[0.04] transition hover:bg-white/[0.03]', isSelected && 'bg-emerald-300/[0.04]')}
-                  >
-                    <td className="py-4 pr-4">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-9 w-9 place-items-center rounded-full bg-emerald-300/10 text-sm font-bold text-emerald-300">{student.name.slice(0, 1)}</div>
-                        <div>
-                          <p className="font-medium text-white">{student.name}</p>
-                          <p className="text-xs text-slate-500">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 pr-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20"><ProgressBar value={progressPercent} /></div>
-                        <span className="text-xs font-medium text-slate-400">{progressPercent}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 pr-4">
-                      {payment ? (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-300">{getTuitionPaymentStatus(payment)}</p>
-                          <p className="text-xs text-slate-500">Balance {formatMmk(getTuitionBalance(payment))}</p>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-500">No record</span>
-                      )}
-                    </td>
-                    <td className="py-4 pr-4 text-slate-400">{commentCount}</td>
-                    <td className="py-4 pr-4">
-                      <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', student.status === 'Active' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300')}>
-                        {student.status}
-                      </span>
-                    </td>
-                    <td className="py-4 pr-4 text-slate-400">{student.lastActive}</td>
-                    <td className="py-4 pr-4">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onEditStudent(student.id);
-                        }}
-                        className={ui.btnSubtle}
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <section className="grid gap-3 md:grid-cols-4">
+        <ActivityMetric label="Total students" value={`${students.length}`} />
+        <ActivityMetric label="Active accounts" value={`${activeCount}`} />
+        <ActivityMetric label="Average progress" value={`${averageProgress}%`} />
+        <ActivityMetric label="Fee balance" value={formatMmk(totalBalance)} />
+      </section>
 
-      <aside className={ui.card}>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className={ui.eyebrow}>Profile</p>
-            <h2 className={cx(ui.h2, 'mt-2 text-2xl sm:text-2xl')}>{selectedStudent.name}</h2>
-            <p className={cx(ui.bodySm, 'mt-1')}>{selectedStudent.email}</p>
-          </div>
-          <button onClick={() => onEditStudent(selectedStudent.id)} className={ui.btnSubtle}>Edit</button>
-        </div>
-
-        <div className="mt-6 space-y-2">
-          <ProfileField label="Student ID" value={selectedStudent.id} />
-          <ProfileField label="Joined" value={selectedStudent.joined} />
-          <ProfileField label="Assigned course" value={selectedStudent.course} />
-          <ProfileField label="Status" value={selectedStudent.status} />
-          <ProfileField label="Assignments" value={selectedStudent.assignments} />
-          <ProfileField label="Quiz score" value={selectedStudent.quizScore} />
-        </div>
-
-        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className={ui.eyebrow}>Payment</p>
-            <span className={selectedPayment ? cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', getTuitionPaymentStatus(selectedPayment) === 'Paid' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300') : ui.chipMuted}>
-              {selectedPayment ? getTuitionPaymentStatus(selectedPayment) : 'No record'}
-            </span>
-          </div>
-          {selectedPayment ? (
-            <div className="mt-4 space-y-2">
-              <ProfileField label="Course fee" value={formatMmk(selectedPayment.tuitionFee)} />
-              <ProfileField label="Paid" value={formatMmk(selectedPayment.paidAmount)} />
-              <ProfileField label="Balance" value={formatMmk(getTuitionBalance(selectedPayment))} />
-              <ProfileField label="Paid date" value={selectedPayment.paidDate} />
+      <div className="grid gap-6 2xl:grid-cols-[minmax(680px,1fr)_440px]">
+        <div className={ui.card}>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className={ui.eyebrow}>Student directory</p>
+              <h2 className={cx(ui.h3, 'mt-2')}>{filteredRows.length} of {students.length} students</h2>
             </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-400">No course enrollment payment has been recorded for this student yet.</p>
+            <button onClick={onCreateStudent} className={ui.btnPrimary}>
+              <Plus className="h-4 w-4" /> Add student
+            </button>
+          </div>
+
+          <div className="mb-5 grid gap-3 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-400">
+                <Search className="h-3.5 w-3.5" /> Search student
+              </span>
+              <input
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder="Name, email, phone, ID, or course"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-400">
+                <ListFilter className="h-3.5 w-3.5" /> Status
+              </span>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'All' | Student['status'])} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </label>
+            <label className="block min-w-0">
+              <span className="mb-2 block text-xs font-semibold text-slate-400">Course</span>
+              <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                {courseOptions.map((course) => (
+                  <option key={course} value={course}>{course}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block min-w-0">
+              <span className="mb-2 block text-xs font-semibold text-slate-400">Payment</span>
+              <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                {paymentOptions.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-[1120px] w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                  <th className="py-3 pr-4 font-medium">Student</th>
+                  <th className="py-3 pr-4 font-medium">Course</th>
+                  <th className="py-3 pr-4 font-medium">Progress</th>
+                  <th className="py-3 pr-4 font-medium">Payment</th>
+                  <th className="py-3 pr-4 font-medium">Comments</th>
+                  <th className="py-3 pr-4 font-medium">Status</th>
+                  <th className="py-3 pr-4 font-medium">Last active</th>
+                  <th className="py-3 pr-4 font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map(({ student, progressPercent, completedCount, commentCount, payment, paymentStatus, currentLesson }) => {
+                  const isSelected = student.id === selectedStudent.id;
+                  return (
+                    <tr
+                      key={student.id}
+                      onClick={() => onSelectStudent(student.id)}
+                      className={cx('cursor-pointer border-b border-white/[0.04] transition hover:bg-white/[0.03]', isSelected && 'bg-emerald-300/[0.04]')}
+                    >
+                      <td className="py-4 pr-4">
+                        <div className="flex items-center gap-3">
+                          <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-300/10 text-sm font-bold text-emerald-300">{student.name.slice(0, 1).toUpperCase()}</div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-white">{student.name}</p>
+                            <p className="truncate text-xs text-slate-500">{student.email}</p>
+                            {student.phone && <p className="truncate text-xs text-slate-600">{student.phone}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="max-w-[240px] py-4 pr-4">
+                        <p className="truncate text-xs font-semibold text-slate-300">{student.course}</p>
+                        <p className="mt-1 text-xs text-slate-500">Joined {student.joined}</p>
+                      </td>
+                      <td className="py-4 pr-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-24"><ProgressBar value={progressPercent} /></div>
+                            <span className="text-xs font-medium text-slate-400">{progressPercent}%</span>
+                          </div>
+                          <p className="max-w-[220px] truncate text-xs text-slate-500">
+                            {completedCount}/{lessons.length} completed · {currentLesson?.title || 'Not started'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="py-4 pr-4">
+                        <div className="space-y-1">
+                          <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold', paymentStatus === 'Paid' ? 'bg-emerald-300/15 text-emerald-300' : paymentStatus === 'Partial' ? 'bg-amber-300/15 text-amber-300' : 'bg-slate-300/10 text-slate-300')}>
+                            {paymentStatus}
+                          </span>
+                          <p className="text-xs text-slate-500">
+                            {payment ? `Balance ${formatMmk(getTuitionBalance(payment))}` : 'No fee record'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="py-4 pr-4 text-slate-400">{commentCount}</td>
+                      <td className="py-4 pr-4">
+                        <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', student.status === 'Active' ? 'bg-emerald-300/15 text-emerald-300' : 'bg-amber-300/15 text-amber-300')}>
+                          {student.status}
+                        </span>
+                      </td>
+                      <td className="py-4 pr-4 text-slate-400">{student.lastActive}</td>
+                      <td className="py-4 pr-4">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onEditStudent(student.id);
+                          }}
+                          className={ui.btnSubtle}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {filteredRows.length === 0 && (
+            <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-sm text-slate-400">
+              <p>No students match the current search or filters.</p>
+              <button type="button" onClick={resetFilters} className={cx(ui.btnSubtle, 'mt-4')}>Clear filters</button>
+            </div>
           )}
         </div>
 
-        <div className="mt-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-400">Course progress</p>
-            <p className="text-sm font-bold text-white">{selectedProgressPercent}%</p>
+        <aside className={cx(ui.card, 'self-start 2xl:sticky 2xl:top-28')}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-300/10 text-lg font-black text-emerald-300">
+                {selectedStudent.name.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className={ui.eyebrow}>Selected student</p>
+                <h2 className="mt-2 truncate text-2xl font-bold text-white">{selectedStudent.name}</h2>
+                <p className={cx(ui.bodySm, 'mt-1 break-all')}>{selectedStudent.email}</p>
+                {selectedStudent.phone && <p className="mt-1 text-sm font-medium text-slate-500">{selectedStudent.phone}</p>}
+              </div>
+            </div>
+            <button onClick={() => onEditStudent(selectedStudent.id)} className={ui.btnSubtle}>Edit</button>
           </div>
-          <div className="mt-2">
-            <ProgressBar value={selectedProgressPercent} height="md" />
-          </div>
-          <p className="mt-3 text-xs text-slate-500">
-            {getCompletedSet(selectedProgress).size} / {lessons.length} lessons completed · {selectedComments.length} comments
-          </p>
-        </div>
 
-        <StudentActivityDetail
-          student={selectedStudent}
-          lessons={lessons}
-          progress={selectedProgress}
-          comments={selectedComments}
-          onUpdateComment={onUpdateComment}
-          onDeleteComment={onDeleteComment}
-        />
-      </aside>
+          <div className="mt-6 grid gap-3">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <p className="text-xs font-semibold text-slate-400">Course progress</p>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <p className="text-3xl font-black text-white">{selectedProgressPercent}%</p>
+                <span className={ui.chipMuted}>{selectedCompletedCount}/{lessons.length}</span>
+              </div>
+              <div className="mt-3">
+                <ProgressBar value={selectedProgressPercent} height="md" />
+              </div>
+              <p className="mt-3 truncate text-xs text-slate-500">
+                Current: {selectedCurrentLesson?.title || 'Not started'}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-slate-400">Payment</p>
+                <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', selectedPaymentStatus === 'Paid' ? 'bg-emerald-300/15 text-emerald-300' : selectedPaymentStatus === 'Partial' ? 'bg-amber-300/15 text-amber-300' : 'bg-slate-300/10 text-slate-300')}>
+                  {selectedPaymentStatus}
+                </span>
+              </div>
+              {selectedPayment ? (
+                <div className="mt-4 space-y-2">
+                  <ProfileField label="Course fee" value={formatMmk(selectedPayment.tuitionFee)} />
+                  <ProfileField label="Paid" value={formatMmk(selectedPayment.paidAmount)} />
+                  <ProfileField label="Balance" value={formatMmk(getTuitionBalance(selectedPayment))} />
+                  <ProfileField label="Paid date" value={selectedPayment.paidDate} />
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-400">No course enrollment payment has been recorded for this student yet.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-2">
+            <ProfileField label="Student ID" value={selectedStudent.id} />
+            {selectedStudent.phone && <ProfileField label="Phone" value={selectedStudent.phone} />}
+            <ProfileField label="Joined" value={selectedStudent.joined} />
+            <ProfileField label="Assigned course" value={selectedStudent.course} />
+            <ProfileField label="Status" value={selectedStudent.status} />
+            <ProfileField label="Assignments" value={selectedStudent.assignments} />
+            <ProfileField label="Quiz score" value={selectedStudent.quizScore} />
+            <ProfileField label="Comments" value={`${selectedComments.length}`} />
+          </div>
+
+          <StudentActivityDetail
+            student={selectedStudent}
+            lessons={lessons}
+            progress={selectedProgress}
+            comments={selectedComments}
+            onUpdateComment={onUpdateComment}
+            onDeleteComment={onDeleteComment}
+          />
+        </aside>
+      </div>
     </div>
   );
 }
@@ -4461,7 +4611,7 @@ function StudentActivityReport({
 function ActivityMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className={ui.cardSubtle}>
-      <p className="font-serif text-3xl font-bold text-white">{value}</p>
+      <p className="break-words font-serif text-2xl font-bold leading-tight text-white sm:text-3xl">{value}</p>
       <p className="mt-1 text-sm font-semibold text-slate-400">{label}</p>
     </div>
   );
@@ -4493,7 +4643,7 @@ function AdminActionPanel({
 }) {
   const fields =
     ({
-      Students: ['Student name', 'Email address', 'Temporary password', 'Assigned course'],
+      Students: ['Student name', 'Email address', 'Phone number', 'Temporary password', 'Assigned course'],
       Courses: ['Course title', 'Level', 'Short description', 'Publish status'],
       Modules: ['Module title', 'Course', 'Sort order', 'Unlock rule'],
       Lessons: ['Lesson title', 'Vimeo embed URL', 'Required watch percentage', 'Attached resource', 'Resource file URL'],
