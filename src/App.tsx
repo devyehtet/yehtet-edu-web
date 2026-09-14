@@ -391,6 +391,7 @@ function getJitsiMeetingUrl(meeting: LiveClassMeeting) {
 
 const defaultCourseTitle = 'Digital Marketing Beginner to Professional';
 const mediaPlanningBuyingCourseTitle = 'Digital Media Planning & Buying';
+const mediaPlanningBuyingTuitionFee = 650000;
 const capstoneSupportCourseTitle = 'Campaign Portfolio & Capstone Support';
 
 const digitalMarketingLessons = [
@@ -1610,6 +1611,7 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-041', name: 'Cham Myae Quo', email: 'chammyaequo@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-042', name: 'Morgen Dzyna', email: 'morgen.dzyna@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-043', name: 'Thin Htoo Htike', email: 'thinhtoo9122005@gmail.com', phone: '09796156976', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 14, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-044', name: 'Htoo Thinzar Kyaw', email: 'htootzkyaw@gmail.com', phone: '+971 509491015', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 14, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
 const tuitionPaymentRecords: TuitionPaymentRecord[] = [
@@ -1630,10 +1632,21 @@ const tuitionPaymentRecords: TuitionPaymentRecord[] = [
     studentName: 'Thin Htoo Htike',
     studentEmail: 'thinhtoo9122005@gmail.com',
     course: mediaPlanningBuyingCourseTitle,
-    tuitionFee: 350000,
+    tuitionFee: mediaPlanningBuyingTuitionFee,
     paidAmount: 300000,
     paidDate: '14th September 2026',
-    note: 'Partial payment',
+    note: 'Partial payment - 350,000 MMK remaining',
+  },
+  {
+    id: 'PAY-STU-SEED-044-2026-09-14',
+    studentId: 'STU-SEED-044',
+    studentName: 'Htoo Thinzar Kyaw',
+    studentEmail: 'htootzkyaw@gmail.com',
+    course: mediaPlanningBuyingCourseTitle,
+    tuitionFee: mediaPlanningBuyingTuitionFee,
+    paidAmount: 350000,
+    paidDate: '14th September 2026',
+    note: 'Partial payment - 300,000 MMK remaining',
   },
 ];
 
