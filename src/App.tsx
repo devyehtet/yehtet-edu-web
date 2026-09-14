@@ -1612,6 +1612,8 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-042', name: 'Morgen Dzyna', email: 'morgen.dzyna@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-043', name: 'Thin Htoo Htike', email: 'thinhtoo9122005@gmail.com', phone: '09796156976', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 14, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-044', name: 'Htoo Thinzar Kyaw', email: 'htootzkyaw@gmail.com', phone: '+971 509491015', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 14, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-045', name: 'Yin Min Han', email: 'yinminhan777@gmail.com', phone: '095134905', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-046', name: 'Win Myat Tun', email: 'winmyattun599@gmail.com', phone: '09666276404', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
 const tuitionPaymentRecords: TuitionPaymentRecord[] = [
@@ -1647,6 +1649,28 @@ const tuitionPaymentRecords: TuitionPaymentRecord[] = [
     paidAmount: 350000,
     paidDate: '14th September 2026',
     note: 'Partial payment - 300,000 MMK remaining',
+  },
+  {
+    id: 'PAY-STU-SEED-045-2026-09-15',
+    studentId: 'STU-SEED-045',
+    studentName: 'Yin Min Han',
+    studentEmail: 'yinminhan777@gmail.com',
+    course: mediaPlanningBuyingCourseTitle,
+    tuitionFee: mediaPlanningBuyingTuitionFee,
+    paidAmount: 325000,
+    paidDate: '15th September 2026',
+    note: 'Partial payment - 325,000 MMK remaining',
+  },
+  {
+    id: 'PAY-STU-SEED-046-2026-09-15',
+    studentId: 'STU-SEED-046',
+    studentName: 'Win Myat Tun',
+    studentEmail: 'winmyattun599@gmail.com',
+    course: mediaPlanningBuyingCourseTitle,
+    tuitionFee: mediaPlanningBuyingTuitionFee,
+    paidAmount: 325000,
+    paidDate: '15th September 2026',
+    note: 'Partial payment - 325,000 MMK remaining',
   },
 ];
 
