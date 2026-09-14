@@ -1650,14 +1650,11 @@ const tuitionPaymentRecords: TuitionPaymentRecord[] = [
   },
 ];
 
-const demoStudents: Student[] = [
-  { id: 'STU-001', name: 'Aung Min Thu', email: 'aungmin@example.com', course: defaultCourseTitle, progress: 72, status: 'Active', lastActive: 'Today, 09:30 AM', joined: 'Jan 12, 2026', assignments: '4 / 6 submitted', quizScore: '86% avg' },
-  { id: 'STU-002', name: 'May Zin Htet', email: 'mayzin@example.com', course: defaultCourseTitle, progress: 38, status: 'Active', lastActive: 'Yesterday, 08:10 PM', joined: 'Jan 15, 2026', assignments: '2 / 6 submitted', quizScore: '78% avg' },
-  { id: 'STU-003', name: 'Ko Lin Aung', email: 'kolin@example.com', course: 'Digital Media Planning & Buying', progress: 12, status: 'Pending', lastActive: '2 days ago', joined: 'Jan 21, 2026', assignments: '0 / 3 submitted', quizScore: 'Not started' },
-  { id: 'STU-004', name: 'Thiri Mon', email: 'thiri@example.com', course: defaultCourseTitle, progress: 94, status: 'Active', lastActive: 'Today, 01:45 PM', joined: 'Dec 28, 2025', assignments: '6 / 6 submitted', quizScore: '92% avg' },
-];
+const defaultStudents: Student[] = seededStudentAccounts;
 
-const defaultStudents: Student[] = [...seededStudentAccounts, ...demoStudents];
+function removePlaceholderStudents(students: Student[]) {
+  return students.filter((student) => !student.email.toLowerCase().endsWith('@example.com'));
+}
 
 function normalizeStoredStudent(student: Partial<Student>, index: number): Student {
   return {
@@ -1677,9 +1674,10 @@ function normalizeStoredStudent(student: Partial<Student>, index: number): Stude
 }
 
 function mergeSeededStudentAccounts(students: Student[]) {
-  const existingEmails = new Set(students.map((student) => student.email.toLowerCase()).filter(Boolean));
+  const cleanStudents = removePlaceholderStudents(students);
+  const existingEmails = new Set(cleanStudents.map((student) => student.email.toLowerCase()).filter(Boolean));
   const missingSeededAccounts = seededStudentAccounts.filter((student) => !existingEmails.has(student.email.toLowerCase()));
-  return [...missingSeededAccounts, ...students];
+  return [...missingSeededAccounts, ...cleanStudents];
 }
 
 function readStoredStudents(): Student[] {
