@@ -64,6 +64,7 @@ type Student = {
   phone?: string;
   password?: string;
   course: string;
+  courses?: string[];
   progress: number;
   status: 'Active' | 'Pending';
   lastActive: string;
@@ -1587,7 +1588,7 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-017', name: 'M Hirfan', email: 'mhirfan997@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 21, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-018', name: 'Thit San Kha', email: 'thitsankha39@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 21, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-019', name: 'Ko Phyo', email: 'noveldesignstudio@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 22, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
-  { id: 'STU-SEED-020', name: 'Ye Min Htet', email: 'yeminhtet81023@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 22, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-020', name: 'Ye Min Htet', email: 'yeminhtet81023@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, courses: [defaultCourseTitle, mediaPlanningBuyingCourseTitle], progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 22, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-021', name: 'Wai Lynn', email: 'wailynn576@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 23, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-022', name: 'Hein Htet Wai', email: 'heinhtetwai1822@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 23, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-023', name: 'Aung KLM', email: 'aung.klm1379@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Aug 23, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
@@ -1629,6 +1630,17 @@ const tuitionPaymentRecords: TuitionPaymentRecord[] = [
     paidAmount: 620000,
     paidDate: '15th September 2026',
     note: 'Fully paid - first installment on 2nd August 2026, final payment received',
+  },
+  {
+    id: 'PAY-STU-SEED-020-2026-09-16',
+    studentId: 'STU-SEED-020',
+    studentName: 'Ye Min Htet',
+    studentEmail: 'yeminhtet81023@gmail.com',
+    course: mediaPlanningBuyingCourseTitle,
+    tuitionFee: 585000,
+    paidAmount: 300000,
+    paidDate: '16th September 2026',
+    note: '10% discount from 650,000 MMK - 285,000 MMK remaining',
   },
   {
     id: 'PAY-STU-SEED-043-2026-09-14',
@@ -1705,13 +1717,18 @@ function removePlaceholderStudents(students: Student[]) {
 }
 
 function normalizeStoredStudent(student: Partial<Student>, index: number): Student {
+  const course = typeof student.course === 'string' && student.course ? student.course : defaultCourseTitle;
+  const courses = Array.isArray(student.courses)
+    ? Array.from(new Set(student.courses.filter((item): item is string => typeof item === 'string' && Boolean(item))))
+    : [course];
   return {
     id: typeof student.id === 'string' && student.id ? student.id : `STU-${String(index + 1).padStart(3, '0')}`,
     name: typeof student.name === 'string' && student.name ? student.name : 'Unnamed Student',
     email: typeof student.email === 'string' ? student.email.toLowerCase() : '',
     phone: typeof student.phone === 'string' ? student.phone : '',
     password: typeof student.password === 'string' ? student.password : '',
-    course: typeof student.course === 'string' && student.course ? student.course : defaultCourseTitle,
+    course,
+    courses: courses.includes(course) ? courses : [course, ...courses],
     progress: typeof student.progress === 'number' ? student.progress : 0,
     status: student.status === 'Pending' ? 'Pending' : 'Active',
     lastActive: typeof student.lastActive === 'string' ? student.lastActive : 'Not started',
@@ -1719,6 +1736,11 @@ function normalizeStoredStudent(student: Partial<Student>, index: number): Stude
     assignments: typeof student.assignments === 'string' ? student.assignments : '0 / 0 submitted',
     quizScore: typeof student.quizScore === 'string' ? student.quizScore : 'Not started',
   };
+}
+
+function getStudentCourses(student: Student) {
+  const courses = Array.isArray(student.courses) && student.courses.length > 0 ? student.courses : [student.course];
+  return Array.from(new Set(courses.filter(Boolean)));
 }
 
 function mergeSeededStudentAccounts(students: Student[]) {
@@ -4158,8 +4180,10 @@ function StudentDirectory({
   const studentRows = students.map((student) => {
     const progress = getStudentProgress(student.id, studentProgressById, lessons);
     const payment = getStudentTuitionPayment(student, tuitionPayments);
+    const enrolledCourses = getStudentCourses(student);
     return {
       student,
+      enrolledCourses,
       progress,
       progressPercent: getCourseProgressPercent(progress, lessons),
       completedCount: getCompletedSet(progress).size,
@@ -4170,13 +4194,14 @@ function StudentDirectory({
     };
   });
   const normalizedSearch = searchText.trim().toLowerCase();
-  const courseOptions = ['All', ...Array.from(new Set(students.map((student) => student.course).filter(Boolean))).sort()];
+  const courseOptions = ['All', ...Array.from(new Set(students.flatMap(getStudentCourses))).sort()];
   const paymentOptions = ['All', 'Paid', 'Partial', 'Unpaid', 'No record'];
-  const filteredRows = studentRows.filter(({ student, paymentStatus }) => {
-    const matchesSearch = !normalizedSearch || [student.name, student.email, student.phone || '', student.id, student.course]
+  const filteredRows = studentRows.filter(({ student, enrolledCourses, paymentStatus }) => {
+    const courseLabel = enrolledCourses.join(' ');
+    const matchesSearch = !normalizedSearch || [student.name, student.email, student.phone || '', student.id, courseLabel]
       .some((value) => value.toLowerCase().includes(normalizedSearch));
     const matchesStatus = statusFilter === 'All' || student.status === statusFilter;
-    const matchesCourse = courseFilter === 'All' || student.course === courseFilter;
+    const matchesCourse = courseFilter === 'All' || enrolledCourses.includes(courseFilter);
     const matchesPayment = paymentFilter === 'All' || paymentStatus === paymentFilter;
     return matchesSearch && matchesStatus && matchesCourse && matchesPayment;
   });
@@ -4275,7 +4300,7 @@ function StudentDirectory({
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map(({ student, progressPercent, completedCount, commentCount, payment, paymentStatus, currentLesson }) => {
+                {filteredRows.map(({ student, enrolledCourses, progressPercent, completedCount, commentCount, payment, paymentStatus, currentLesson }) => {
                   const isSelected = student.id === selectedStudent.id;
                   return (
                     <tr
@@ -4294,7 +4319,7 @@ function StudentDirectory({
                         </div>
                       </td>
                       <td className="max-w-[240px] py-4 pr-4">
-                        <p className="truncate text-xs font-semibold text-slate-300">{student.course}</p>
+                        <p className="line-clamp-2 text-xs font-semibold leading-5 text-slate-300">{enrolledCourses.join(' + ')}</p>
                         <p className="mt-1 text-xs text-slate-500">Joined {student.joined}</p>
                       </td>
                       <td className="py-4 pr-4">
@@ -4406,7 +4431,7 @@ function StudentDirectory({
             <ProfileField label="Student ID" value={selectedStudent.id} />
             {selectedStudent.phone && <ProfileField label="Phone" value={selectedStudent.phone} />}
             <ProfileField label="Joined" value={selectedStudent.joined} />
-            <ProfileField label="Assigned course" value={selectedStudent.course} />
+            <ProfileField label="Assigned course" value={getStudentCourses(selectedStudent).join(' + ')} />
             <ProfileField label="Status" value={selectedStudent.status} />
             <ProfileField label="Assignments" value={selectedStudent.assignments} />
             <ProfileField label="Quiz score" value={selectedStudent.quizScore} />
@@ -5072,8 +5097,9 @@ export default function App() {
     if (loginRole === 'student') {
       const student = students.find((item) => item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
       if (student) {
+        const enrolledCourse = [...getStudentCourses(student)].reverse().find((courseTitle) => courseDetailsByTitle[courseTitle]) || defaultCourseTitle;
         setLearningProgress(studentProgressById[student.id] || readStoredLearningProgress(lessons));
-        setSelectedCourseTitle(courseDetailsByTitle[student.course] ? student.course : defaultCourseTitle);
+        setSelectedCourseTitle(enrolledCourse);
         setIsLoggedIn(true);
         setRole('student');
         setCurrentStudentId(student.id);
