@@ -3701,6 +3701,12 @@ function AdminPanelPage({
             />
           ) : adminActive === 'Payments' ? (
             <TuitionPaymentsAdmin students={students} payments={tuitionPayments} />
+          ) : adminActive === 'Courses' ? (
+            <CourseManagementAdmin
+              students={students}
+              payments={tuitionPayments}
+              lessons={lessons}
+            />
           ) : adminActive === 'Lessons' ? (
             <LessonManagerAdmin
               lessons={lessons}
@@ -4048,6 +4054,166 @@ function LessonManagerAdmin({
           <div className="text-sm text-slate-400">No lessons found yet. Add your first lesson to start building the course.</div>
         )}
       </aside>
+    </div>
+  );
+}
+
+function CourseManagementAdmin({
+  students,
+  payments,
+  lessons,
+}: {
+  students: Student[];
+  payments: TuitionPaymentRecord[];
+  lessons: LessonRecord[];
+}) {
+  const [selectedCourseTitle, setSelectedCourseTitle] = useState(courseCards[0]?.title || defaultCourseTitle);
+  const selectedCourse = courseDetailsByTitle[selectedCourseTitle] || courseDetailsByTitle[defaultCourseTitle];
+  const selectedCourseCard = courseCards.find((course) => course.title === selectedCourseTitle) || courseCards[0];
+  const selectedModules = selectedCourseTitle === defaultCourseTitle
+    ? modules.map((module, moduleIndex) => ({
+        ...module,
+        lessons: lessons.filter((lesson) => lesson.moduleIndex === moduleIndex).map((lesson) => lesson.title),
+      }))
+    : selectedCourse.modules;
+  const selectedCoursePayments = payments.filter((payment) => payment.course === selectedCourseTitle);
+  const selectedStudents = students.filter((student) => getStudentCourses(student).includes(selectedCourseTitle));
+  const totalPaid = selectedCoursePayments.reduce((total, payment) => total + payment.paidAmount, 0);
+  const totalBalance = selectedCoursePayments.reduce((total, payment) => total + getTuitionBalance(payment), 0);
+  const totalItems = selectedModules.reduce((total, module) => total + module.lessons.length, 0);
+
+  return (
+    <div className="grid gap-6 2xl:grid-cols-[420px_minmax(0,1fr)]">
+      <section className={ui.card}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={ui.eyebrow}>Course library</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>{courseCards.length} courses</h2>
+          </div>
+          <span className={ui.chipMuted}>Admin view</span>
+        </div>
+
+        <div className="space-y-3">
+          {courseCards.map((course) => {
+            const isSelected = course.title === selectedCourseTitle;
+            const enrolledCount = students.filter((student) => getStudentCourses(student).includes(course.title)).length;
+            return (
+              <button
+                key={course.title}
+                type="button"
+                onClick={() => setSelectedCourseTitle(course.title)}
+                className={cx(
+                  'w-full rounded-2xl border p-4 text-left transition',
+                  isSelected ? 'border-emerald-300/40 bg-emerald-300/[0.07]' : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="line-clamp-2 text-base font-bold text-white">{course.title}</h3>
+                    <p className="mt-1 text-xs text-slate-500">{course.level}</p>
+                  </div>
+                  <span className={cx('shrink-0 rounded-full px-3 py-1 text-xs font-bold', isSelected ? 'bg-emerald-300 text-slate-950' : 'border border-white/10 text-slate-300')}>
+                    Open
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-xl bg-white/[0.03] p-2">
+                    <p className="font-bold text-white">{course.modules}</p>
+                    <p className="mt-1 text-slate-500">Modules</p>
+                  </div>
+                  <div className="rounded-xl bg-white/[0.03] p-2">
+                    <p className="font-bold text-white">{course.lessons}</p>
+                    <p className="mt-1 text-slate-500">Content</p>
+                  </div>
+                  <div className="rounded-xl bg-white/[0.03] p-2">
+                    <p className="font-bold text-white">{enrolledCount}</p>
+                    <p className="mt-1 text-slate-500">Students</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={ui.card}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className={ui.eyebrow}>Course detail</p>
+            <h2 className={cx(ui.h2, 'mt-2 text-3xl sm:text-4xl')}>{selectedCourse.title}</h2>
+            <p className={cx(ui.bodySm, 'mt-3')}>{selectedCourse.description}</p>
+          </div>
+          <span className={ui.chipMuted}>{selectedCourseCard?.level}</span>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ActivityMetric label="Enrolled students" value={`${selectedStudents.length}`} />
+          <ActivityMetric label="Modules" value={`${selectedModules.length}`} />
+          <ActivityMetric label="Lessons / topics" value={`${totalItems}`} />
+          <ActivityMetric label="Balance left" value={formatMmk(totalBalance)} />
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className={ui.eyebrow}>Curriculum</p>
+                <h3 className={cx(ui.h3, 'mt-2')}>Modules and lessons</h3>
+              </div>
+              <span className={ui.chipMuted}>{totalItems} items</span>
+            </div>
+
+            <div className="max-h-[640px] space-y-3 overflow-y-auto pr-1">
+              {selectedModules.map((module, moduleIndex) => (
+                <div key={`${module.title}-${module.name}`} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">{module.title || `Module ${moduleIndex + 1}`}</p>
+                      <h4 className="mt-1 text-base font-bold text-white">{module.name}</h4>
+                    </div>
+                    <span className={ui.chipMuted}>{module.lessons.length} items</span>
+                  </div>
+                  <div className="mt-4 grid gap-2">
+                    {module.lessons.map((lesson, lessonIndex) => (
+                      <div key={`${module.title}-${lesson}-${lessonIndex}`} className="flex items-start gap-3 rounded-xl bg-white/[0.025] px-3 py-2.5 text-sm">
+                        <span className="mt-0.5 text-xs font-bold text-slate-500">{String(lessonIndex + 1).padStart(2, '0')}</span>
+                        <span className="min-w-0 flex-1 text-slate-300">{lesson}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <p className={ui.eyebrow}>Students</p>
+              <div className="mt-4 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                {selectedStudents.length > 0 ? (
+                  selectedStudents.map((student) => (
+                    <div key={student.id} className="rounded-xl bg-white/[0.03] px-3 py-3">
+                      <p className="font-medium text-white">{student.name}</p>
+                      <p className="mt-1 break-all text-xs text-slate-500">{student.email}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No students assigned to this course yet.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <p className={ui.eyebrow}>Payments</p>
+              <div className="mt-4 space-y-2">
+                <ProfileField label="Records" value={`${selectedCoursePayments.length}`} />
+                <ProfileField label="Total paid" value={formatMmk(totalPaid)} />
+                <ProfileField label="Balance" value={formatMmk(totalBalance)} />
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
     </div>
   );
 }
