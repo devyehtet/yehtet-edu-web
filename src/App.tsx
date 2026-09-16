@@ -272,6 +272,7 @@ const metaEngagementObjectiveVideoUrl = 'https://vimeo.com/1225709314?share=copy
 const metaLeadObjectiveVideoUrl = 'https://vimeo.com/1226057410?share=copy&fl=sv&fe=ci';
 const metaAppPromotionObjectiveVideoUrl = 'https://vimeo.com/1226230774?share=copy&fl=sv&fe=ci';
 const metaSaleObjectiveVideoUrl = 'https://vimeo.com/1226413762?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingCourseIntroductionVideoUrl = 'https://vimeo.com/1227469361?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -305,6 +306,9 @@ const defaultLessonVideoUrls = [
   metaLeadObjectiveVideoUrl,
   metaAppPromotionObjectiveVideoUrl,
   metaSaleObjectiveVideoUrl,
+];
+const mediaPlanningBuyingVideoUrls = [
+  mediaPlanningBuyingCourseIntroductionVideoUrl,
 ];
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
@@ -802,7 +806,7 @@ function buildLessonCatalogForCourse(courseTitle: string, courseModules: CourseM
 
 const lessonCatalog: LessonRecord[] = [
   ...buildLessonCatalogForCourse(defaultCourseTitle, modules, defaultLessonVideoUrls),
-  ...buildLessonCatalogForCourse(mediaPlanningBuyingCourseTitle, mediaPlanningBuyingModules),
+  ...buildLessonCatalogForCourse(mediaPlanningBuyingCourseTitle, mediaPlanningBuyingModules, mediaPlanningBuyingVideoUrls),
   ...buildLessonCatalogForCourse(capstoneSupportCourseTitle, capstoneSupportModules),
 ];
 
@@ -845,9 +849,14 @@ function readStoredLessons(): LessonRecord[] {
     const defaultsById = new Map(lessonCatalog.map((lesson) => [lesson.id, lesson]));
     const mergedDefaults = lessonCatalog.map((lesson) => {
       const storedLesson = parsed.find((item) => item?.id === lesson.id);
+      const isDefaultCourseLesson = lesson.courseTitle === defaultCourseTitle;
+      const isStoredSampleVideo = Boolean(
+        storedLesson?.videoUrl
+        && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl,
+      );
       const storedLessonOverrides = storedLesson && lesson.courseTitle === mediaPlanningBuyingCourseTitle
         ? {
-            videoUrl: storedLesson.videoUrl,
+            videoUrl: isStoredSampleVideo ? lesson.videoUrl : storedLesson.videoUrl,
             requiredWatchPercentage: storedLesson.requiredWatchPercentage,
             resource: storedLesson.resource,
             resourceUrl: storedLesson.resourceUrl,
@@ -855,19 +864,23 @@ function readStoredLessons(): LessonRecord[] {
           }
         : storedLesson;
       const shouldUseNewFirstLessonVideo =
-        lesson.globalIndex === 0
+        isDefaultCourseLesson
+        && lesson.globalIndex === 0
         && storedLesson?.videoUrl
         && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
       const shouldUseNewFirstLessonDuration =
-        lesson.globalIndex === 0
+        isDefaultCourseLesson
+        && lesson.globalIndex === 0
         && storedLesson?.duration === '10 min';
       const shouldUseNewSecondLessonVideo =
-        lesson.globalIndex === 1
+        isDefaultCourseLesson
+        && lesson.globalIndex === 1
         && storedLesson?.videoUrl
         && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
       const defaultLessonVideoUrl = defaultLessonVideoUrls[lesson.globalIndex];
       const shouldUseNewDefaultLessonVideo =
-        lesson.globalIndex > 1
+        isDefaultCourseLesson
+        && lesson.globalIndex > 1
         && Boolean(defaultLessonVideoUrl)
         && storedLesson?.videoUrl
         && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl;
@@ -920,7 +933,7 @@ function normalizeLessonRecord(value: Partial<LessonRecord>, fallback: LessonRec
     practice: typeof value.practice === 'string' && value.practice.trim() ? value.practice : getLessonPractice(title),
     resource: typeof value.resource === 'string' && value.resource.trim() ? value.resource.trim() : fallback.resource,
     resourceUrl: typeof value.resourceUrl === 'string' && value.resourceUrl.trim() ? value.resourceUrl.trim() : fallback.resourceUrl,
-    videoUrl: normalizeLessonVideoUrl(value.videoUrl),
+    videoUrl: normalizeLessonVideoUrl(value.videoUrl || fallback.videoUrl),
     requiredWatchPercentage: normalizeRequiredWatchPercentage(value.requiredWatchPercentage),
   };
 }
