@@ -845,6 +845,15 @@ function readStoredLessons(): LessonRecord[] {
     const defaultsById = new Map(lessonCatalog.map((lesson) => [lesson.id, lesson]));
     const mergedDefaults = lessonCatalog.map((lesson) => {
       const storedLesson = parsed.find((item) => item?.id === lesson.id);
+      const storedLessonOverrides = storedLesson && lesson.courseTitle === mediaPlanningBuyingCourseTitle
+        ? {
+            videoUrl: storedLesson.videoUrl,
+            requiredWatchPercentage: storedLesson.requiredWatchPercentage,
+            resource: storedLesson.resource,
+            resourceUrl: storedLesson.resourceUrl,
+            duration: storedLesson.duration,
+          }
+        : storedLesson;
       const shouldUseNewFirstLessonVideo =
         lesson.globalIndex === 0
         && storedLesson?.videoUrl
@@ -865,7 +874,7 @@ function readStoredLessons(): LessonRecord[] {
       const enforcedLessonDuration = lessonDurationsByTitle[lesson.title];
       return normalizeLessonRecord({
         ...lesson,
-        ...storedLesson,
+        ...storedLessonOverrides,
         ...(shouldUseNewFirstLessonVideo ? { videoUrl: firstLessonVideoUrl } : {}),
         ...(shouldUseNewFirstLessonDuration ? { duration: firstLessonDuration } : {}),
         ...(shouldUseNewSecondLessonVideo ? { videoUrl: secondLessonVideoUrl } : {}),
@@ -878,6 +887,7 @@ function readStoredLessons(): LessonRecord[] {
       .filter((item) => (
         typeof item?.id === 'string'
         && !defaultsById.has(item.id)
+        && !item.id.startsWith('dmpb-')
         && !retiredLessonIds.has(item.id)
         && !(typeof item.title === 'string' && retiredLessonTitles.has(item.title))
       ))
