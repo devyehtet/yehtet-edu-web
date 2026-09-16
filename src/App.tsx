@@ -108,6 +108,7 @@ type LearningProgress = {
 type StudentProgressById = Record<string, LearningProgress>;
 type LessonRecord = {
   id: string;
+  courseTitle: string;
   title: string;
   moduleTitle: string;
   moduleName: string;
@@ -879,28 +880,53 @@ const lessonDurationsByTitle: Record<string, string> = {
   'Meta Ads Campaign Structure': '45 min',
 };
 
-const lessonCatalog: LessonRecord[] = modules.flatMap((module, moduleIndex) =>
-  module.lessons.map((title, lessonIndex) => {
-    const globalIndex = modules.slice(0, moduleIndex).reduce((total, item) => total + item.lessons.length, 0) + lessonIndex;
-    const resourceUrl = lessonResourceUrlsByTitle[title];
-    return {
-      id: stableLessonIdsByTitle[title] || `m${moduleIndex + 1}-l${lessonIndex + 1}`,
-      title,
-      moduleTitle: module.title,
-      moduleName: module.name,
-      moduleIndex,
-      lessonIndex,
-      globalIndex,
-      duration: lessonDurationsByTitle[title] || (globalIndex === 0 ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`),
-      outcome: getLessonOutcome(title),
-      practice: getLessonPractice(title),
-      resource: resourceUrl ? title : `${module.name} checklist`,
-      resourceUrl,
-      videoUrl: defaultLessonVideoUrls[globalIndex] || sampleLessonVideoUrl,
-      requiredWatchPercentage: 80,
-    };
-  }),
-);
+function getCourseModulesByTitle(courseTitle: string) {
+  if (courseTitle === mediaPlanningBuyingCourseTitle) return mediaPlanningBuyingModules;
+  if (courseTitle === capstoneSupportCourseTitle) return capstoneSupportModules;
+  return modules;
+}
+
+function getCourseLessonId(courseTitle: string, title: string, moduleIndex: number, lessonIndex: number) {
+  if (courseTitle === defaultCourseTitle) return stableLessonIdsByTitle[title] || `m${moduleIndex + 1}-l${lessonIndex + 1}`;
+  if (courseTitle === mediaPlanningBuyingCourseTitle) return `dmpb-m${moduleIndex + 1}-l${lessonIndex + 1}`;
+  return `capstone-m${moduleIndex + 1}-l${lessonIndex + 1}`;
+}
+
+function buildLessonCatalogForCourse(courseTitle: string, courseModules: CourseModule[], videoUrls: string[] = []) {
+  return courseModules.flatMap((module, moduleIndex) =>
+    module.lessons.map((title, lessonIndex) => {
+      const globalIndex = courseModules.slice(0, moduleIndex).reduce((total, item) => total + item.lessons.length, 0) + lessonIndex;
+      const resourceUrl = lessonResourceUrlsByTitle[title];
+      return {
+        id: getCourseLessonId(courseTitle, title, moduleIndex, lessonIndex),
+        courseTitle,
+        title,
+        moduleTitle: module.title,
+        moduleName: module.name,
+        moduleIndex,
+        lessonIndex,
+        globalIndex,
+        duration: lessonDurationsByTitle[title] || (globalIndex === 0 && courseTitle === defaultCourseTitle ? firstLessonDuration : `${10 + ((globalIndex * 3) % 13)} min`),
+        outcome: getLessonOutcome(title),
+        practice: getLessonPractice(title),
+        resource: resourceUrl ? title : `${module.name} checklist`,
+        resourceUrl,
+        videoUrl: videoUrls[globalIndex] || sampleLessonVideoUrl,
+        requiredWatchPercentage: 80,
+      };
+    }),
+  );
+}
+
+const lessonCatalog: LessonRecord[] = [
+  ...buildLessonCatalogForCourse(defaultCourseTitle, modules, defaultLessonVideoUrls),
+  ...buildLessonCatalogForCourse(mediaPlanningBuyingCourseTitle, mediaPlanningBuyingModules),
+  ...buildLessonCatalogForCourse(capstoneSupportCourseTitle, capstoneSupportModules),
+];
+
+function getCourseLessons(courseTitle: string, allLessons: LessonRecord[]) {
+  return allLessons.filter((lesson) => (lesson.courseTitle || defaultCourseTitle) === courseTitle);
+}
 
 function normalizeRequiredWatchPercentage(value: string | number | undefined) {
   const parsed = typeof value === 'number' ? value : Number(value || 80);
@@ -913,11 +939,16 @@ function normalizeLessonVideoUrl(value: string | undefined) {
 }
 
 function reindexLessons(lessons: LessonRecord[]) {
-  const lessonCountsByModule = new Map<number, number>();
+  const lessonCountsByModule = new Map<string, number>();
+  const globalCountsByCourse = new Map<string, number>();
   return lessons.map((lesson, globalIndex) => {
-    const lessonIndex = lessonCountsByModule.get(lesson.moduleIndex) || 0;
-    lessonCountsByModule.set(lesson.moduleIndex, lessonIndex + 1);
-    return { ...lesson, globalIndex, lessonIndex };
+    const courseTitle = lesson.courseTitle || defaultCourseTitle;
+    const moduleKey = `${courseTitle}:${lesson.moduleIndex}`;
+    const lessonIndex = lessonCountsByModule.get(moduleKey) || 0;
+    const courseGlobalIndex = globalCountsByCourse.get(courseTitle) || 0;
+    lessonCountsByModule.set(moduleKey, lessonIndex + 1);
+    globalCountsByCourse.set(courseTitle, courseGlobalIndex + 1);
+    return { ...lesson, courseTitle, globalIndex: courseGlobalIndex, lessonIndex };
   });
 }
 
@@ -960,6 +991,7 @@ function readStoredLessons(): LessonRecord[] {
         ...(enforcedLessonDuration ? { duration: enforcedLessonDuration } : {}),
       }, lesson);
     });
+    const defaultCustomLessonFallback = getCourseLessons(defaultCourseTitle, lessonCatalog).slice(-1)[0] || lessonCatalog[0];
     const customLessons = parsed
       .filter((item) => (
         typeof item?.id === 'string'
@@ -967,7 +999,7 @@ function readStoredLessons(): LessonRecord[] {
         && !retiredLessonIds.has(item.id)
         && !(typeof item.title === 'string' && retiredLessonTitles.has(item.title))
       ))
-      .map((item) => normalizeLessonRecord(item, lessonCatalog[lessonCatalog.length - 1]))
+      .map((item) => normalizeLessonRecord(item, defaultCustomLessonFallback))
       .filter(Boolean) as LessonRecord[];
 
     return reindexLessons([...mergedDefaults, ...customLessons]);
@@ -977,15 +1009,18 @@ function readStoredLessons(): LessonRecord[] {
 }
 
 function normalizeLessonRecord(value: Partial<LessonRecord>, fallback: LessonRecord): LessonRecord {
+  const courseTitle = typeof value.courseTitle === 'string' && value.courseTitle.trim() ? value.courseTitle.trim() : fallback.courseTitle || defaultCourseTitle;
+  const courseModules = getCourseModulesByTitle(courseTitle);
   const moduleIndex = Number.isInteger(value.moduleIndex) ? value.moduleIndex as number : fallback.moduleIndex;
-  const module = modules[moduleIndex] || modules[fallback.moduleIndex] || modules[0];
+  const module = courseModules[moduleIndex] || courseModules[fallback.moduleIndex] || courseModules[0] || modules[0];
   const title = typeof value.title === 'string' && value.title.trim() ? value.title.trim() : fallback.title;
   return {
     id: typeof value.id === 'string' && value.id.trim() ? value.id : fallback.id,
+    courseTitle,
     title,
     moduleTitle: module.title,
     moduleName: module.name,
-    moduleIndex: moduleIndex >= 0 && moduleIndex < modules.length ? moduleIndex : fallback.moduleIndex,
+    moduleIndex: moduleIndex >= 0 && moduleIndex < courseModules.length ? moduleIndex : fallback.moduleIndex,
     lessonIndex: Number.isInteger(value.lessonIndex) ? value.lessonIndex as number : fallback.lessonIndex,
     globalIndex: Number.isInteger(value.globalIndex) ? value.globalIndex as number : fallback.globalIndex,
     duration: typeof value.duration === 'string' && value.duration.trim() ? value.duration : fallback.duration,
@@ -1531,9 +1566,14 @@ function getCurrentLesson(progress: LearningProgress, lessons: LessonRecord[] = 
   return lessons.find((lesson) => !getCompletedSet(progress).has(lesson.id)) || lessons[0];
 }
 
+function getCompletedLessonCount(progress: LearningProgress, lessons: LessonRecord[] = lessonCatalog) {
+  const validIds = new Set(lessons.map((lesson) => lesson.id));
+  return progress.completedLessonIds.filter((id) => validIds.has(id)).length;
+}
+
 function getCourseProgressPercent(progress: LearningProgress, lessons: LessonRecord[] = lessonCatalog) {
   if (lessons.length === 0) return 0;
-  return Math.round((getCompletedSet(progress).size / lessons.length) * 100);
+  return Math.round((getCompletedLessonCount(progress, lessons) / lessons.length) * 100);
 }
 
 function isLessonUnlocked(lesson: LessonRecord, progress: LearningProgress, lessons: LessonRecord[] = lessonCatalog) {
@@ -1741,6 +1781,10 @@ function normalizeStoredStudent(student: Partial<Student>, index: number): Stude
 function getStudentCourses(student: Student) {
   const courses = Array.isArray(student.courses) && student.courses.length > 0 ? student.courses : [student.course];
   return Array.from(new Set(courses.filter(Boolean)));
+}
+
+function getPrimaryStudentCourse(student: Student) {
+  return [...getStudentCourses(student)].reverse().find((courseTitle) => courseDetailsByTitle[courseTitle]) || defaultCourseTitle;
 }
 
 function mergeSeededStudentAccounts(students: Student[]) {
@@ -2410,11 +2454,22 @@ function ModuleAccordion({ module, index }: { module: CourseModule; index: numbe
 // Student Dashboard
 // =====================================================================
 
-function StudentDashboardPage({ go, learningProgress, lessons }: { go: (v: PageName) => void; learningProgress: LearningProgress; lessons: LessonRecord[] }) {
-  const currentCourse = courseCards[0];
+function StudentDashboardPage({
+  go,
+  courseTitle,
+  learningProgress,
+  lessons,
+}: {
+  go: (v: PageName) => void;
+  courseTitle: string;
+  learningProgress: LearningProgress;
+  lessons: LessonRecord[];
+}) {
+  const currentCourse = courseCards.find((course) => course.title === courseTitle) || courseCards[0];
+  const courseModules = getCourseModulesByTitle(currentCourse.title);
   const currentLesson = getCurrentLesson(learningProgress, lessons);
   const overallProgress = getCourseProgressPercent(learningProgress, lessons);
-  const completedCount = getCompletedSet(learningProgress).size;
+  const completedCount = getCompletedLessonCount(learningProgress, lessons);
 
   const quickActions: Array<{ icon: IconType; label: string; target: PageName }> = [
     { icon: PlayCircle, label: 'Continue learning', target: 'Lesson Player' },
@@ -2427,8 +2482,8 @@ function StudentDashboardPage({ go, learningProgress, lessons }: { go: (v: PageN
     <div className={ui.page}>
       <PageHeader
         eyebrow="Auto-enrolled course"
-        title="Digital Marketing Beginner to Professional."
-        description="Your account is ready. Start the first video, complete lessons in order, and keep moving through the full course path."
+        title={`${currentCourse.title}.`}
+        description="Your account is ready. Start the first lesson, complete lessons in order, and keep moving through the course path assigned to you."
         actions={
           <button onClick={() => go('Lesson Player')} className={ui.btnPrimary}>
             Continue learning <ArrowRight className="h-4 w-4" />
@@ -2462,7 +2517,7 @@ function StudentDashboardPage({ go, learningProgress, lessons }: { go: (v: PageN
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <InfoCard icon={BookOpen} title={currentCourse.title} text="Automatically assigned to every student account." />
+        <InfoCard icon={BookOpen} title={currentCourse.title} text="Assigned by the admin for this student account." />
         <InfoCard icon={PlayCircle} title="One lesson at a time" text="Complete the current video to unlock the next class." />
         <InfoCard icon={CheckCircle2} title="Saved progress" text="Your current lesson and completed lessons stay saved in this browser." />
       </section>
@@ -2497,7 +2552,7 @@ function StudentDashboardPage({ go, learningProgress, lessons }: { go: (v: PageN
           </button>
         } />
         <div className="mt-8 space-y-3">
-          {modules.map((module, moduleIndex) => (
+          {courseModules.map((module, moduleIndex) => (
             <ModuleListRow key={module.title} module={module} moduleIndex={moduleIndex} learningProgress={learningProgress} lessons={lessons} onOpen={() => go('Lesson Player')} />
           ))}
         </div>
@@ -2525,7 +2580,7 @@ function ModuleListRow({
   lessons,
   onOpen,
 }: {
-  module: (typeof modules)[number];
+  module: CourseModule;
   moduleIndex: number;
   learningProgress: LearningProgress;
   lessons: LessonRecord[];
@@ -2908,6 +2963,7 @@ function CommentCard({
 
 function LessonPlayerPage({
   go,
+  courseTitle,
   learningProgress,
   setLearningProgress,
   lessons,
@@ -2918,6 +2974,7 @@ function LessonPlayerPage({
   onDeleteComment,
 }: {
   go: (v: PageName) => void;
+  courseTitle: string;
   learningProgress: LearningProgress;
   setLearningProgress: React.Dispatch<React.SetStateAction<LearningProgress>>;
   lessons: LessonRecord[];
@@ -2925,10 +2982,13 @@ function LessonPlayerPage({
   lessonComments: LessonComment[];
   setLessonComments: React.Dispatch<React.SetStateAction<LessonComment[]>>;
 } & CommentMutationHandlers) {
+  const currentCourse = courseCards.find((course) => course.title === courseTitle) || courseCards[0];
+  const courseModules = getCourseModulesByTitle(currentCourse.title);
   const [activeLessonId, setActiveLessonId] = useState(getCurrentLesson(learningProgress, lessons).id);
   const [savedMessage, setSavedMessage] = useState('');
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) || getCurrentLesson(learningProgress, lessons);
   const completed = getCompletedSet(learningProgress);
+  const completedCount = getCompletedLessonCount(learningProgress, lessons);
   const isCompleted = completed.has(activeLesson.id);
   const courseProgress = getCourseProgressPercent(learningProgress, lessons);
   const watchedPercent = Math.max(isCompleted ? 100 : 0, learningProgress.watchProgressByLessonId[activeLesson.id] || 0);
@@ -3089,15 +3149,15 @@ function LessonPlayerPage({
         <aside className="space-y-3">
           <div className={ui.cardSubtle}>
             <p className={ui.eyebrow}>Course</p>
-            <h2 className="mt-2 text-lg font-bold text-white">Digital Marketing Beginner to Professional</h2>
+            <h2 className="mt-2 text-lg font-bold text-white">{currentCourse.title}</h2>
             <div className="mt-4">
               <ProgressBar value={courseProgress} height="md" />
             </div>
-            <p className="mt-3 text-sm text-slate-400">{completed.size} / {lessons.length} lessons completed</p>
+            <p className="mt-3 text-sm text-slate-400">{completedCount} / {lessons.length} lessons completed</p>
           </div>
 
           <p className={cx(ui.eyebrow, 'px-1 pt-2')}>Curriculum</p>
-          {modules.map((module, index) => {
+          {courseModules.map((module, index) => {
             const moduleState = getModuleLearningState(index, learningProgress, lessons);
             const isCurrent = index === activeLesson.moduleIndex;
             const moduleLessons = lessons.filter((lesson) => lesson.moduleIndex === index);
@@ -3394,6 +3454,7 @@ function AdminPanelPage({
   const [savedMessage, setSavedMessage] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || defaultStudents[0].id);
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0]?.id || '');
+  const [lessonActionCourseTitle, setLessonActionCourseTitle] = useState(defaultCourseTitle);
   const [meetingTitle, setMeetingTitle] = useState('Digital Marketing Live Class');
   const [meetingDays, setMeetingDays] = useState<MeetingDay[]>(weeklyMeetingDays);
   const [meetingStartTime, setMeetingStartTime] = useState('19:00');
@@ -3407,7 +3468,10 @@ function AdminPanelPage({
   const activeStudentCount = students.filter((student) => student.status === 'Active').length;
   const averageStudentProgress = students.length
     ? Math.round(students.reduce((total, student) => (
-      total + getCourseProgressPercent(getStudentProgress(student.id, studentProgressById, lessons), lessons)
+      total + getCourseProgressPercent(
+        getStudentProgress(student.id, studentProgressById, lessons),
+        getCourseLessons(getPrimaryStudentCourse(student), lessons),
+      )
     ), 0) / students.length)
     : 0;
   const adminOverviewStats: Array<{ label: string; value: string; icon: IconType }> = [
@@ -3458,7 +3522,8 @@ function AdminPanelPage({
     const title = values['Lesson title']?.trim() || selectedLesson?.title || 'Untitled lesson';
     const videoUrl = normalizeLessonVideoUrl(values['Vimeo embed URL']);
     const requiredWatchPercentage = normalizeRequiredWatchPercentage(values['Required watch percentage']);
-    const resource = values['Attached resource']?.trim() || `${modules[modules.length - 1].name} resource`;
+    const actionCourseModules = getCourseModulesByTitle(lessonActionCourseTitle);
+    const resource = values['Attached resource']?.trim() || `${actionCourseModules[actionCourseModules.length - 1]?.name || modules[modules.length - 1].name} resource`;
     const resourceUrl = values['Resource file URL']?.trim() || undefined;
 
     if (isEditingAction && selectedLesson) {
@@ -3481,17 +3546,19 @@ function AdminPanelPage({
       return;
     }
 
-    const moduleIndex = modules.length - 1;
-    const module = modules[moduleIndex];
-    const moduleLessonCount = lessons.filter((lesson) => lesson.moduleIndex === moduleIndex).length;
+    const moduleIndex = Math.max(0, actionCourseModules.length - 1);
+    const module = actionCourseModules[moduleIndex] || modules[modules.length - 1];
+    const courseLessons = getCourseLessons(lessonActionCourseTitle, lessons);
+    const moduleLessonCount = courseLessons.filter((lesson) => lesson.moduleIndex === moduleIndex).length;
     const newLesson: LessonRecord = {
       id: `custom-${Date.now()}`,
+      courseTitle: lessonActionCourseTitle,
       title,
       moduleTitle: module.title,
       moduleName: module.name,
       moduleIndex,
       lessonIndex: moduleLessonCount,
-      globalIndex: lessons.length,
+      globalIndex: courseLessons.length,
       duration: '12 min',
       outcome: getLessonOutcome(title),
       practice: getLessonPractice(title),
@@ -3654,7 +3721,7 @@ function AdminPanelPage({
                   </button>
                 </>
               ) : (
-                <button onClick={() => openAction(current.primaryAction)} className={ui.btnPrimary}>
+                <button onClick={() => { if (adminActive === 'Lessons') setLessonActionCourseTitle(defaultCourseTitle); openAction(current.primaryAction); }} className={ui.btnPrimary}>
                   <Plus className="h-4 w-4" /> {current.primaryAction}
                 </button>
               )
@@ -3714,8 +3781,8 @@ function AdminPanelPage({
               selectedLesson={selectedLesson}
               selectedLessonId={selectedLessonId}
               onSelectLesson={(id) => { setSelectedLessonId(id); setActiveAction(null); setSavedMessage(''); }}
-              onCreateLesson={() => openAction('Add Lesson')}
-              onEditLesson={(lesson) => { setSelectedLessonId(lesson.id); openAction(`Edit ${lesson.title}`); }}
+              onCreateLesson={(courseTitle) => { setLessonActionCourseTitle(courseTitle); openAction('Add Lesson'); }}
+              onEditLesson={(lesson) => { setLessonActionCourseTitle(lesson.courseTitle); setSelectedLessonId(lesson.id); openAction(`Edit ${lesson.title}`); }}
               onUpdateComment={onUpdateComment}
               onDeleteComment={onDeleteComment}
             />
@@ -3875,15 +3942,31 @@ function LessonManagerAdmin({
   selectedLesson?: LessonRecord;
   selectedLessonId: string;
   onSelectLesson: (id: string) => void;
-  onCreateLesson: () => void;
+  onCreateLesson: (courseTitle: string) => void;
   onEditLesson: (lesson: LessonRecord) => void;
 } & CommentMutationHandlers) {
-  const selectedVideoUrl = selectedLesson ? getLessonVideoUrl(selectedLesson) : '';
-  const selectedPreviewUrl = selectedLesson ? getEmbeddableLessonUrl(selectedVideoUrl, `admin-preview-${selectedLesson.id}`) : '';
-  const selectedPreviewIsVimeo = selectedLesson ? isVimeoLessonUrl(selectedVideoUrl) : false;
-  const selectedLessonComments = selectedLesson
-    ? lessonComments.filter((comment) => comment.lessonId === selectedLesson.id).sort((a, b) => b.createdAt - a.createdAt)
+  const [selectedCourseTitle, setSelectedCourseTitle] = useState(selectedLesson?.courseTitle || defaultCourseTitle);
+  const courseModules = getCourseModulesByTitle(selectedCourseTitle);
+  const displayedLessons = getCourseLessons(selectedCourseTitle, lessons);
+  const activeLesson = displayedLessons.find((lesson) => lesson.id === selectedLessonId) || displayedLessons[0];
+  const selectedVideoUrl = activeLesson ? getLessonVideoUrl(activeLesson) : '';
+  const selectedPreviewUrl = activeLesson ? getEmbeddableLessonUrl(selectedVideoUrl, `admin-preview-${activeLesson.id}`) : '';
+  const selectedPreviewIsVimeo = activeLesson ? isVimeoLessonUrl(selectedVideoUrl) : false;
+  const selectedLessonComments = activeLesson
+    ? lessonComments.filter((comment) => comment.lessonId === activeLesson.id).sort((a, b) => b.createdAt - a.createdAt)
     : [];
+
+  useEffect(() => {
+    if (activeLesson && activeLesson.id !== selectedLessonId) {
+      onSelectLesson(activeLesson.id);
+    }
+  }, [activeLesson, onSelectLesson, selectedLessonId]);
+
+  const selectCourse = (courseTitle: string) => {
+    setSelectedCourseTitle(courseTitle);
+    const firstLesson = getCourseLessons(courseTitle, lessons)[0];
+    if (firstLesson) onSelectLesson(firstLesson.id);
+  };
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -3891,16 +3974,38 @@ function LessonManagerAdmin({
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className={ui.eyebrow}>Course lesson library</p>
-            <h2 className={cx(ui.h3, 'mt-2')}>{lessons.length} lessons</h2>
+            <h2 className={cx(ui.h3, 'mt-2')}>{displayedLessons.length} lessons</h2>
           </div>
-          <button onClick={onCreateLesson} className={ui.btnPrimary}>
+          <button onClick={() => onCreateLesson(selectedCourseTitle)} className={ui.btnPrimary}>
             <Plus className="h-4 w-4" /> Add lesson
           </button>
         </div>
 
+        <div className="mb-5 grid gap-2 sm:grid-cols-2">
+          {courseCards.filter((course) => course.title !== capstoneSupportCourseTitle).map((course) => {
+            const isSelected = course.title === selectedCourseTitle;
+            return (
+              <button
+                key={course.title}
+                type="button"
+                onClick={() => selectCourse(course.title)}
+                className={cx(
+                  'rounded-2xl border px-4 py-3 text-left transition',
+                  isSelected
+                    ? 'border-emerald-300/40 bg-emerald-300/[0.07] text-white'
+                    : 'border-white/[0.06] bg-white/[0.02] text-slate-400 hover:border-white/15 hover:bg-white/[0.05] hover:text-white',
+                )}
+              >
+                <p className="line-clamp-1 text-sm font-bold">{course.title}</p>
+                <p className="mt-1 text-xs text-slate-500">{course.modules} · {course.lessons}</p>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="max-h-[720px] space-y-6 overflow-y-auto pr-1">
-          {modules.map((module, moduleIndex) => {
-            const moduleLessons = lessons.filter((lesson) => lesson.moduleIndex === moduleIndex);
+          {courseModules.map((module, moduleIndex) => {
+            const moduleLessons = displayedLessons.filter((lesson) => lesson.moduleIndex === moduleIndex);
             return (
               <div key={module.title} className="border-t border-white/[0.06] pt-5 first:border-t-0 first:pt-0">
                 <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -3959,14 +4064,14 @@ function LessonManagerAdmin({
       </section>
 
       <aside className={cx(ui.card, 'self-start xl:sticky xl:top-28')}>
-        {selectedLesson ? (
+        {activeLesson ? (
           <>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className={ui.eyebrow}>Lesson preview</p>
-                <h2 className={cx(ui.h2, 'mt-2 text-2xl sm:text-2xl')}>{selectedLesson.title}</h2>
+                <h2 className={cx(ui.h2, 'mt-2 text-2xl sm:text-2xl')}>{activeLesson.title}</h2>
                 <p className={cx(ui.bodySm, 'mt-2')}>
-                  Lesson {selectedLesson.globalIndex + 1} · {selectedLesson.moduleTitle} · {selectedLesson.duration}
+                  Lesson {activeLesson.globalIndex + 1} · {activeLesson.moduleTitle} · {activeLesson.duration}
                 </p>
               </div>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
@@ -3981,7 +4086,7 @@ function LessonManagerAdmin({
                     src={selectedPreviewUrl}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
-                    title={`${selectedLesson.title} admin preview`}
+                    title={`${activeLesson.title} admin preview`}
                     className="h-full w-full rounded-xl border-0 bg-black"
                   />
                 ) : (
@@ -3998,22 +4103,23 @@ function LessonManagerAdmin({
             </div>
 
             <div className="mt-5 space-y-2">
-              <LessonMetaField label="Module" value={selectedLesson.moduleName} />
+              <LessonMetaField label="Course" value={activeLesson.courseTitle} />
+              <LessonMetaField label="Module" value={activeLesson.moduleName} />
               <LessonMetaField label="Video URL" value={selectedVideoUrl} mono />
-              <LessonMetaField label="Required watch" value={`${selectedLesson.requiredWatchPercentage}%`} />
+              <LessonMetaField label="Required watch" value={`${activeLesson.requiredWatchPercentage}%`} />
               <LessonMetaField label="Unlock rule" value="Previous lesson must be completed" />
-              <LessonMetaField label="Resource" value={selectedLesson.resource} />
-              {selectedLesson.resourceUrl && <LessonMetaField label="Resource URL" value={selectedLesson.resourceUrl} mono />}
+              <LessonMetaField label="Resource" value={activeLesson.resource} />
+              {activeLesson.resourceUrl && <LessonMetaField label="Resource URL" value={activeLesson.resourceUrl} mono />}
             </div>
 
             <div className="mt-5 space-y-3">
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                 <p className={ui.eyebrow}>Outcome</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{selectedLesson.outcome}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{activeLesson.outcome}</p>
               </div>
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                 <p className={ui.eyebrow}>Practice</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{selectedLesson.practice}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{activeLesson.practice}</p>
               </div>
             </div>
 
@@ -4042,10 +4148,10 @@ function LessonManagerAdmin({
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <button onClick={() => onEditLesson(selectedLesson)} className={ui.btnPrimary}>
+              <button onClick={() => onEditLesson(activeLesson)} className={ui.btnPrimary}>
                 <UploadCloud className="h-4 w-4" /> Replace video URL
               </button>
-              <button onClick={() => onEditLesson(selectedLesson)} className={ui.btnGhost}>
+              <button onClick={() => onEditLesson(activeLesson)} className={ui.btnGhost}>
                 <BookOpen className="h-4 w-4" /> Edit lesson
               </button>
             </div>
@@ -4070,12 +4176,11 @@ function CourseManagementAdmin({
   const [selectedCourseTitle, setSelectedCourseTitle] = useState(courseCards[0]?.title || defaultCourseTitle);
   const selectedCourse = courseDetailsByTitle[selectedCourseTitle] || courseDetailsByTitle[defaultCourseTitle];
   const selectedCourseCard = courseCards.find((course) => course.title === selectedCourseTitle) || courseCards[0];
-  const selectedModules = selectedCourseTitle === defaultCourseTitle
-    ? modules.map((module, moduleIndex) => ({
-        ...module,
-        lessons: lessons.filter((lesson) => lesson.moduleIndex === moduleIndex).map((lesson) => lesson.title),
-      }))
-    : selectedCourse.modules;
+  const selectedCourseLessons = getCourseLessons(selectedCourseTitle, lessons);
+  const selectedModules = getCourseModulesByTitle(selectedCourseTitle).map((module, moduleIndex) => ({
+    ...module,
+    lessons: selectedCourseLessons.filter((lesson) => lesson.moduleIndex === moduleIndex).map((lesson) => lesson.title),
+  }));
   const selectedCoursePayments = payments.filter((payment) => payment.course === selectedCourseTitle);
   const selectedStudents = students.filter((student) => getStudentCourses(student).includes(selectedCourseTitle));
   const totalPaid = selectedCoursePayments.reduce((total, payment) => total + payment.paidAmount, 0);
@@ -4347,16 +4452,20 @@ function StudentDirectory({
     const progress = getStudentProgress(student.id, studentProgressById, lessons);
     const payment = getStudentTuitionPayment(student, tuitionPayments);
     const enrolledCourses = getStudentCourses(student);
+    const primaryCourse = getPrimaryStudentCourse(student);
+    const studentLessons = getCourseLessons(primaryCourse, lessons);
     return {
       student,
       enrolledCourses,
+      primaryCourse,
+      lessonCount: studentLessons.length,
       progress,
-      progressPercent: getCourseProgressPercent(progress, lessons),
-      completedCount: getCompletedSet(progress).size,
+      progressPercent: getCourseProgressPercent(progress, studentLessons),
+      completedCount: getCompletedLessonCount(progress, studentLessons),
       commentCount: lessonComments.filter((comment) => comment.studentId === student.id).length,
       payment,
       paymentStatus: payment ? getTuitionPaymentStatus(payment) : 'No record',
-      currentLesson: getCurrentLesson(progress, lessons),
+      currentLesson: getCurrentLesson(progress, studentLessons),
     };
   });
   const normalizedSearch = searchText.trim().toLowerCase();
@@ -4371,10 +4480,12 @@ function StudentDirectory({
     const matchesPayment = paymentFilter === 'All' || paymentStatus === paymentFilter;
     return matchesSearch && matchesStatus && matchesCourse && matchesPayment;
   });
+  const selectedPrimaryCourse = getPrimaryStudentCourse(selectedStudent);
+  const selectedStudentLessons = getCourseLessons(selectedPrimaryCourse, lessons);
   const selectedProgress = getStudentProgress(selectedStudent.id, studentProgressById, lessons);
-  const selectedProgressPercent = getCourseProgressPercent(selectedProgress, lessons);
-  const selectedCompletedCount = getCompletedSet(selectedProgress).size;
-  const selectedCurrentLesson = getCurrentLesson(selectedProgress, lessons);
+  const selectedProgressPercent = getCourseProgressPercent(selectedProgress, selectedStudentLessons);
+  const selectedCompletedCount = getCompletedLessonCount(selectedProgress, selectedStudentLessons);
+  const selectedCurrentLesson = getCurrentLesson(selectedProgress, selectedStudentLessons);
   const selectedComments = lessonComments.filter((comment) => comment.studentId === selectedStudent.id);
   const selectedPayment = getStudentTuitionPayment(selectedStudent, tuitionPayments);
   const selectedPaymentStatus = selectedPayment ? getTuitionPaymentStatus(selectedPayment) : 'No record';
@@ -4466,7 +4577,7 @@ function StudentDirectory({
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map(({ student, enrolledCourses, progressPercent, completedCount, commentCount, payment, paymentStatus, currentLesson }) => {
+                {filteredRows.map(({ student, enrolledCourses, progressPercent, completedCount, commentCount, payment, paymentStatus, currentLesson, lessonCount }) => {
                   const isSelected = student.id === selectedStudent.id;
                   return (
                     <tr
@@ -4495,7 +4606,7 @@ function StudentDirectory({
                             <span className="text-xs font-medium text-slate-400">{progressPercent}%</span>
                           </div>
                           <p className="max-w-[220px] truncate text-xs text-slate-500">
-                            {completedCount}/{lessons.length} completed · {currentLesson?.title || 'Not started'}
+                            {completedCount}/{lessonCount} completed · {currentLesson?.title || 'Not started'}
                           </p>
                         </div>
                       </td>
@@ -4563,7 +4674,7 @@ function StudentDirectory({
               <p className="text-xs font-semibold text-slate-400">Course progress</p>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <p className="text-3xl font-black text-white">{selectedProgressPercent}%</p>
-                <span className={ui.chipMuted}>{selectedCompletedCount}/{lessons.length}</span>
+                <span className={ui.chipMuted}>{selectedCompletedCount}/{selectedStudentLessons.length}</span>
               </div>
               <div className="mt-3">
                 <ProgressBar value={selectedProgressPercent} height="md" />
@@ -4606,7 +4717,7 @@ function StudentDirectory({
 
           <StudentActivityDetail
             student={selectedStudent}
-            lessons={lessons}
+            lessons={selectedStudentLessons}
             progress={selectedProgress}
             comments={selectedComments}
             onUpdateComment={onUpdateComment}
@@ -4715,13 +4826,15 @@ function StudentActivityReport({
   const lessonTitleById = new Map(lessons.map((lesson) => [lesson.id, lesson.title]));
   const progressRows = students.map((student) => {
     const progress = getStudentProgress(student.id, studentProgressById, lessons);
+    const studentLessons = getCourseLessons(getPrimaryStudentCourse(student), lessons);
     return {
       student,
       progress,
-      progressPercent: getCourseProgressPercent(progress, lessons),
-      completedCount: getCompletedSet(progress).size,
+      lessonCount: studentLessons.length,
+      progressPercent: getCourseProgressPercent(progress, studentLessons),
+      completedCount: getCompletedLessonCount(progress, studentLessons),
       commentCount: lessonComments.filter((comment) => comment.studentId === student.id).length,
-      currentLesson: getCurrentLesson(progress, lessons),
+      currentLesson: getCurrentLesson(progress, studentLessons),
     };
   });
   const averageProgress = progressRows.length
@@ -4777,7 +4890,7 @@ function StudentActivityReport({
                       <span className="text-xs font-medium text-slate-400">{row.progressPercent}%</span>
                     </div>
                   </td>
-                  <td className="py-4 pr-4 text-slate-300">{row.completedCount} / {lessons.length}</td>
+                  <td className="py-4 pr-4 text-slate-300">{row.completedCount} / {row.lessonCount}</td>
                   <td className="max-w-[260px] truncate py-4 pr-4 text-slate-400">{row.currentLesson?.title || 'Not started'}</td>
                   <td className="py-4 pr-4 text-slate-300">{row.commentCount}</td>
                 </tr>
@@ -5100,6 +5213,7 @@ export default function App() {
   const [studentProgressById, setStudentProgressById] = useState<StudentProgressById>(() => readStoredStudentProgress(lessons));
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
   const currentStudent = students.find((student) => student.id === currentStudentId) || null;
+  const selectedCourseLessons = getCourseLessons(selectedCourseTitle, lessons);
 
   useEffect(() => {
     const desired = pageToHash(active);
@@ -5293,8 +5407,8 @@ export default function App() {
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPaymentRecords} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
-      {active === 'Student Dashboard' && <StudentDashboardPage go={go} learningProgress={learningProgress} lessons={lessons} />}
-      {active === 'Lesson Player' && <LessonPlayerPage go={go} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={lessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
+      {active === 'Student Dashboard' && <StudentDashboardPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} lessons={selectedCourseLessons} />}
+      {active === 'Lesson Player' && <LessonPlayerPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={selectedCourseLessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Quiz' && <QuizPage go={go} />}
       {active === 'Assignments' && <AssignmentsPage go={go} />}
       {active === 'Resources' && <ResourcesPage go={go} />}
