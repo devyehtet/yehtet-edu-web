@@ -310,6 +310,12 @@ const defaultLessonVideoUrls = [
 const mediaPlanningBuyingVideoUrls = [
   mediaPlanningBuyingCourseIntroductionVideoUrl,
 ];
+
+function isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(value: string | undefined) {
+  const normalized = normalizeLessonVideoUrl(value);
+  return normalized === sampleLessonVideoUrl || normalized.includes('1195114426');
+}
+
 const weeklyMeetingDays: MeetingDay[] = ['Saturday', 'Sunday'];
 const meetingScheduleDays: MeetingScheduleDay[] = ['Saturday', 'Sunday', 'Instant'];
 const recordingAccessOptions: RecordingAccess[] = ['Students after class', 'Admin only', 'Private'];
@@ -854,9 +860,13 @@ function readStoredLessons(): LessonRecord[] {
         storedLesson?.videoUrl
         && normalizeLessonVideoUrl(storedLesson.videoUrl) === sampleLessonVideoUrl,
       );
+      const shouldUseMediaPlanningBuyingIntroVideo =
+        lesson.courseTitle === mediaPlanningBuyingCourseTitle
+        && lesson.globalIndex === 0
+        && isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(storedLesson?.videoUrl);
       const storedLessonOverrides = storedLesson && lesson.courseTitle === mediaPlanningBuyingCourseTitle
         ? {
-            videoUrl: isStoredSampleVideo ? lesson.videoUrl : storedLesson.videoUrl,
+            videoUrl: shouldUseMediaPlanningBuyingIntroVideo || isStoredSampleVideo ? lesson.videoUrl : storedLesson.videoUrl,
             requiredWatchPercentage: storedLesson.requiredWatchPercentage,
             resource: storedLesson.resource,
             resourceUrl: storedLesson.resourceUrl,
