@@ -1615,6 +1615,7 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-045', name: 'Yin Min Han', email: 'yinminhan777@gmail.com', phone: '095134905', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-046', name: 'Win Myat Tun', email: 'winmyattun599@gmail.com', phone: '09666276404', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-047', name: 'Wai Phyo', email: 'waiphyo.mike@outlook.com', phone: '09783624921', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-048', name: 'Kyaw Min Naing', email: 'davidkyawminnaing.mm@gmail.com', phone: '09254040200', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 16, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
 const tuitionPaymentRecords: TuitionPaymentRecord[] = [
@@ -1683,6 +1684,17 @@ const tuitionPaymentRecords: TuitionPaymentRecord[] = [
     paidAmount: 350000,
     paidDate: '15th September 2026',
     note: 'Partial payment - 300,000 MMK remaining',
+  },
+  {
+    id: 'PAY-STU-SEED-048-2026-09-16',
+    studentId: 'STU-SEED-048',
+    studentName: 'Kyaw Min Naing',
+    studentEmail: 'davidkyawminnaing.mm@gmail.com',
+    course: mediaPlanningBuyingCourseTitle,
+    tuitionFee: 585000,
+    paidAmount: 300000,
+    paidDate: '16th September 2026',
+    note: '10% discount from 650,000 MMK - 285,000 MMK remaining',
   },
 ];
 
