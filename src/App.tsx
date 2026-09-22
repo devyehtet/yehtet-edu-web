@@ -275,6 +275,8 @@ const metaSaleObjectiveVideoUrl = 'https://vimeo.com/1226413762?share=copy&fl=sv
 const mediaPlanningBuyingCourseIntroductionVideoUrl = 'https://vimeo.com/1227469361?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingLearningScheduleVideoUrl = 'https://vimeo.com/1227473013';
 const mediaPlanningBuyingRoadmapVideoUrl = 'https://vimeo.com/1227476188';
+const mediaPlanningBuyingFoundationVideoUrl = 'https://vimeo.com/1229234923?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingFunnelVideoUrl = 'https://vimeo.com/1229236174?share=copy&fl=sv&fe=ci';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -313,6 +315,9 @@ const mediaPlanningBuyingVideoUrls = [
   mediaPlanningBuyingCourseIntroductionVideoUrl,
   mediaPlanningBuyingLearningScheduleVideoUrl,
   mediaPlanningBuyingRoadmapVideoUrl,
+  mediaPlanningBuyingFoundationVideoUrl,
+  sampleLessonVideoUrl,
+  mediaPlanningBuyingFunnelVideoUrl,
 ];
 
 function isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(value: string | undefined) {
