@@ -1,5 +1,14 @@
 -- Run this once in Supabase SQL Editor.
--- It stores lesson comments and student watch progress in the cloud.
+-- It stores lesson comments, student watch progress, and shared app data in the cloud.
+
+create table if not exists public.app_state (
+  state_key text primary key,
+  data jsonb not null,
+  updated_at bigint not null
+);
+
+create index if not exists app_state_updated_idx
+  on public.app_state (updated_at desc);
 
 create table if not exists public.lesson_comments (
   id text primary key,
@@ -26,6 +35,35 @@ create table if not exists public.student_progress (
 
 alter table public.lesson_comments enable row level security;
 alter table public.student_progress enable row level security;
+alter table public.app_state enable row level security;
+
+drop policy if exists "app can read shared app state" on public.app_state;
+create policy "app can read shared app state"
+  on public.app_state
+  for select
+  to anon
+  using (true);
+
+drop policy if exists "app can add shared app state" on public.app_state;
+create policy "app can add shared app state"
+  on public.app_state
+  for insert
+  to anon
+  with check (
+    state_key in ('meetings', 'students', 'lessons', 'tuition_payments')
+    and jsonb_typeof(data) = 'array'
+  );
+
+drop policy if exists "app can update shared app state" on public.app_state;
+create policy "app can update shared app state"
+  on public.app_state
+  for update
+  to anon
+  using (state_key in ('meetings', 'students', 'lessons', 'tuition_payments'))
+  with check (
+    state_key in ('meetings', 'students', 'lessons', 'tuition_payments')
+    and jsonb_typeof(data) = 'array'
+  );
 
 drop policy if exists "app can read lesson comments" on public.lesson_comments;
 create policy "app can read lesson comments"
@@ -91,5 +129,6 @@ create policy "app can update student progress"
   with check (length(student_id) > 0 and length(current_lesson_id) > 0);
 
 grant usage on schema public to anon;
+grant select, insert, update on public.app_state to anon;
 grant select, insert, update, delete on public.lesson_comments to anon;
 grant select, insert, update on public.student_progress to anon;

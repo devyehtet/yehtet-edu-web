@@ -15,6 +15,10 @@ Open the local URL shown in the terminal, usually:
 http://localhost:5173
 ```
 
+## Data server
+
+Run `supabase-schema.sql` once in the Supabase SQL Editor. The app stores shared students, lessons, meetings, tuition payments, lesson comments, and student progress in Supabase so data follows users across devices and browsers.
+
 ## Demo login
 
 Admin:

@@ -231,6 +231,7 @@ const learningStorageKey = 'ye-htet-digital-marketing-progress';
 const studentProgressStorageKey = 'ye-htet-digital-marketing-progress-by-student';
 const lessonStorageKey = 'ye-htet-digital-marketing-lessons';
 const studentStorageKey = 'ye-htet-digital-marketing-students';
+const tuitionPaymentStorageKey = 'ye-htet-digital-marketing-tuition-payments';
 const lessonCommentStorageKey = 'ye-htet-digital-marketing-lesson-comments';
 const deletedLessonCommentStorageKey = 'ye-htet-digital-marketing-deleted-lesson-comments';
 const firstLessonVideoUrl = 'https://vimeo.com/1195114426?fl=pl&fe=sh';
@@ -349,18 +350,6 @@ const defaultLiveMeetings: LiveClassMeeting[] = [
   },
 ];
 
-function readStoredMeetings(): LiveClassMeeting[] {
-  if (typeof window === 'undefined') return defaultLiveMeetings;
-  try {
-    const stored = window.localStorage.getItem(meetingStorageKey);
-    if (!stored) return defaultLiveMeetings;
-    const parsed = JSON.parse(stored) as LiveClassMeeting[];
-    return Array.isArray(parsed) && parsed.length > 0 && parsed.every(isLiveClassMeeting) ? parsed : defaultLiveMeetings;
-  } catch {
-    return defaultLiveMeetings;
-  }
-}
-
 function isLiveClassMeeting(value: unknown): value is LiveClassMeeting {
   const meeting = value as LiveClassMeeting;
   return (
@@ -372,6 +361,21 @@ function isLiveClassMeeting(value: unknown): value is LiveClassMeeting {
     && typeof meeting.host === 'string'
     && recordingAccessOptions.includes(meeting.recordingAccess)
   );
+}
+
+function normalizeStoredMeetings(value: unknown): LiveClassMeeting[] {
+  return Array.isArray(value) && value.length > 0 && value.every(isLiveClassMeeting) ? value : defaultLiveMeetings;
+}
+
+function readStoredMeetings(): LiveClassMeeting[] {
+  if (typeof window === 'undefined') return defaultLiveMeetings;
+  try {
+    const stored = window.localStorage.getItem(meetingStorageKey);
+    if (!stored) return defaultLiveMeetings;
+    return normalizeStoredMeetings(JSON.parse(stored));
+  } catch {
+    return defaultLiveMeetings;
+  }
 }
 
 function formatMeetingWindow(meeting: LiveClassMeeting) {
@@ -851,14 +855,10 @@ function reindexLessons(lessons: LessonRecord[]) {
   });
 }
 
-function readStoredLessons(): LessonRecord[] {
-  if (typeof window === 'undefined') return lessonCatalog;
+function normalizeStoredLessons(value: unknown): LessonRecord[] {
+  if (!Array.isArray(value)) return lessonCatalog;
   try {
-    const stored = window.localStorage.getItem(lessonStorageKey);
-    if (!stored) return lessonCatalog;
-    const parsed = JSON.parse(stored) as Partial<LessonRecord>[];
-    if (!Array.isArray(parsed)) return lessonCatalog;
-
+    const parsed = value as Partial<LessonRecord>[];
     const defaultsById = new Map(lessonCatalog.map((lesson) => [lesson.id, lesson]));
     const mergedDefaults = lessonCatalog.map((lesson) => {
       const storedLesson = parsed.find((item) => item?.id === lesson.id);
@@ -930,6 +930,17 @@ function readStoredLessons(): LessonRecord[] {
       .filter(Boolean) as LessonRecord[];
 
     return reindexLessons([...mergedDefaults, ...customLessons]);
+  } catch {
+    return lessonCatalog;
+  }
+}
+
+function readStoredLessons(): LessonRecord[] {
+  if (typeof window === 'undefined') return lessonCatalog;
+  try {
+    const stored = window.localStorage.getItem(lessonStorageKey);
+    if (!stored) return lessonCatalog;
+    return normalizeStoredLessons(JSON.parse(stored));
   } catch {
     return lessonCatalog;
   }
@@ -1117,8 +1128,8 @@ const firebaseConfig = {
 const firestoreBaseUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
 const appEnv = import.meta.env as unknown as Record<string, string | undefined>;
 const supabaseConfig = {
-  url: (appEnv.VITE_SUPABASE_URL || appEnv.NEXT_PUBLIC_SUPABASE_URL || 'https://thkgxaxwufjzrdaqeprr.supabase.co').replace(/\/$/, ''),
-  publishableKey: appEnv.VITE_SUPABASE_PUBLISHABLE_KEY || appEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_mZOf5tErlsCmyv0kDoAwmA_o1aKlhvj',
+  url: (appEnv.VITE_SUPABASE_URL || appEnv.NEXT_PUBLIC_SUPABASE_URL || 'https://abxdyaudxllppoxpqxoe.supabase.co').replace(/\/$/, ''),
+  publishableKey: appEnv.VITE_SUPABASE_PUBLISHABLE_KEY || appEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_kjHgsDTCvcrqStDFRRo0mA_ZtdftmlT',
 };
 const supabaseRestBaseUrl = `${supabaseConfig.url}/rest/v1`;
 
@@ -1138,6 +1149,13 @@ type SupabaseStudentProgressRow = {
   current_lesson_id?: unknown;
   completed_lesson_ids?: unknown;
   watch_progress_by_lesson_id?: unknown;
+};
+
+type SupabaseAppStateKey = 'meetings' | 'students' | 'lessons' | 'tuition_payments';
+type SupabaseAppStateRow = {
+  state_key?: unknown;
+  data?: unknown;
+  updated_at?: unknown;
 };
 
 type FirestoreFields = Record<string, {
@@ -1189,6 +1207,41 @@ function readSupabaseNumber(value: unknown) {
 
 function readSupabaseStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+async function fetchSupabaseAppState<T>(stateKey: SupabaseAppStateKey, normalize: (value: unknown) => T) {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const response = await fetch(`${supabaseRestBaseUrl}/app_state?state_key=eq.${encodeURIComponent(stateKey)}&select=data&limit=1`, {
+      headers: getSupabaseHeaders(),
+    });
+    if (!response.ok) return null;
+    const data = await response.json() as SupabaseAppStateRow[];
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return normalize(data[0]?.data);
+  } catch {
+    return null;
+  }
+}
+
+async function saveSupabaseAppState(stateKey: SupabaseAppStateKey, data: unknown) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await fetch(`${supabaseRestBaseUrl}/app_state?on_conflict=state_key`, {
+      method: 'POST',
+      headers: getSupabaseHeaders({
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      }),
+      body: JSON.stringify({
+        state_key: stateKey,
+        data,
+        updated_at: Date.now(),
+      }),
+    });
+  } catch {
+    // Local storage remains the offline fallback if the data server is unavailable.
+  }
 }
 
 function serializeSupabaseLessonComment(comment: LessonComment) {
@@ -1721,16 +1774,58 @@ function mergeSeededStudentAccounts(students: Student[]) {
   return [...missingSeededAccounts, ...cleanStudents];
 }
 
+function normalizeStoredStudents(value: unknown): Student[] {
+  if (!Array.isArray(value)) return defaultStudents;
+  return mergeSeededStudentAccounts(value.map((student, index) => normalizeStoredStudent(student as Partial<Student>, index)));
+}
+
 function readStoredStudents(): Student[] {
   if (typeof window === 'undefined') return defaultStudents;
   try {
     const stored = window.localStorage.getItem(studentStorageKey);
     if (!stored) return defaultStudents;
-    const parsed = JSON.parse(stored) as Partial<Student>[];
-    if (!Array.isArray(parsed)) return defaultStudents;
-    return mergeSeededStudentAccounts(parsed.map(normalizeStoredStudent));
+    return normalizeStoredStudents(JSON.parse(stored));
   } catch {
     return defaultStudents;
+  }
+}
+
+function normalizeStoredTuitionPayment(payment: Partial<TuitionPaymentRecord>, index: number): TuitionPaymentRecord {
+  const fallback = tuitionPaymentRecords[index] || tuitionPaymentRecords[0];
+  const tuitionFee = Number(payment.tuitionFee ?? fallback?.tuitionFee ?? 0);
+  const paidAmount = Number(payment.paidAmount ?? fallback?.paidAmount ?? 0);
+  return {
+    id: typeof payment.id === 'string' && payment.id ? payment.id : fallback?.id || `PAY-${String(index + 1).padStart(3, '0')}`,
+    studentId: typeof payment.studentId === 'string' ? payment.studentId : fallback?.studentId || '',
+    studentName: typeof payment.studentName === 'string' ? payment.studentName : fallback?.studentName || 'Unnamed Student',
+    studentEmail: typeof payment.studentEmail === 'string' ? payment.studentEmail.toLowerCase() : fallback?.studentEmail || '',
+    course: typeof payment.course === 'string' && payment.course ? payment.course : fallback?.course || defaultCourseTitle,
+    tuitionFee: Number.isFinite(tuitionFee) ? Math.max(0, tuitionFee) : 0,
+    paidAmount: Number.isFinite(paidAmount) ? Math.max(0, paidAmount) : 0,
+    paidDate: typeof payment.paidDate === 'string' && payment.paidDate ? payment.paidDate : fallback?.paidDate || '',
+    note: typeof payment.note === 'string' ? payment.note : fallback?.note,
+  };
+}
+
+function mergeSeededTuitionPayments(payments: TuitionPaymentRecord[]) {
+  const existingIds = new Set(payments.map((payment) => payment.id).filter(Boolean));
+  const missingSeededPayments = tuitionPaymentRecords.filter((payment) => !existingIds.has(payment.id));
+  return [...missingSeededPayments, ...payments];
+}
+
+function normalizeStoredTuitionPayments(value: unknown): TuitionPaymentRecord[] {
+  if (!Array.isArray(value)) return tuitionPaymentRecords;
+  return mergeSeededTuitionPayments(value.map((payment, index) => normalizeStoredTuitionPayment(payment as Partial<TuitionPaymentRecord>, index)));
+}
+
+function readStoredTuitionPayments(): TuitionPaymentRecord[] {
+  if (typeof window === 'undefined') return tuitionPaymentRecords;
+  try {
+    const stored = window.localStorage.getItem(tuitionPaymentStorageKey);
+    if (!stored) return tuitionPaymentRecords;
+    return normalizeStoredTuitionPayments(JSON.parse(stored));
+  } catch {
+    return tuitionPaymentRecords;
   }
 }
 
@@ -5139,6 +5234,8 @@ export default function App() {
   const [deletedLessonCommentIds, setDeletedLessonCommentIds] = useState<string[]>(() => readStoredDeletedLessonCommentIds());
   const [studentProgressById, setStudentProgressById] = useState<StudentProgressById>(() => readStoredStudentProgress(lessons));
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
+  const [tuitionPayments, setTuitionPayments] = useState<TuitionPaymentRecord[]>(() => readStoredTuitionPayments());
+  const [hasLoadedCloudAppState, setHasLoadedCloudAppState] = useState(false);
   const currentStudent = students.find((student) => student.id === currentStudentId) || null;
   const selectedCourseLessons = getCourseLessons(selectedCourseTitle, lessons);
 
@@ -5174,8 +5271,61 @@ export default function App() {
   }, [students]);
 
   useEffect(() => {
+    window.localStorage.setItem(tuitionPaymentStorageKey, JSON.stringify(tuitionPayments));
+  }, [tuitionPayments]);
+
+  useEffect(() => {
     window.localStorage.setItem(deletedLessonCommentStorageKey, JSON.stringify(deletedLessonCommentIds));
   }, [deletedLessonCommentIds]);
+
+  useEffect(() => {
+    let mounted = true;
+    const syncCloudAppState = async () => {
+      const [cloudMeetings, cloudStudents, cloudLessons, cloudTuitionPayments] = await Promise.all([
+        fetchSupabaseAppState('meetings', normalizeStoredMeetings),
+        fetchSupabaseAppState('students', normalizeStoredStudents),
+        fetchSupabaseAppState('lessons', normalizeStoredLessons),
+        fetchSupabaseAppState('tuition_payments', normalizeStoredTuitionPayments),
+      ]);
+      if (!mounted) return;
+      if (cloudMeetings) setLiveMeetings((prev) => (isJsonEqual(prev, cloudMeetings) ? prev : cloudMeetings));
+      if (cloudStudents) setStudents((prev) => (isJsonEqual(prev, cloudStudents) ? prev : cloudStudents));
+      if (cloudLessons) setLessons((prev) => (isJsonEqual(prev, cloudLessons) ? prev : cloudLessons));
+      if (cloudTuitionPayments) setTuitionPayments((prev) => (isJsonEqual(prev, cloudTuitionPayments) ? prev : cloudTuitionPayments));
+      setHasLoadedCloudAppState(true);
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) void syncCloudAppState();
+    };
+    void syncCloudAppState();
+    window.addEventListener('focus', syncCloudAppState);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', syncCloudAppState);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedCloudAppState) return;
+    void saveSupabaseAppState('meetings', liveMeetings);
+  }, [hasLoadedCloudAppState, liveMeetings]);
+
+  useEffect(() => {
+    if (!hasLoadedCloudAppState) return;
+    void saveSupabaseAppState('students', students);
+  }, [hasLoadedCloudAppState, students]);
+
+  useEffect(() => {
+    if (!hasLoadedCloudAppState) return;
+    void saveSupabaseAppState('lessons', lessons);
+  }, [hasLoadedCloudAppState, lessons]);
+
+  useEffect(() => {
+    if (!hasLoadedCloudAppState) return;
+    void saveSupabaseAppState('tuition_payments', tuitionPayments);
+  }, [hasLoadedCloudAppState, tuitionPayments]);
 
   useEffect(() => {
     let mounted = true;
@@ -5333,7 +5483,7 @@ export default function App() {
       {active === 'Courses' && <CoursesPage go={go} onSelectCourse={setSelectedCourseTitle} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} />}
-      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPaymentRecords} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
+      {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPayments} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} lessons={selectedCourseLessons} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={selectedCourseLessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Quiz' && <QuizPage go={go} />}
