@@ -316,7 +316,6 @@ const mediaPlanningBuyingVideoUrls = [
   mediaPlanningBuyingLearningScheduleVideoUrl,
   mediaPlanningBuyingRoadmapVideoUrl,
   mediaPlanningBuyingFoundationVideoUrl,
-  sampleLessonVideoUrl,
   mediaPlanningBuyingFunnelVideoUrl,
 ];
 
@@ -501,7 +500,6 @@ const mediaPlanningBuyingModules: CourseModule[] = [
     progress: 20,
     lessons: [
       'Media Planning နဲ့ Media Buying',
-      'Business၊ Marketing နဲ့ Campaign Goals',
       'Digital Marketing Funnel',
       'Client Brief & Campaign Planning',
       'Assignment: Simple Campaign Brief',
@@ -873,15 +871,20 @@ function readStoredLessons(): LessonRecord[] {
         lesson.courseTitle === mediaPlanningBuyingCourseTitle
         && lesson.globalIndex === 0
         && isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(storedLesson?.videoUrl);
-      const storedLessonOverrides = storedLesson && lesson.courseTitle === mediaPlanningBuyingCourseTitle
-        ? {
-            videoUrl: shouldUseMediaPlanningBuyingIntroVideo || isStoredSampleVideo ? lesson.videoUrl : storedLesson.videoUrl,
-            requiredWatchPercentage: storedLesson.requiredWatchPercentage,
-            resource: storedLesson.resource,
-            resourceUrl: storedLesson.resourceUrl,
-            duration: storedLesson.duration,
-          }
-        : storedLesson;
+      const isStoredLessonTitleMismatch = Boolean(
+        storedLesson?.title
+        && storedLesson.title !== lesson.title,
+      );
+      let storedLessonOverrides: Partial<LessonRecord> | undefined = storedLesson;
+      if (storedLesson && lesson.courseTitle === mediaPlanningBuyingCourseTitle) {
+        storedLessonOverrides = isStoredLessonTitleMismatch ? undefined : {
+          videoUrl: shouldUseMediaPlanningBuyingIntroVideo || isStoredSampleVideo ? lesson.videoUrl : storedLesson.videoUrl,
+          requiredWatchPercentage: storedLesson.requiredWatchPercentage,
+          resource: storedLesson.resource,
+          resourceUrl: storedLesson.resourceUrl,
+          duration: storedLesson.duration,
+        };
+      }
       const shouldUseNewFirstLessonVideo =
         isDefaultCourseLesson
         && lesson.globalIndex === 0
