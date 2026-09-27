@@ -278,6 +278,8 @@ const mediaPlanningBuyingLearningScheduleVideoUrl = 'https://vimeo.com/122747301
 const mediaPlanningBuyingRoadmapVideoUrl = 'https://vimeo.com/1227476188';
 const mediaPlanningBuyingFoundationVideoUrl = 'https://vimeo.com/1229234923?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingFunnelVideoUrl = 'https://vimeo.com/1229236174?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingClientBriefVideoUrl = 'https://vimeo.com/1230629707?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingClientBriefResourceUrl = 'https://docs.google.com/document/d/1cFEkbqW1vdKaDo9o90f5plnLvu4c6HZACi2i3H3S9Nc/edit?usp=sharing';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
   firstLessonVideoUrl,
@@ -318,6 +320,7 @@ const mediaPlanningBuyingVideoUrls = [
   mediaPlanningBuyingRoadmapVideoUrl,
   mediaPlanningBuyingFoundationVideoUrl,
   mediaPlanningBuyingFunnelVideoUrl,
+  mediaPlanningBuyingClientBriefVideoUrl,
 ];
 
 function isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(value: string | undefined) {
@@ -777,6 +780,7 @@ const lessonResourceUrlsByTitle: Record<string, string> = {
   [marketingFunnelFrameworkPartOneTitle]: marketingFunnelFrameworkPartOneResourceUrl,
   [marketingFunnelFrameworkPartTwoTitle]: marketingFunnelFrameworkPartOneResourceUrl,
   'Web Developing & Meta Pixel Install': webDevelopingMetaPixelInstallResourceUrl,
+  'Client Brief & Campaign Planning': mediaPlanningBuyingClientBriefResourceUrl,
 };
 
 const lessonDurationsByTitle: Record<string, string> = {
@@ -875,13 +879,14 @@ function normalizeStoredLessons(value: unknown): LessonRecord[] {
         storedLesson?.title
         && storedLesson.title !== lesson.title,
       );
+      const shouldUseDefaultLessonResource = Boolean(lesson.resourceUrl && !storedLesson?.resourceUrl);
       let storedLessonOverrides: Partial<LessonRecord> | undefined = storedLesson;
       if (storedLesson && lesson.courseTitle === mediaPlanningBuyingCourseTitle) {
         storedLessonOverrides = isStoredLessonTitleMismatch ? undefined : {
           videoUrl: shouldUseMediaPlanningBuyingIntroVideo || isStoredSampleVideo ? lesson.videoUrl : storedLesson.videoUrl,
           requiredWatchPercentage: storedLesson.requiredWatchPercentage,
-          resource: storedLesson.resource,
-          resourceUrl: storedLesson.resourceUrl,
+          resource: shouldUseDefaultLessonResource ? lesson.resource : storedLesson.resource,
+          resourceUrl: shouldUseDefaultLessonResource ? lesson.resourceUrl : storedLesson.resourceUrl,
           duration: storedLesson.duration,
         };
       }
