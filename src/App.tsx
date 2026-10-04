@@ -284,6 +284,8 @@ const mediaPlanningBuyingRoadmapVideoUrl = 'https://vimeo.com/1227476188';
 const mediaPlanningBuyingFoundationVideoUrl = 'https://vimeo.com/1229234923?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingFunnelVideoUrl = 'https://vimeo.com/1229236174?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingClientBriefVideoUrl = 'https://vimeo.com/1230629707?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingAudienceStrategyJourneyVideoUrl = 'https://vimeo.com/1232809385?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingTargetAudienceFoundationVideoUrl = 'https://vimeo.com/1232809669?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingClientBriefResourceUrl = 'https://docs.google.com/document/d/1cFEkbqW1vdKaDo9o90f5plnLvu4c6HZACi2i3H3S9Nc/edit?usp=sharing';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
@@ -326,6 +328,8 @@ const mediaPlanningBuyingVideoUrls = [
   mediaPlanningBuyingFoundationVideoUrl,
   mediaPlanningBuyingFunnelVideoUrl,
   mediaPlanningBuyingClientBriefVideoUrl,
+  mediaPlanningBuyingAudienceStrategyJourneyVideoUrl,
+  mediaPlanningBuyingTargetAudienceFoundationVideoUrl,
 ];
 
 function isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(value: string | undefined) {
@@ -514,7 +518,7 @@ const mediaPlanningBuyingModules: CourseModule[] = [
       'Media Planning နဲ့ Media Buying',
       'Digital Marketing Funnel',
       'Client Brief & Campaign Planning',
-      'Assignment: Simple Campaign Brief',
+      'Audience Strategy and Customer Journey',
     ],
   },
   {
