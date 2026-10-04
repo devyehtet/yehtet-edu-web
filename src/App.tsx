@@ -136,6 +136,11 @@ type CourseCardRecord = {
   lessons: string;
   modules: string;
 };
+type CourseVisualRecord = {
+  imageUrl: string;
+  imageAlt: string;
+  badge: string;
+};
 type CourseDetailConfig = {
   title: string;
   description: string;
@@ -686,6 +691,27 @@ const courseCards: CourseCardRecord[] = [
   { title: mediaPlanningBuyingCourseTitle, level: 'Intermediate to Professional', lessons: `${mediaPlanningBuyingLessonCount} topics`, modules: mediaPlanningBuyingModuleLabel },
   { title: capstoneSupportCourseTitle, level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
 ];
+
+const courseVisualsByTitle: Record<string, CourseVisualRecord> = {
+  [defaultCourseTitle]: {
+    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+    imageAlt: 'Digital marketing analytics dashboard on a laptop',
+    badge: 'Digital strategy',
+  },
+  [mediaPlanningBuyingCourseTitle]: {
+    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+    imageAlt: 'Media planning dashboard with campaign performance charts',
+    badge: 'Media buying',
+  },
+  [capstoneSupportCourseTitle]: {
+    imageUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+    imageAlt: 'Students collaborating on a portfolio project',
+    badge: 'Portfolio',
+  },
+};
+
+const heroLearningImageUrl = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=80';
+const adminOperationsImageUrl = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80';
 
 const courseDetailsByTitle: Record<string, CourseDetailConfig> = {
   [defaultCourseTitle]: {
@@ -1591,6 +1617,63 @@ const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
   { title: 'Next course path', text: 'Finish this course first, then continue to Digital Media Planning & Buying.', icon: Video },
 ];
 
+const platformSignals: Array<{ label: string; value: string; detail: string }> = [
+  { label: 'Active student accounts', value: '50+', detail: 'Managed through the admin panel' },
+  { label: 'Course paths', value: '2', detail: 'Digital Marketing and Media Buying' },
+  { label: 'Lesson activity', value: 'Tracked', detail: 'Watch progress and comments by lesson' },
+  { label: 'Payment records', value: 'Admin-ready', detail: 'Paid amount, balance, and dates' },
+];
+
+const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = [
+  { title: 'Choose the right course', text: 'Review the course outcome, modules, and study path before enrolling.', icon: BookOpen },
+  { title: 'Confirm payment', text: 'Admin records the fee, paid amount, balance, and enrollment course.', icon: ShieldCheck },
+  { title: 'Receive account access', text: 'Student logs in with the assigned email and password from the admin.', icon: Users },
+  { title: 'Start learning', text: 'Watch lessons in order, download resources, and ask questions under videos.', icon: MessageCircle },
+];
+
+const instructorHighlights: Array<{ label: string; value: string }> = [
+  { label: 'Teaching focus', value: 'Practical digital marketing execution' },
+  { label: 'Live support', value: 'Weekly live class and lesson comments' },
+  { label: 'Student outcome', value: 'Portfolio-ready campaign planning' },
+];
+
+const studentTestimonials: Array<{ name: string; role: string; quote: string }> = [
+  {
+    name: 'Digital Marketing Student',
+    role: 'Beginner to Professional',
+    quote: 'The lesson order makes it easy to start from zero and continue without getting lost.',
+  },
+  {
+    name: 'Media Buying Student',
+    role: 'Planning & Buying',
+    quote: 'Templates, video lessons, and progress tracking help me keep the study plan clear.',
+  },
+  {
+    name: 'Admin Team',
+    role: 'Student operations',
+    quote: 'Student progress, comments, and payment records can be reviewed from one place.',
+  },
+];
+
+const publicFaqs: Array<{ question: string; answer: string }> = [
+  {
+    question: 'How do students get access?',
+    answer: 'The admin creates the account, assigns the course, and shares the login email and password with the student.',
+  },
+  {
+    question: 'Can students ask questions under each video?',
+    answer: 'Yes. Students can leave comments under each lesson, and the admin can review them by lesson or by student.',
+  },
+  {
+    question: 'Does progress save across devices?',
+    answer: 'Yes. The site now connects to the shared data server so progress, comments, lessons, students, and payments can sync beyond one browser.',
+  },
+  {
+    question: 'Is there live class support?',
+    answer: 'Yes. Weekly and instant live class rooms are available through the Live Class area.',
+  },
+];
+
 const seededStudentPassword = 'yehtet3Du';
 
 const seededStudentAccounts: Student[] = [
@@ -1902,31 +1985,30 @@ function readStoredDeletedLessonCommentIds(): string[] {
 // =====================================================================
 //
 // One restrained system used everywhere:
-//   - Flat surfaces, subtle borders, no nested gradients
-//   - Generous spacing (gap-8 / py-10 / py-12)
+//   - Flat surfaces, subtle borders, and warm light backgrounds
+//   - Consistent type scale for headings, cards, and dashboards
 //   - Single emerald accent for primary actions/state
-//   - Bold serif for headlines only; everything else is sans
 
 const ui = {
   page: 'space-y-12 sm:space-y-16',
-  card: 'rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8',
-  cardSolid: 'rounded-2xl border border-white/[0.08] bg-[#0f1638] p-6 sm:p-8',
-  cardSubtle: 'rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 sm:p-6',
-  eyebrow: 'text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-300',
-  h1: 'font-serif text-4xl font-bold leading-[1.05] text-white sm:text-5xl',
-  h2: 'font-serif text-3xl font-bold leading-tight text-white sm:text-4xl',
-  h3: 'text-xl font-bold text-white',
-  body: 'text-base leading-7 text-slate-300',
-  bodySm: 'text-sm leading-6 text-slate-400',
+  card: 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 sm:p-8',
+  cardSolid: 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/70 sm:p-8',
+  cardSubtle: 'rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/50 sm:p-6',
+  eyebrow: 'text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-700',
+  h1: 'text-3xl font-extrabold leading-[1.08] tracking-tight text-slate-950 sm:text-4xl lg:text-[44px]',
+  h2: 'text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl',
+  h3: 'text-lg font-bold text-slate-950',
+  body: 'text-[15px] leading-7 text-slate-600 sm:text-base',
+  bodySm: 'text-sm leading-6 text-slate-500',
   btnPrimary:
-    'inline-flex items-center justify-center gap-2 rounded-full bg-emerald-300 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200',
+    'inline-flex items-center justify-center gap-2 rounded-full bg-emerald-300 px-6 py-3 text-sm font-bold text-slate-950 shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-200',
   btnGhost:
-    'inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/[0.08]',
+    'inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm shadow-slate-200/50 transition hover:bg-slate-50',
   btnSubtle:
-    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.06]',
-  chip: 'inline-flex items-center gap-1.5 rounded-full bg-emerald-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300',
-  chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-slate-300',
-  divider: 'border-t border-white/[0.06]',
+    'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50',
+  chip: 'inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 ring-1 ring-teal-100',
+  chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-600',
+  divider: 'border-t border-slate-200',
 } as const;
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -1992,8 +2074,8 @@ function Shell({
   const roleBadge = isLoggedIn ? (role === 'admin' ? 'Admin' : 'Student') : null;
 
   return (
-    <main className="min-h-screen bg-[#070a22] text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(94,234,212,0.08),transparent_50%)]" />
+    <main className="lms-light-theme min-h-screen text-slate-900">
+      <div className="lms-ambient pointer-events-none fixed inset-0" />
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <header className="sticky top-0 z-30 -mx-4 mb-10 border-b border-white/[0.06] bg-[#070a22]/85 px-4 py-4 backdrop-blur-lg sm:-mx-6 sm:px-6 sm:py-5 lg:-mx-8 lg:px-8">
           <div className="flex items-center justify-between gap-4">
@@ -2159,11 +2241,11 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
           <span className={ui.chip}>
             <LogoMark size="sm" /> Ye Htet · Digital Edu
           </span>
-          <h1 className={cx(ui.h1, 'mt-6 sm:text-6xl')}>
-            Become a practical <span className="text-emerald-300">Digital Marketer</span>.
+          <h1 className={cx(ui.h1, 'mt-6')}>
+            Learn practical <span className="text-emerald-300">Digital Marketing</span> with a guided LMS.
           </h1>
           <p className={cx(ui.body, 'mt-5 max-w-xl')}>
-            Start your assigned course, watch each lesson in order, complete quizzes and assignments, and join the weekly live class.
+            Study in order, download templates, ask questions under each lesson, and let the admin track progress, comments, and payment records from one clean dashboard.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button onClick={() => go('Courses')} className={ui.btnPrimary}>
@@ -2174,36 +2256,25 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
             </button>
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className={cx(ui.cardSolid, 'space-y-5')}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className={ui.eyebrow}>Featured course</p>
-              <h2 className="mt-2 text-xl font-bold text-white">Digital Marketing — Beginner to Professional</h2>
-              <p className="mt-2 text-sm text-slate-400">56 lessons · 8 modules · Capstone project</p>
-            </div>
-            <LogoMark size="md" />
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-400">Course progress</p>
-              <p className="text-sm font-semibold text-white">Start</p>
-            </div>
-            <ProgressBar value={0} height="md" />
-          </div>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <button onClick={() => go('Login')} className={ui.btnPrimary}>
-              Student login
-            </button>
-            <button onClick={() => viewCourse(defaultCourseTitle)} className={ui.btnGhost}>
-              Course detail
-            </button>
-          </div>
-        </motion.div>
+        <HeroLearningPreview go={go} onViewCourse={viewCourse} />
       </section>
 
       {/* Stats — clean horizontal row, no decoration */}
       <section>
         <StatRow stats={homeStats} />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {platformSignals.map((signal) => (
+          <div key={signal.label} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+            <div className="h-2 bg-gradient-to-r from-emerald-300 via-teal-400 to-sky-300" />
+            <div className="p-5">
+              <p className="text-2xl font-extrabold leading-tight text-slate-950">{signal.value}</p>
+              <p className="mt-2 text-sm font-bold text-slate-800">{signal.label}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{signal.detail}</p>
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Courses */}
@@ -2235,6 +2306,43 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
         </div>
       </section>
 
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
+        <div className={cx(ui.cardSolid, 'flex flex-col justify-between overflow-hidden')}>
+          <div>
+            <p className={ui.eyebrow}>Instructor</p>
+            <h2 className={cx(ui.h2, 'mt-3')}>Built around guided learning, not just video storage.</h2>
+            <p className={cx(ui.body, 'mt-4')}>
+              Students get a clear order to follow. The admin gets visibility into who is watching, asking questions, and finishing the course.
+            </p>
+          </div>
+          <div className="mt-8 grid gap-3">
+            {instructorHighlights.map((item) => (
+              <div key={item.label} className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-sm font-semibold text-slate-500">{item.label}</p>
+                <p className="max-w-[220px] text-right text-sm font-bold text-slate-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+          {studentTestimonials.map((item) => (
+            <div key={item.name} className={ui.cardSubtle}>
+              <p className="text-sm leading-6 text-slate-600">“{item.quote}”</p>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-teal-50 text-sm font-bold text-teal-700 ring-1 ring-teal-100">
+                  {item.name.slice(0, 1)}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-950">{item.name}</p>
+                  <p className="text-xs text-slate-500">{item.role}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Study steps */}
       <section>
         <PageHeader eyebrow="How to study" title="Four steps, in order." />
@@ -2246,9 +2354,39 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
             { n: '04', t: 'Join live class', d: 'Ask questions and review the recording later.' },
           ].map((step) => (
             <div key={step.n} className={ui.card}>
-              <p className="text-3xl font-bold text-emerald-300">{step.n}</p>
+              <p className="text-2xl font-extrabold text-emerald-300">{step.n}</p>
               <h3 className={cx(ui.h3, 'mt-3')}>{step.t}</h3>
               <p className={cx(ui.bodySm, 'mt-2')}>{step.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <PageHeader eyebrow="Enrollment" title="Simple admin-led account setup." description="Students do not need to create their own account. The admin creates access, assigns the course, and records payment details." />
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {enrollmentSteps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.title} className={ui.card}>
+                <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className={ui.h3}>{step.title}</h3>
+                <p className={cx(ui.bodySm, 'mt-2')}>{step.text}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <PageHeader eyebrow="FAQ" title="Questions students usually ask." />
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {publicFaqs.map((faq) => (
+            <div key={faq.question} className={ui.cardSubtle}>
+              <h3 className="text-base font-bold text-slate-950">{faq.question}</h3>
+              <p className={cx(ui.bodySm, 'mt-2')}>{faq.answer}</p>
             </div>
           ))}
         </div>
@@ -2271,21 +2409,122 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
 }
 
 function CourseCard({ course, onViewDetail }: { course: CourseCardRecord; onViewDetail: (courseTitle: string) => void }) {
+  const visual = courseVisualsByTitle[course.title] || courseVisualsByTitle[defaultCourseTitle];
+
   return (
-    <div className={cx(ui.card, 'flex h-full flex-col')}>
-      <div className="flex items-center justify-between">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
-          <BookOpen className="h-5 w-5" />
+    <div className={cx(ui.card, 'flex h-full flex-col overflow-hidden')}>
+      <div className="-m-6 mb-5 sm:-m-8 sm:mb-6">
+        <div className="lms-visual-dark relative aspect-[4/3] overflow-hidden bg-slate-950">
+          <img src={visual.imageUrl} alt={visual.imageAlt} className="h-full w-full object-cover" loading="lazy" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+          <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-950">
+            {visual.badge}
+          </div>
+          <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-slate-950/30">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <span className="rounded-full bg-slate-950/75 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/20">
+              {course.lessons}
+            </span>
+          </div>
         </div>
-        <span className="text-xs font-medium text-slate-500">{course.lessons}</span>
       </div>
-      <h3 className={cx(ui.h3, 'mt-5')}>{course.title}</h3>
+      <h3 className={ui.h3}>{course.title}</h3>
       <p className={cx(ui.bodySm, 'mt-2')}>{course.level}</p>
       <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
       <button onClick={() => onViewDetail(course.title)} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-300 transition hover:text-emerald-200">
         View detail <ArrowRight className="h-4 w-4" />
       </button>
     </div>
+  );
+}
+
+function HeroLearningPreview({ go, onViewCourse }: { go: (v: PageName) => void; onViewCourse: (courseTitle: string) => void }) {
+  const miniLessons = [
+    { title: 'Marketing Funnel', progress: 82 },
+    { title: 'Meta Campaign', progress: 58 },
+    { title: 'Media Buying', progress: 24 },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.1 }}
+      className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/70"
+    >
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-teal-100 via-emerald-50 to-amber-100" />
+      <div className="relative space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <LogoMark size="md" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Live LMS Preview</p>
+              <p className="text-sm font-semibold text-slate-600">Student + Admin workspace</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">Online</span>
+        </div>
+
+        <div className="lms-visual-dark overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-lg shadow-slate-300/50">
+          <div className="relative aspect-video bg-slate-950">
+            <img src={heroLearningImageUrl} alt="Digital marketing lesson dashboard preview" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent" />
+            <div className="absolute inset-0 flex flex-col justify-between p-5">
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/20">Module 01</span>
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-white/20 text-white ring-1 ring-white/25 backdrop-blur">
+                  <PlayCircle className="h-6 w-6" />
+                </span>
+              </div>
+              <div>
+                <p className="max-w-[270px] text-xl font-extrabold leading-tight text-white sm:text-2xl">Digital Marketing Foundation</p>
+                <p className="mt-2 text-xs font-medium text-white/75">Video lessons, templates, comments, and progress tracking.</p>
+                <div className="mt-4 h-2 rounded-full bg-white/20">
+                  <div className="h-full w-[68%] rounded-full bg-emerald-300" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_0.85fr]">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-bold text-slate-950">Course progress</p>
+              <span className="text-xs font-bold text-teal-700">Today</span>
+            </div>
+            <div className="space-y-3">
+              {miniLessons.map((lesson) => (
+                <div key={lesson.title}>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <p className="truncate text-xs font-semibold text-slate-600">{lesson.title}</p>
+                    <p className="text-xs font-bold text-slate-900">{lesson.progress}%</p>
+                  </div>
+                  <ProgressBar value={lesson.progress} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-bold text-slate-950">Latest question</p>
+            <div className="mt-3 rounded-2xl bg-teal-50 p-3 text-sm leading-6 text-slate-700 ring-1 ring-teal-100">
+              Funnel template ကို ဘယ်လိုသုံးရမလဲ?
+            </div>
+            <button onClick={() => go('Login')} className={cx(ui.btnPrimary, 'mt-4 w-full')}>
+              Student login
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => onViewCourse(defaultCourseTitle)} className={ui.btnGhost}>Course detail</button>
+          <button onClick={() => onViewCourse(mediaPlanningBuyingCourseTitle)} className={ui.btnGhost}>Media buying</button>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -2429,8 +2668,8 @@ function Metric({ icon: Icon, label, value, detail }: { icon: IconType; label: s
       <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
         <Icon className="h-5 w-5" />
       </div>
-      <p className="font-serif text-3xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-sm font-bold text-white">{label}</p>
+      <p className="text-2xl font-extrabold text-slate-950">{value}</p>
+      <p className="mt-1 text-sm font-bold text-slate-900">{label}</p>
       <p className="mt-1 text-sm text-slate-500">{detail}</p>
     </div>
   );
@@ -2535,7 +2774,7 @@ function StudentDashboardPage({
         </div>
         <div className={ui.card}>
           <p className={ui.eyebrow}>Course progress</p>
-          <p className="mt-3 font-serif text-5xl font-bold text-white">{overallProgress}%</p>
+          <p className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">{overallProgress}%</p>
           <div className="mt-4">
             <ProgressBar value={overallProgress} height="md" />
           </div>
@@ -3705,19 +3944,44 @@ function AdminPanelPage({
     onJoinMeeting(instantMeeting.id);
     go('Live Meeting');
   };
+  const openDashboardArea = (cardTitle: string) => {
+    if (cardTitle.includes('Student')) {
+      setAdminActive('Students');
+      return;
+    }
+    if (cardTitle.includes('Course')) {
+      setAdminActive('Courses');
+      return;
+    }
+    if (cardTitle.includes('Payment')) {
+      setAdminActive('Payments');
+      return;
+    }
+    if (cardTitle.includes('Meeting')) {
+      setAdminActive('Meetings');
+      return;
+    }
+    setActiveAction(cardTitle);
+  };
 
   return (
     <div className={ui.page}>
-      <div className="grid gap-6 lg:grid-cols-[240px_1fr] lg:gap-10">
-        <aside className="space-y-1">
-          <p className={cx(ui.eyebrow, 'px-3 pb-2')}>Admin panel</p>
+      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-8">
+        <aside className="self-start rounded-[1.75rem] border border-slate-200 bg-white/90 p-3 shadow-sm shadow-slate-200/70 xl:sticky xl:top-28">
+          <div className="mb-4 flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
+            <LogoMark size="sm" />
+            <div>
+              <p className="text-sm font-black text-slate-950">Admin Workspace</p>
+              <p className="text-xs text-slate-500">Students · Lessons · Payments</p>
+            </div>
+          </div>
           {adminMenu.map((item) => (
             <button
               key={item}
               onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(students[0]?.id || defaultStudents[0].id); }}
               className={cx(
-                'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
-                adminActive === item ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
+                'flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition',
+                adminActive === item ? 'bg-emerald-300 text-slate-950 shadow-sm shadow-emerald-900/10' : 'text-slate-600 hover:bg-slate-50 hover:text-teal-700',
               )}
             >
               {item === 'Dashboard' ? (
@@ -3732,7 +3996,7 @@ function AdminPanelPage({
           ))}
         </aside>
 
-        <div className={ui.page}>
+        <div className="min-w-0 space-y-10">
           <PageHeader
             eyebrow={`${adminActive}`}
             title={current.title}
@@ -3756,7 +4020,7 @@ function AdminPanelPage({
           />
 
           {savedMessage && (
-            <div className="rounded-xl border border-emerald-300/30 bg-emerald-300/5 px-4 py-3 text-sm font-medium text-emerald-200">
+            <div className="rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-bold text-teal-700">
               {savedMessage}
             </div>
           )}
@@ -3821,6 +4085,18 @@ function AdminPanelPage({
               lessonComments={lessonComments}
               onUpdateComment={onUpdateComment}
               onDeleteComment={onDeleteComment}
+            />
+          ) : adminActive === 'Dashboard' ? (
+            <AdminDashboardOverview
+              stats={adminOverviewStats}
+              cards={current.cards}
+              students={students}
+              payments={tuitionPayments}
+              lessons={lessons}
+              lessonComments={lessonComments}
+              onOpenCard={openDashboardArea}
+              onCreateStudent={() => openAction('Add Student')}
+              onStartInstantMeeting={startInstantMeeting}
             />
           ) : adminActive === 'Meetings' ? (
             <div className="space-y-6">
@@ -3948,6 +4224,190 @@ function AdminPanelPage({
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboardOverview({
+  stats,
+  cards,
+  students,
+  payments,
+  lessons,
+  lessonComments,
+  onOpenCard,
+  onCreateStudent,
+  onStartInstantMeeting,
+}: {
+  stats: Array<{ label: string; value: string; icon: IconType }>;
+  cards: Array<{ title: string; items: string[] }>;
+  students: Student[];
+  payments: TuitionPaymentRecord[];
+  lessons: LessonRecord[];
+  lessonComments: LessonComment[];
+  onOpenCard: (cardTitle: string) => void;
+  onCreateStudent: () => void;
+  onStartInstantMeeting: () => void;
+}) {
+  const totalBalance = payments.reduce((total, payment) => total + getTuitionBalance(payment), 0);
+  const partialPayments = payments.filter((payment) => getTuitionPaymentStatus(payment) === 'Partial').length;
+  const recentStudents = students.slice(0, 4);
+  const recentComments = lessonComments.slice(0, 3);
+  const statTones = ['from-teal-50 to-emerald-50', 'from-sky-50 to-cyan-50', 'from-amber-50 to-orange-50', 'from-violet-50 to-fuchsia-50'];
+
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-5 2xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/70">
+          <div className="grid gap-6 p-6 lg:grid-cols-[1fr_220px] lg:p-8">
+            <div>
+              <p className={ui.eyebrow}>Today overview</p>
+              <h2 className="mt-3 max-w-xl text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl">
+                Operations cockpit.
+              </h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
+                Fast access to students, fees, lesson updates, and live class tools.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button onClick={onCreateStudent} className={ui.btnPrimary}>
+                  <Plus className="h-4 w-4" /> Add student
+                </button>
+                <button onClick={onStartInstantMeeting} className={ui.btnGhost}>
+                  <Radio className="h-4 w-4" /> Live class
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-3xl bg-slate-50 ring-1 ring-slate-200">
+              <div className="lms-visual-dark relative h-28 bg-slate-950">
+                <img src={adminOperationsImageUrl} alt="Admin analytics dashboard preview" className="h-full w-full object-cover" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                <div className="absolute inset-x-4 bottom-3 flex items-center justify-between">
+                  <p className="text-sm font-bold text-white">Operations</p>
+                  <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[11px] font-black text-slate-950">SYNC</span>
+                </div>
+              </div>
+              <div className="space-y-4 p-4">
+                <MiniBar label="Lessons" value={lessons.length ? Math.min(100, Math.round((56 / lessons.length) * 100)) : 0} />
+                <MiniBar label="Students" value={Math.min(100, students.length * 2)} />
+                <MiniBar label="Comments" value={Math.min(100, lessonComments.length * 8)} />
+              </div>
+            </div>
+          </div>
+          <div className="grid border-t border-slate-200 sm:grid-cols-3">
+            <div className="p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Fee balance</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-950">{formatMmk(totalBalance)}</p>
+            </div>
+            <div className="border-t border-slate-200 p-5 sm:border-l sm:border-t-0">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Partial payments</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-950">{partialPayments}</p>
+            </div>
+            <div className="border-t border-slate-200 p-5 sm:border-l sm:border-t-0">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Lesson comments</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-950">{lessonComments.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div key={stat.label} className={cx('rounded-[1.5rem] border border-slate-200 bg-gradient-to-br p-5 shadow-sm shadow-slate-200/70', statTones[index % statTones.length])}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-teal-700 shadow-sm shadow-slate-200">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <p className="text-2xl font-extrabold tracking-tight text-slate-950">{stat.value}</p>
+                </div>
+                <p className="mt-4 text-sm font-bold text-slate-800">{stat.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <div className="grid gap-4 md:grid-cols-2">
+          {cards.map((card) => (
+            <button
+              key={card.title}
+              type="button"
+              onClick={() => onOpenCard(card.title)}
+              className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white text-left shadow-sm shadow-slate-200/60 transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="h-2 bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300" />
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-lg font-black text-slate-950">{card.title}</h3>
+                  <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-700" />
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  {card.items.slice(0, 4).map((item) => (
+                    <span key={item} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600 ring-1 ring-slate-200">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <aside className="space-y-4">
+          <div className={ui.cardSubtle}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-black text-slate-950">Recent students</h3>
+              <Users className="h-5 w-5 text-teal-700" />
+            </div>
+            <div className="mt-4 space-y-3">
+              {recentStudents.map((student) => (
+                <div key={student.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-white text-sm font-black text-teal-700 ring-1 ring-slate-200">
+                    {student.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-950">{student.name}</p>
+                    <p className="truncate text-xs text-slate-500">{student.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={ui.cardSubtle}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-black text-slate-950">Latest questions</h3>
+              <MessageCircle className="h-5 w-5 text-teal-700" />
+            </div>
+            <div className="mt-4 space-y-3">
+              {recentComments.length > 0 ? recentComments.map((comment) => (
+                <div key={comment.id} className="rounded-2xl bg-teal-50 p-3 ring-1 ring-teal-100">
+                  <p className="text-xs font-bold text-teal-800">{comment.studentName}</p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-700">{comment.text}</p>
+                </div>
+              )) : (
+                <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-500 ring-1 ring-slate-200">No student comments yet.</p>
+              )}
+            </div>
+          </div>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function MiniBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-xs font-bold text-slate-500">{label}</p>
+        <p className="text-xs font-black text-slate-900">{value}%</p>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
+        <div className="h-full rounded-full bg-teal-400" style={{ width: `${value}%` }} />
       </div>
     </div>
   );
@@ -4272,7 +4732,7 @@ function CourseManagementAdmin({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <p className={ui.eyebrow}>Course detail</p>
-            <h2 className={cx(ui.h2, 'mt-2 text-3xl sm:text-4xl')}>{selectedCourse.title}</h2>
+            <h2 className={cx(ui.h2, 'mt-2')}>{selectedCourse.title}</h2>
             <p className={cx(ui.bodySm, 'mt-3')}>{selectedCourse.description}</p>
           </div>
           <span className={ui.chipMuted}>{selectedCourseCard?.level}</span>
@@ -4700,7 +5160,7 @@ function StudentDirectory({
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
               <p className="text-xs font-semibold text-slate-400">Course progress</p>
               <div className="mt-3 flex items-end justify-between gap-3">
-                <p className="text-3xl font-black text-white">{selectedProgressPercent}%</p>
+                <p className="text-2xl font-extrabold tracking-tight text-slate-950">{selectedProgressPercent}%</p>
                 <span className={ui.chipMuted}>{selectedCompletedCount}/{selectedStudentLessons.length}</span>
               </div>
               <div className="mt-3">
@@ -5001,8 +5461,8 @@ function StudentActivityReport({
 function ActivityMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className={ui.cardSubtle}>
-      <p className="break-words font-serif text-2xl font-bold leading-tight text-white sm:text-3xl">{value}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-400">{label}</p>
+      <p className="break-words text-xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-2xl">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
     </div>
   );
 }
@@ -5152,7 +5612,7 @@ function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult })
           <div className="mb-6 flex justify-center">
             <LogoMark size="md" />
           </div>
-          <h1 className="font-serif text-3xl font-bold leading-tight text-white sm:text-4xl">
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl">
             Sign in to your learning space
           </h1>
           <p className="mt-3 text-sm text-slate-400">
