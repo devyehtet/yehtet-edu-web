@@ -1,5 +1,6 @@
 -- Run this once in Supabase SQL Editor.
--- It stores lesson comments, student watch progress, and shared app data in the cloud.
+-- It stores lesson comments, student watch progress, and non-sensitive shared app data in the cloud.
+-- Keep private admin data such as student passwords and tuition payments out of anon-accessible tables.
 
 create table if not exists public.app_state (
   state_key text primary key,
@@ -50,7 +51,7 @@ create policy "app can add shared app state"
   for insert
   to anon
   with check (
-    state_key in ('meetings', 'students', 'lessons', 'tuition_payments')
+    state_key in ('meetings', 'lessons')
     and jsonb_typeof(data) = 'array'
   );
 
@@ -59,9 +60,9 @@ create policy "app can update shared app state"
   on public.app_state
   for update
   to anon
-  using (state_key in ('meetings', 'students', 'lessons', 'tuition_payments'))
+  using (state_key in ('meetings', 'lessons'))
   with check (
-    state_key in ('meetings', 'students', 'lessons', 'tuition_payments')
+    state_key in ('meetings', 'lessons')
     and jsonb_typeof(data) = 'array'
   );
 
@@ -82,7 +83,7 @@ create policy "app can add lesson comments"
     and length(lesson_id) > 0
     and length(student_id) > 0
     and length(student_name) > 0
-    and length(text) > 0
+    and length(text) between 1 and 800
   );
 
 drop policy if exists "app can update lesson comments" on public.lesson_comments;
@@ -90,21 +91,15 @@ create policy "app can update lesson comments"
   on public.lesson_comments
   for update
   to anon
-  using (true)
-  with check (
-    length(id) > 0
-    and length(lesson_id) > 0
-    and length(student_id) > 0
-    and length(student_name) > 0
-    and length(text) > 0
-  );
+  using (false)
+  with check (false);
 
 drop policy if exists "app can delete lesson comments" on public.lesson_comments;
 create policy "app can delete lesson comments"
   on public.lesson_comments
   for delete
   to anon
-  using (true);
+  using (false);
 
 drop policy if exists "app can read student progress" on public.student_progress;
 create policy "app can read student progress"
@@ -129,6 +124,9 @@ create policy "app can update student progress"
   with check (length(student_id) > 0 and length(current_lesson_id) > 0);
 
 grant usage on schema public to anon;
+revoke all on public.app_state from anon;
+revoke all on public.lesson_comments from anon;
+revoke all on public.student_progress from anon;
 grant select, insert, update on public.app_state to anon;
-grant select, insert, update, delete on public.lesson_comments to anon;
+grant select, insert on public.lesson_comments to anon;
 grant select, insert, update on public.student_progress to anon;

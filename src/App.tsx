@@ -227,9 +227,30 @@ const protectedPages: PageName[] = [
 
 const adminOnlyPages: PageName[] = ['Admin Panel', 'Reports'];
 
+const appEnv = import.meta.env as unknown as Record<string, string | undefined>;
+
+function getEnvSetting(...keys: string[]) {
+  return keys.map((key) => appEnv[key]?.trim()).find(Boolean) || '';
+}
+
+function isLocalDevelopmentHost() {
+  if (typeof window === 'undefined') return false;
+  return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
 const serverAuthCredentials = {
-  admin: { username: 'info@yehtet.com', password: '1234567890' },
+  admin: {
+    username: (getEnvSetting('VITE_ADMIN_USERNAME') || (isLocalDevelopmentHost() ? 'info@yehtet.com' : '')).toLowerCase(),
+    password: getEnvSetting('VITE_ADMIN_PASSWORD') || (isLocalDevelopmentHost() ? '1234567890' : ''),
+  },
 };
+
+const defaultStudentPassword = getEnvSetting('VITE_STUDENT_DEFAULT_PASSWORD') || (isLocalDevelopmentHost() ? 'yehtet3Du' : '');
+const loginAttemptStorageKey = 'ye-htet-login-attempts';
+const maxLoginAttempts = 5;
+const loginLockMs = 15 * 60 * 1000;
+const sessionTimeoutMs = 2 * 60 * 60 * 1000;
+const maxLessonCommentLength = 800;
 
 const meetingStorageKey = 'ye-htet-live-class-meetings';
 const learningStorageKey = 'ye-htet-digital-marketing-progress';
@@ -872,7 +893,7 @@ function normalizeRequiredWatchPercentage(value: string | number | undefined) {
 }
 
 function normalizeLessonVideoUrl(value: string | undefined) {
-  return value?.trim() || sampleLessonVideoUrl;
+  return sanitizeLessonVideoUrl(value);
 }
 
 function reindexLessons(lessons: LessonRecord[]) {
@@ -1000,7 +1021,7 @@ function normalizeLessonRecord(value: Partial<LessonRecord>, fallback: LessonRec
     outcome: typeof value.outcome === 'string' && value.outcome.trim() ? value.outcome : getLessonOutcome(title),
     practice: typeof value.practice === 'string' && value.practice.trim() ? value.practice : getLessonPractice(title),
     resource: typeof value.resource === 'string' && value.resource.trim() ? value.resource.trim() : fallback.resource,
-    resourceUrl: typeof value.resourceUrl === 'string' && value.resourceUrl.trim() ? value.resourceUrl.trim() : fallback.resourceUrl,
+    resourceUrl: sanitizeResourceUrl(value.resourceUrl || fallback.resourceUrl) || undefined,
     videoUrl: normalizeLessonVideoUrl(value.videoUrl || fallback.videoUrl),
     requiredWatchPercentage: normalizeRequiredWatchPercentage(value.requiredWatchPercentage),
   };
@@ -1150,21 +1171,49 @@ function isJsonEqual(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function sanitizeUserText(value: string, maxLength = maxLessonCommentLength) {
+  return value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function getTrustedHttpsUrl(rawUrl: string | undefined, allowedHosts: string[]) {
+  const value = rawUrl?.trim();
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return '';
+    const hostname = url.hostname.toLowerCase();
+    const isAllowed = allowedHosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+    return isAllowed ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
+function sanitizeResourceUrl(rawUrl: string | undefined) {
+  return getTrustedHttpsUrl(rawUrl, ['docs.google.com', 'drive.google.com']);
+}
+
+function sanitizeLessonVideoUrl(rawUrl: string | undefined) {
+  const vimeoUrl = getTrustedHttpsUrl(rawUrl, ['vimeo.com', 'player.vimeo.com']);
+  if (vimeoUrl) return vimeoUrl;
+  const sampleUrl = getTrustedHttpsUrl(rawUrl, ['interactive-examples.mdn.mozilla.net']);
+  return sampleUrl || sampleLessonVideoUrl;
+}
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyDlZVwiUaDyDUzSK1V-w2ws46lTJPlwyuU',
-  authDomain: 'yehtet-edu.firebaseapp.com',
-  projectId: 'yehtet-edu',
-  storageBucket: 'yehtet-edu.firebasestorage.app',
-  messagingSenderId: '773247085634',
-  appId: '1:773247085634:web:7e8bfcecc29f17726911db',
-  measurementId: 'G-ZGY0ME7M3H',
+  apiKey: getEnvSetting('VITE_FIREBASE_API_KEY'),
+  projectId: getEnvSetting('VITE_FIREBASE_PROJECT_ID'),
 };
 
-const firestoreBaseUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
-const appEnv = import.meta.env as unknown as Record<string, string | undefined>;
+const firestoreBaseUrl = firebaseConfig.projectId
+  ? `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`
+  : '';
 const supabaseConfig = {
-  url: (appEnv.VITE_SUPABASE_URL || appEnv.NEXT_PUBLIC_SUPABASE_URL || 'https://abxdyaudxllppoxpqxoe.supabase.co').replace(/\/$/, ''),
-  publishableKey: appEnv.VITE_SUPABASE_PUBLISHABLE_KEY || appEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_kjHgsDTCvcrqStDFRRo0mA_ZtdftmlT',
+  url: getEnvSetting('VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL').replace(/\/$/, ''),
+  publishableKey: getEnvSetting('VITE_SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
 };
 const supabaseRestBaseUrl = `${supabaseConfig.url}/rest/v1`;
 
@@ -1186,7 +1235,7 @@ type SupabaseStudentProgressRow = {
   watch_progress_by_lesson_id?: unknown;
 };
 
-type SupabaseAppStateKey = 'meetings' | 'students' | 'lessons' | 'tuition_payments';
+type SupabaseAppStateKey = 'meetings' | 'lessons';
 type SupabaseAppStateRow = {
   state_key?: unknown;
   data?: unknown;
@@ -1221,6 +1270,10 @@ function firestoreInteger(value: number) {
 
 function isSupabaseConfigured() {
   return Boolean(supabaseConfig.url && supabaseConfig.publishableKey);
+}
+
+function isFirebaseConfigured() {
+  return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firestoreBaseUrl);
 }
 
 function getSupabaseHeaders(extra: Record<string, string> = {}) {
@@ -1295,7 +1348,7 @@ function parseSupabaseLessonComment(row: SupabaseLessonCommentRow): LessonCommen
   const lessonId = readSupabaseString(row.lesson_id);
   const studentId = readSupabaseString(row.student_id);
   const studentName = readSupabaseString(row.student_name);
-  const text = readSupabaseString(row.text);
+  const text = sanitizeUserText(readSupabaseString(row.text));
   const createdAt = readSupabaseNumber(row.created_at);
   if (!id || !lessonId || !studentId || !studentName || !text || !createdAt) return null;
   return { id, lessonId, studentId, studentName, text, createdAt };
@@ -1430,7 +1483,7 @@ function parseFirestoreLessonComment(document: { name?: string; fields?: Firesto
   const lessonId = readFirestoreString(fields, 'lessonId');
   const studentId = readFirestoreString(fields, 'studentId');
   const studentName = readFirestoreString(fields, 'studentName');
-  const text = readFirestoreString(fields, 'text');
+  const text = sanitizeUserText(readFirestoreString(fields, 'text'));
   const createdAt = readFirestoreNumber(fields, 'createdAt');
   if (!id || !lessonId || !studentId || !studentName || !text || !createdAt) return null;
   return { id, lessonId, studentId, studentName, text, createdAt };
@@ -1443,6 +1496,7 @@ function mergeLessonComments(...commentGroups: LessonComment[][]) {
 }
 
 async function fetchFirebaseLessonComments() {
+  if (!isFirebaseConfigured()) return [];
   try {
     const response = await fetch(`${firestoreBaseUrl}/lessonComments?key=${firebaseConfig.apiKey}`);
     if (!response.ok) return [];
@@ -1456,6 +1510,7 @@ async function fetchFirebaseLessonComments() {
 }
 
 async function saveLessonCommentToFirebase(comment: LessonComment) {
+  if (!isFirebaseConfigured()) return;
   try {
     await fetch(`${firestoreBaseUrl}/lessonComments/${encodeURIComponent(comment.id)}?key=${firebaseConfig.apiKey}`, {
       method: 'PATCH',
@@ -1468,6 +1523,7 @@ async function saveLessonCommentToFirebase(comment: LessonComment) {
 }
 
 async function deleteLessonCommentFromFirebase(commentId: string) {
+  if (!isFirebaseConfigured()) return;
   try {
     await fetch(`${firestoreBaseUrl}/lessonComments/${encodeURIComponent(commentId)}?key=${firebaseConfig.apiKey}`, {
       method: 'DELETE',
@@ -1539,6 +1595,7 @@ function mergeStudentProgress(local: StudentProgressById, cloud: StudentProgress
 }
 
 async function fetchFirebaseStudentProgress(lessons: LessonRecord[]) {
+  if (!isFirebaseConfigured()) return {};
   try {
     const response = await fetch(`${firestoreBaseUrl}/studentProgress?key=${firebaseConfig.apiKey}`);
     if (!response.ok) return {};
@@ -1555,6 +1612,7 @@ async function fetchFirebaseStudentProgress(lessons: LessonRecord[]) {
 }
 
 async function saveStudentProgressToFirebase(studentId: string, progress: LearningProgress) {
+  if (!isFirebaseConfigured()) return;
   try {
     await fetch(`${firestoreBaseUrl}/studentProgress/${encodeURIComponent(studentId)}?key=${firebaseConfig.apiKey}`, {
       method: 'PATCH',
@@ -1678,7 +1736,7 @@ const publicFaqs: Array<{ question: string; answer: string }> = [
   },
 ];
 
-const seededStudentPassword = 'yehtet3Du';
+const seededStudentPassword = defaultStudentPassword;
 
 const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-001', name: 'Kaung Thant Khine', email: 'kaungthantkhine@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Jun 13, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
@@ -3077,7 +3135,7 @@ function LessonCommentsPanel({
 
   const submitComment = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const text = commentText.trim();
+    const text = sanitizeUserText(commentText);
     if (!text || !currentStudent) return;
     const nextComment: LessonComment = {
       id: `comment-${Date.now()}`,
@@ -3116,7 +3174,7 @@ function LessonCommentsPanel({
           <p className="text-xs text-slate-500">
             {currentStudent ? `Posting as ${currentStudent.name}` : 'Only student accounts can comment.'}
           </p>
-          <button type="submit" disabled={!currentStudent || !commentText.trim()} className={cx(ui.btnPrimary, (!currentStudent || !commentText.trim()) && 'cursor-not-allowed opacity-60')}>
+          <button type="submit" disabled={!currentStudent || !sanitizeUserText(commentText)} className={cx(ui.btnPrimary, (!currentStudent || !sanitizeUserText(commentText)) && 'cursor-not-allowed opacity-60')}>
             <Send className="h-4 w-4" /> Post comment
           </button>
         </div>
@@ -3359,7 +3417,7 @@ function LessonPlayerPage({
                 <p className={ui.eyebrow}>Lesson file</p>
                 <h2 className="mt-2 text-lg font-bold text-white">{activeLesson.resource}</h2>
               </div>
-              <a href={activeLesson.resourceUrl} target="_blank" rel="noreferrer" className={ui.btnPrimary}>
+              <a href={activeLesson.resourceUrl} target="_blank" rel="noopener noreferrer" className={ui.btnPrimary}>
                 <Download className="h-4 w-4" /> File ရယူရန်
               </a>
             </section>
@@ -3393,7 +3451,7 @@ function LessonPlayerPage({
               <p className={ui.eyebrow}>Resource</p>
               <p className="mt-3 text-sm leading-6 text-slate-300">{activeLesson.resource}</p>
               {activeLesson.resourceUrl && (
-                <a href={activeLesson.resourceUrl} target="_blank" rel="noreferrer" className={cx(ui.btnSubtle, 'mt-4')}>
+                <a href={activeLesson.resourceUrl} target="_blank" rel="noopener noreferrer" className={cx(ui.btnSubtle, 'mt-4')}>
                   <ExternalLink className="h-4 w-4" /> File ရယူရန်
                 </a>
               )}
@@ -3626,7 +3684,7 @@ function LiveMeetingPage({
               <p className={ui.eyebrow}>Jitsi room</p>
               <h2 className="mt-2 break-words text-lg font-bold text-white">{roomName}</h2>
               <p className="mt-2 text-sm text-slate-400">Camera, microphone, screen share, chat, participants, and recording controls run inside Jitsi.</p>
-              <a href={jitsiURL} target="_blank" rel="noreferrer" className={cx(ui.btnPrimary, 'mt-4 w-full')}>
+              <a href={jitsiURL} target="_blank" rel="noopener noreferrer" className={cx(ui.btnPrimary, 'mt-4 w-full')}>
                 <ExternalLink className="h-4 w-4" /> Open in new tab
               </a>
             </div>
@@ -5685,6 +5743,58 @@ function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult })
   );
 }
 
+type LoginAttemptState = {
+  count: number;
+  lockedUntil: number;
+};
+
+function getLoginAttemptKey(role: 'admin' | 'student', username: string) {
+  return `${loginAttemptStorageKey}:${role}:${username}`;
+}
+
+function readLoginAttemptState(role: 'admin' | 'student', username: string): LoginAttemptState {
+  if (typeof window === 'undefined') return { count: 0, lockedUntil: 0 };
+  try {
+    const stored = window.localStorage.getItem(getLoginAttemptKey(role, username));
+    if (!stored) return { count: 0, lockedUntil: 0 };
+    const parsed = JSON.parse(stored) as Partial<LoginAttemptState>;
+    return {
+      count: Number.isFinite(parsed.count) ? Number(parsed.count) : 0,
+      lockedUntil: Number.isFinite(parsed.lockedUntil) ? Number(parsed.lockedUntil) : 0,
+    };
+  } catch {
+    return { count: 0, lockedUntil: 0 };
+  }
+}
+
+function writeLoginAttemptState(role: 'admin' | 'student', username: string, state: LoginAttemptState) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(getLoginAttemptKey(role, username), JSON.stringify(state));
+}
+
+function clearLoginAttemptState(role: 'admin' | 'student', username: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(getLoginAttemptKey(role, username));
+}
+
+function getLoginLockMessage(state: LoginAttemptState) {
+  const remainingMs = state.lockedUntil - Date.now();
+  if (remainingMs <= 0) return '';
+  const minutes = Math.ceil(remainingMs / 60000);
+  return `Too many failed login attempts. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+}
+
+function recordFailedLoginAttempt(role: 'admin' | 'student', username: string) {
+  const current = readLoginAttemptState(role, username);
+  const nextCount = current.lockedUntil > Date.now() ? current.count : current.count + 1;
+  const nextState = {
+    count: nextCount,
+    lockedUntil: nextCount >= maxLoginAttempts ? Date.now() + loginLockMs : 0,
+  };
+  writeLoginAttemptState(role, username, nextState);
+  return getLoginLockMessage(nextState);
+}
+
 // =====================================================================
 // Root App
 // =====================================================================
@@ -5750,17 +5860,13 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
     const syncCloudAppState = async () => {
-      const [cloudMeetings, cloudStudents, cloudLessons, cloudTuitionPayments] = await Promise.all([
+      const [cloudMeetings, cloudLessons] = await Promise.all([
         fetchSupabaseAppState('meetings', normalizeStoredMeetings),
-        fetchSupabaseAppState('students', normalizeStoredStudents),
         fetchSupabaseAppState('lessons', normalizeStoredLessons),
-        fetchSupabaseAppState('tuition_payments', normalizeStoredTuitionPayments),
       ]);
       if (!mounted) return;
       if (cloudMeetings) setLiveMeetings((prev) => (isJsonEqual(prev, cloudMeetings) ? prev : cloudMeetings));
-      if (cloudStudents) setStudents((prev) => (isJsonEqual(prev, cloudStudents) ? prev : cloudStudents));
       if (cloudLessons) setLessons((prev) => (isJsonEqual(prev, cloudLessons) ? prev : cloudLessons));
-      if (cloudTuitionPayments) setTuitionPayments((prev) => (isJsonEqual(prev, cloudTuitionPayments) ? prev : cloudTuitionPayments));
       setHasLoadedCloudAppState(true);
     };
     const handleVisibilityChange = () => {
@@ -5783,18 +5889,8 @@ export default function App() {
 
   useEffect(() => {
     if (!hasLoadedCloudAppState) return;
-    void saveSupabaseAppState('students', students);
-  }, [hasLoadedCloudAppState, students]);
-
-  useEffect(() => {
-    if (!hasLoadedCloudAppState) return;
     void saveSupabaseAppState('lessons', lessons);
   }, [hasLoadedCloudAppState, lessons]);
-
-  useEffect(() => {
-    if (!hasLoadedCloudAppState) return;
-    void saveSupabaseAppState('tuition_payments', tuitionPayments);
-  }, [hasLoadedCloudAppState, tuitionPayments]);
 
   useEffect(() => {
     let mounted = true;
@@ -5883,7 +5979,7 @@ export default function App() {
   }, [learningProgress, currentStudentId, lessons]);
 
   const updateLessonComment = (commentId: string, text: string) => {
-    const nextText = text.trim();
+    const nextText = sanitizeUserText(text);
     if (!nextText) return;
     setLessonComments((prev) => prev.map((comment) => (
       comment.id === commentId ? { ...comment, text: nextText } : comment
@@ -5908,11 +6004,20 @@ export default function App() {
       return { ok: false, message: 'Please enter username and password.' };
     }
 
+    const loginAttemptState = readLoginAttemptState(loginRole, normalizedUsername);
+    const lockMessage = getLoginLockMessage(loginAttemptState);
+    if (lockMessage) return { ok: false, message: lockMessage };
+
+    if (loginRole === 'admin' && (!serverAuthCredentials.admin.username || !serverAuthCredentials.admin.password)) {
+      return { ok: false, message: 'Admin login is not configured on this deployment.' };
+    }
+
     if (
       loginRole === 'admin'
       && normalizedUsername === serverAuthCredentials.admin.username
       && password === serverAuthCredentials.admin.password
     ) {
+      clearLoginAttemptState(loginRole, normalizedUsername);
       setIsLoggedIn(true);
       setRole('admin');
       setCurrentStudentId(null);
@@ -5923,6 +6028,7 @@ export default function App() {
     if (loginRole === 'student') {
       const student = students.find((item) => item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
       if (student) {
+        clearLoginAttemptState(loginRole, normalizedUsername);
         const enrolledCourse = [...getStudentCourses(student)].reverse().find((courseTitle) => courseDetailsByTitle[courseTitle]) || defaultCourseTitle;
         setLearningProgress(studentProgressById[student.id] || readStoredLearningProgress(lessons));
         setSelectedCourseTitle(enrolledCourse);
@@ -5932,10 +6038,12 @@ export default function App() {
         setActive('Student Dashboard');
         return { ok: true };
       }
-      return { ok: false, message: 'Student account not found. Please ask admin to create or activate your account.' };
+      const failedMessage = recordFailedLoginAttempt(loginRole, normalizedUsername);
+      return { ok: false, message: failedMessage || 'Student account not found. Please ask admin to create or activate your account.' };
     }
 
-    return { ok: false, message: 'Invalid admin username or password.' };
+    const failedMessage = recordFailedLoginAttempt(loginRole, normalizedUsername);
+    return { ok: false, message: failedMessage || 'Invalid admin username or password.' };
   };
 
   const logout = () => {
@@ -5945,6 +6053,29 @@ export default function App() {
     setSelectedCourseTitle(defaultCourseTitle);
     setActive('Home');
   };
+
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    let lastActivityAt = Date.now();
+    const refreshActivity = () => {
+      lastActivityAt = Date.now();
+    };
+    const checkSession = () => {
+      if (Date.now() - lastActivityAt < sessionTimeoutMs) return;
+      setIsLoggedIn(false);
+      setRole(null);
+      setCurrentStudentId(null);
+      setSelectedCourseTitle(defaultCourseTitle);
+      setActive('Home');
+    };
+    const activityEvents: Array<keyof WindowEventMap> = ['mousemove', 'keydown', 'click', 'touchstart'];
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, refreshActivity, { passive: true }));
+    const timer = window.setInterval(checkSession, 60000);
+    return () => {
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, refreshActivity));
+      window.clearInterval(timer);
+    };
+  }, [isLoggedIn]);
 
   return (
     <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout}>

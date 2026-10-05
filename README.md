@@ -17,15 +17,18 @@ http://localhost:5173
 
 ## Data server
 
-Run `supabase-schema.sql` once in the Supabase SQL Editor. The app stores shared students, lessons, meetings, tuition payments, lesson comments, and student progress in Supabase so data follows users across devices and browsers.
+Run `supabase-schema.sql` in the Supabase SQL Editor after every schema change. The app stores non-sensitive shared lessons/meetings, lesson comments, and student progress in Supabase. Student passwords and tuition payments are kept out of anonymous cloud sync.
 
-## Demo login
+## Deployment environment
 
-Admin:
-- Username: admin@dmclass.com
-- Password: Admin@2026
+Set these variables in your hosting provider:
 
-Student:
-- Username: student@dmclass.com
-- Password: Student@2026
+```bash
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+VITE_ADMIN_USERNAME=...
+VITE_ADMIN_PASSWORD=...
+VITE_STUDENT_DEFAULT_PASSWORD=...
 ```
+
+The local development server still supports the previous test credentials on `localhost`, but production builds require the environment variables above.
