@@ -1919,9 +1919,17 @@ function getPrimaryStudentCourse(student: Student) {
 
 function mergeSeededStudentAccounts(students: Student[]) {
   const cleanStudents = removePlaceholderStudents(students);
-  const existingEmails = new Set(cleanStudents.map((student) => student.email.toLowerCase()).filter(Boolean));
+  const seededByEmail = new Map(seededStudentAccounts.map((student) => [student.email.toLowerCase(), student]));
+  const existingEmails = new Set<string>();
+  const hydratedStudents = cleanStudents.map((student) => {
+    const email = student.email.toLowerCase();
+    existingEmails.add(email);
+    const seededStudent = seededByEmail.get(email);
+    if (!seededStudent || student.password) return student;
+    return { ...student, password: seededStudent.password };
+  });
   const missingSeededAccounts = seededStudentAccounts.filter((student) => !existingEmails.has(student.email.toLowerCase()));
-  return [...missingSeededAccounts, ...cleanStudents];
+  return [...missingSeededAccounts, ...hydratedStudents];
 }
 
 function normalizeStoredStudents(value: unknown): Student[] {
