@@ -184,14 +184,15 @@ const slugToPage: Record<string, PageName> = Object.entries(pageSlugs).reduce(
   {} as Record<string, PageName>,
 );
 
-const pageToHash = (page: PageName) => {
+const pageToPath = (page: PageName) => {
   const slug = pageSlugs[page];
-  return slug ? `#/${slug}` : '#/';
+  return slug ? `/${slug}` : '/';
 };
 
-const readHashPage = (): PageName => {
+const readUrlPage = (): PageName => {
   if (typeof window === 'undefined') return 'Home';
-  const raw = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  const legacyHashSlug = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  const raw = legacyHashSlug || window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
   return (slugToPage[raw] as PageName) || 'Home';
 };
 
@@ -5814,7 +5815,7 @@ function recordFailedLoginAttempt(role: 'admin' | 'student', username: string) {
 // =====================================================================
 
 export default function App() {
-  const [active, setActive] = useState<PageName>(() => getNextPage(readHashPage(), false, null));
+  const [active, setActive] = useState<PageName>(() => getNextPage(readUrlPage(), false, null));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState<Role>(null);
   const [liveMeetings, setLiveMeetings] = useState<LiveClassMeeting[]>(() => readStoredMeetings());
@@ -5833,9 +5834,10 @@ export default function App() {
   const selectedCourseLessons = getCourseLessons(selectedCourseTitle, lessons);
 
   useEffect(() => {
-    const desired = pageToHash(active);
-    if (window.location.hash !== desired) {
-      window.history.pushState(null, '', desired);
+    const desired = pageToPath(active);
+    if (window.location.pathname !== desired || window.location.hash) {
+      const method = window.location.hash ? 'replaceState' : 'pushState';
+      window.history[method](null, '', desired);
     }
     // Scroll to top on page change so users don't land mid-page
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5843,7 +5845,7 @@ export default function App() {
 
   useEffect(() => {
     const sync = () => {
-      const next = readHashPage();
+      const next = readUrlPage();
       const resolved = getNextPage(next, isLoggedIn, role);
       setActive(resolved);
     };
