@@ -1680,16 +1680,16 @@ const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
 ];
 
 const platformSignals: Array<{ label: string; value: string; detail: string }> = [
-  { label: 'Active student accounts', value: '50+', detail: 'Managed through the admin panel' },
+  { label: 'Student access', value: '50+', detail: 'Prepared accounts for enrolled learners' },
   { label: 'Course paths', value: '2', detail: 'Digital Marketing and Media Buying' },
-  { label: 'Lesson activity', value: 'Tracked', detail: 'Watch progress and comments by lesson' },
-  { label: 'Payment records', value: 'Admin-ready', detail: 'Paid amount, balance, and dates' },
+  { label: 'Lesson activity', value: 'Live', detail: 'Progress and questions stay organized by lesson' },
+  { label: 'Payment plans', value: 'Clear', detail: 'Paid amounts, balances, and dates in one place' },
 ];
 
 const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = [
   { title: 'Choose the right course', text: 'Review the course outcome, modules, and study path before enrolling.', icon: BookOpen },
-  { title: 'Confirm payment', text: 'Admin records the fee, paid amount, balance, and enrollment course.', icon: ShieldCheck },
-  { title: 'Receive account access', text: 'Student logs in with the assigned email and password from the admin.', icon: Users },
+  { title: 'Confirm enrollment', text: 'Payment, course access, and learning timeline are prepared in one flow.', icon: ShieldCheck },
+  { title: 'Receive account access', text: 'Student logs in with the assigned email and password.', icon: Users },
   { title: 'Start learning', text: 'Watch lessons in order, download resources, and ask questions under videos.', icon: MessageCircle },
 ];
 
@@ -1711,24 +1711,24 @@ const studentTestimonials: Array<{ name: string; role: string; quote: string }> 
     quote: 'Templates, video lessons, and progress tracking help me keep the study plan clear.',
   },
   {
-    name: 'Admin Team',
-    role: 'Student operations',
-    quote: 'Student progress, comments, and payment records can be reviewed from one place.',
+    name: 'Course Learner',
+    role: 'Guided learning',
+    quote: 'Progress, comments, and resources stay connected, so every lesson feels easy to follow.',
   },
 ];
 
 const publicFaqs: Array<{ question: string; answer: string }> = [
   {
     question: 'How do students get access?',
-    answer: 'The admin creates the account, assigns the course, and shares the login email and password with the student.',
+    answer: 'Students receive an assigned login email and password after enrollment is confirmed.',
   },
   {
     question: 'Can students ask questions under each video?',
-    answer: 'Yes. Students can leave comments under each lesson, and the admin can review them by lesson or by student.',
+    answer: 'Yes. Students can leave comments or questions under each lesson video.',
   },
   {
     question: 'Does progress save across devices?',
-    answer: 'Yes. The site now connects to the shared data server so progress, comments, lessons, students, and payments can sync beyond one browser.',
+    answer: 'Yes. Progress, comments, and lesson activity can sync beyond one browser when the shared data server is connected.',
   },
   {
     question: 'Is there live class support?',
@@ -2043,34 +2043,34 @@ function readStoredDeletedLessonCommentIds(): string[] {
 }
 
 // =====================================================================
-// Design tokens (minimal & clean)
+// Design tokens (dark performance style)
 // =====================================================================
 //
-// One restrained system used everywhere:
-//   - Flat surfaces, subtle borders, and warm light backgrounds
-//   - Consistent type scale for headings, cards, and dashboards
-//   - Single emerald accent for primary actions/state
+// One focused system used everywhere:
+//   - Deep navy surfaces, glass borders, and a subtle grid background
+//   - Bold, consistent type with mint accents
+//   - Rounded controls without mixing several visual languages
 
 const ui = {
   page: 'space-y-12 sm:space-y-16',
-  card: 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 sm:p-8',
-  cardSolid: 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/70 sm:p-8',
-  cardSubtle: 'rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/50 sm:p-6',
-  eyebrow: 'text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-700',
-  h1: 'text-3xl font-extrabold leading-[1.08] tracking-tight text-slate-950 sm:text-4xl lg:text-[44px]',
-  h2: 'text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl',
-  h3: 'text-lg font-bold text-slate-950',
-  body: 'text-[15px] leading-7 text-slate-600 sm:text-base',
-  bodySm: 'text-sm leading-6 text-slate-500',
+  card: 'rounded-[1.75rem] border border-white/[0.08] bg-white/[0.04] p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8',
+  cardSolid: 'rounded-[1.75rem] border border-white/[0.09] bg-[#0b1620]/90 p-6 shadow-2xl shadow-emerald-950/20 sm:p-8',
+  cardSubtle: 'rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] p-5 shadow-xl shadow-black/10 backdrop-blur sm:p-6',
+  eyebrow: 'text-[11px] font-black uppercase tracking-[0.24em] text-emerald-300',
+  h1: 'text-4xl font-black leading-[1.02] tracking-normal text-white sm:text-5xl lg:text-6xl',
+  h2: 'text-2xl font-black leading-tight tracking-normal text-white sm:text-3xl',
+  h3: 'text-lg font-black text-white',
+  body: 'text-[15px] leading-7 text-slate-300 sm:text-base',
+  bodySm: 'text-sm leading-6 text-slate-400',
   btnPrimary:
-    'inline-flex items-center justify-center gap-2 rounded-full bg-emerald-300 px-6 py-3 text-sm font-bold text-slate-950 shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-200',
+    'group inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-6 py-3.5 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] active:translate-y-0',
   btnGhost:
-    'inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm shadow-slate-200/50 transition hover:bg-slate-50',
+    'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.045] px-6 py-3.5 text-sm font-bold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur transition duration-200 hover:-translate-y-1 hover:border-emerald-300/35 hover:bg-emerald-300/[0.08] hover:text-white active:translate-y-0',
   btnSubtle:
-    'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50',
-  chip: 'inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 ring-1 ring-teal-100',
-  chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-600',
-  divider: 'border-t border-slate-200',
+    'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.10] bg-white/[0.035] px-4 py-2.5 text-sm font-bold text-slate-300 backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300/30 hover:bg-white/[0.08] hover:text-white active:translate-y-0',
+  chip: 'inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-200 shadow-lg shadow-emerald-950/20',
+  chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-white/[0.10] bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-slate-300',
+  divider: 'border-t border-white/[0.08]',
 } as const;
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -2088,14 +2088,14 @@ function getNextPage(page: PageName, isLoggedIn: boolean, role: Role): PageName 
 // =====================================================================
 
 function LogoMark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const boxSize = size === 'lg' ? 'h-14 w-16' : size === 'sm' ? 'h-8 w-9' : 'h-10 w-12';
-  const bar = size === 'lg' ? 'h-7 w-2.5' : size === 'sm' ? 'h-4 w-1.5' : 'h-5 w-2';
-  const tri = size === 'lg' ? 'h-7 w-7' : size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
+  const boxSize = size === 'lg' ? 'h-16 w-16 rounded-[1.5rem]' : size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl';
+  const markSize = size === 'lg' ? 'h-7 w-9' : size === 'sm' ? 'h-4 w-6' : 'h-5 w-7';
   return (
-    <div className={cx('relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-emerald-300/10 ring-1 ring-emerald-300/20', boxSize)}>
-      <div className="flex items-center gap-0.5">
-        <span className={cx('block bg-emerald-300', tri)} style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-        <span className={cx('block bg-emerald-300', bar)} />
+    <div className={cx('relative grid shrink-0 place-items-center overflow-hidden bg-emerald-300 shadow-xl shadow-emerald-500/20 ring-1 ring-emerald-200/40', boxSize)}>
+      <div className={cx('relative rounded-full bg-[#07111b]', markSize)}>
+        <span className="absolute -right-0.5 top-0 h-[68%] w-[54%] rounded-full bg-[#07111b]" />
+        <span className="absolute -left-0.5 bottom-0 h-[58%] w-[58%] rounded-full bg-[#07111b]" />
+        <span className="absolute left-[16%] top-[36%] h-[30%] w-[58%] rounded-full bg-emerald-300/10" />
       </div>
     </div>
   );
@@ -2136,29 +2136,29 @@ function Shell({
   const roleBadge = isLoggedIn ? (role === 'admin' ? 'Admin' : 'Student') : null;
 
   return (
-    <main className="lms-light-theme min-h-screen text-slate-900">
+    <main className="lms-dark-theme min-h-screen overflow-hidden bg-[#050913] text-white">
       <div className="lms-ambient pointer-events-none fixed inset-0" />
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-30 -mx-4 mb-10 border-b border-white/[0.06] bg-[#070a22]/85 px-4 py-4 backdrop-blur-lg sm:-mx-6 sm:px-6 sm:py-5 lg:-mx-8 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <button onClick={() => handleGo(homeTarget)} className="flex min-w-0 items-center gap-3">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 mb-10 pt-4 sm:pt-6">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-[1.75rem] border border-white/[0.08] bg-[#050913]/92 px-5 py-4 shadow-2xl shadow-black/30 backdrop-blur-xl sm:px-7">
+            <button onClick={() => handleGo(homeTarget)} className="flex min-w-0 items-center gap-4">
               <LogoMark size="sm" />
               <div className="min-w-0 text-left">
-                <p className="font-serif text-base font-bold leading-none text-white sm:text-lg">Ye Htet</p>
-                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">Digital Edu</p>
+                <p className="text-lg font-black leading-none tracking-normal text-white sm:text-xl">Ye Htet Aung</p>
+                <p className="mt-1 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300/65">Digital Edu</p>
               </div>
             </button>
 
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-2 rounded-full border border-white/[0.05] bg-white/[0.03] p-1 lg:flex">
               {visibleNav.map((item) => (
                 <button
                   key={item.label}
                   onClick={() => handleGo(item.target)}
                   className={cx(
-                    'rounded-full px-4 py-2 text-sm font-medium transition',
+                    'rounded-full px-5 py-2.5 text-sm font-bold transition',
                     active === item.target
-                      ? 'bg-white/[0.08] text-white'
-                      : 'text-slate-400 hover:bg-white/[0.04] hover:text-white',
+                      ? 'bg-white/[0.10] text-white shadow-lg shadow-black/10'
+                      : 'text-slate-400 hover:bg-white/[0.05] hover:text-white',
                   )}
                 >
                   {item.label}
@@ -2177,8 +2177,8 @@ function Shell({
                   Logout
                 </button>
               ) : (
-                <button onClick={() => handleGo('Login')} className="rounded-full bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-200">
-                  Sign in
+                <button onClick={() => handleGo('Login')} className="group inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-6 py-3 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)]">
+                  Sign in <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </button>
               )}
               <button
@@ -2249,17 +2249,17 @@ function PageHeader({
 
 function StatRow({ stats }: { stats: Array<{ label: string; value: string; icon: IconType }> }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <div key={stat.label} className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
+          <div key={stat.label} className="flex min-h-[118px] items-center gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] px-5 py-4 shadow-xl shadow-black/10 backdrop-blur">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-300/10 text-emerald-300 ring-1 ring-emerald-300/20">
               <Icon className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-bold leading-tight text-white">{stat.value}</p>
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{stat.label}</p>
+              <p className="text-2xl font-black leading-tight text-emerald-300">{stat.value}</p>
+              <p className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{stat.label}</p>
             </div>
           </div>
         );
@@ -2298,20 +2298,20 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
   return (
     <div className={ui.page}>
       {/* Hero — one focused message */}
-      <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+      <section className="grid gap-10 pt-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:pt-8">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className={ui.chip}>
             <LogoMark size="sm" /> Ye Htet · Digital Edu
           </span>
-          <h1 className={cx(ui.h1, 'mt-6')}>
-            Learn practical <span className="text-emerald-300">Digital Marketing</span> with a guided LMS.
+          <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.98] tracking-normal text-white sm:text-6xl lg:text-[82px]">
+            Learn digital skills with a <span className="text-emerald-300">premium LMS</span>.
           </h1>
-          <p className={cx(ui.body, 'mt-5 max-w-xl')}>
-            Study in order, download templates, ask questions under each lesson, and let the admin track progress, comments, and payment records from one clean dashboard.
+          <p className={cx(ui.body, 'mt-6 max-w-2xl text-lg')}>
+            Study in order, download templates, ask questions under each lesson, and keep every learning activity organized in one clean dashboard.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button onClick={() => go('Courses')} className={ui.btnPrimary}>
-              Explore courses <ArrowRight className="h-4 w-4" />
+              Explore courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </button>
             <button onClick={() => go('Learning Path')} className={ui.btnGhost}>
               View roadmap
@@ -2326,14 +2326,16 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
         <StatRow stats={homeStats} />
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {platformSignals.map((signal) => (
-          <div key={signal.label} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-            <div className="h-2 bg-gradient-to-r from-emerald-300 via-teal-400 to-sky-300" />
-            <div className="p-5">
-              <p className="text-2xl font-extrabold leading-tight text-slate-950">{signal.value}</p>
-              <p className="mt-2 text-sm font-bold text-slate-800">{signal.label}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">{signal.detail}</p>
+          <div key={signal.label} className="group overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-white/[0.04] shadow-2xl shadow-black/20 backdrop-blur transition duration-200 hover:-translate-y-1 hover:border-emerald-300/25 hover:bg-white/[0.06]">
+            <div className="h-1 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300" />
+            <div className="flex min-h-[148px] flex-col justify-between p-5 sm:p-6">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-300/80">{signal.label}</p>
+                <p className="mt-4 text-[2rem] font-black leading-none tracking-normal text-emerald-300">{signal.value}</p>
+              </div>
+              <p className="mt-4 max-w-[16rem] text-sm leading-6 text-slate-400">{signal.detail}</p>
             </div>
           </div>
         ))}
@@ -2374,14 +2376,14 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
             <p className={ui.eyebrow}>Instructor</p>
             <h2 className={cx(ui.h2, 'mt-3')}>Built around guided learning, not just video storage.</h2>
             <p className={cx(ui.body, 'mt-4')}>
-              Students get a clear order to follow. The admin gets visibility into who is watching, asking questions, and finishing the course.
+              Students get a clear order to follow. Progress, questions, and completion status stay organized from the first lesson to the final project.
             </p>
           </div>
           <div className="mt-8 grid gap-3">
             {instructorHighlights.map((item) => (
-              <div key={item.label} className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-sm font-semibold text-slate-500">{item.label}</p>
-                <p className="max-w-[220px] text-right text-sm font-bold text-slate-900">{item.value}</p>
+              <div key={item.label} className="flex items-start justify-between gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
+                <p className="text-sm font-semibold text-slate-400">{item.label}</p>
+                <p className="max-w-[220px] text-right text-sm font-bold text-white">{item.value}</p>
               </div>
             ))}
           </div>
@@ -2390,13 +2392,13 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
           {studentTestimonials.map((item) => (
             <div key={item.name} className={ui.cardSubtle}>
-              <p className="text-sm leading-6 text-slate-600">“{item.quote}”</p>
+              <p className="text-sm leading-6 text-slate-300">“{item.quote}”</p>
               <div className="mt-4 flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-teal-50 text-sm font-bold text-teal-700 ring-1 ring-teal-100">
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-300/10 text-sm font-bold text-emerald-300 ring-1 ring-emerald-300/20">
                   {item.name.slice(0, 1)}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-950">{item.name}</p>
+                  <p className="text-sm font-bold text-white">{item.name}</p>
                   <p className="text-xs text-slate-500">{item.role}</p>
                 </div>
               </div>
@@ -2410,7 +2412,7 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
         <PageHeader eyebrow="How to study" title="Four steps, in order." />
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[
-            { n: '01', t: 'Log in', d: 'Use the account provided by the admin.' },
+            { n: '01', t: 'Log in', d: 'Use your assigned student account.' },
             { n: '02', t: 'Watch the lesson', d: 'Reach the required progress before moving on.' },
             { n: '03', t: 'Complete the task', d: 'Pass the quiz or submit the assignment.' },
             { n: '04', t: 'Join live class', d: 'Ask questions and review the recording later.' },
@@ -2425,13 +2427,13 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
       </section>
 
       <section>
-        <PageHeader eyebrow="Enrollment" title="Simple admin-led account setup." description="Students do not need to create their own account. The admin creates access, assigns the course, and records payment details." />
+        <PageHeader eyebrow="Enrollment" title="Simple guided account setup." description="Students receive access, follow the assigned course path, and continue learning from the next available lesson." />
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {enrollmentSteps.map((step) => {
             const Icon = step.icon;
             return (
               <div key={step.title} className={ui.card}>
-                <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300 ring-1 ring-emerald-300/20">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className={ui.h3}>{step.title}</h3>
@@ -2447,7 +2449,7 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {publicFaqs.map((faq) => (
             <div key={faq.question} className={ui.cardSubtle}>
-              <h3 className="text-base font-bold text-slate-950">{faq.question}</h3>
+              <h3 className="text-base font-bold text-white">{faq.question}</h3>
               <p className={cx(ui.bodySm, 'mt-2')}>{faq.answer}</p>
             </div>
           ))}
@@ -2462,7 +2464,7 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
             <p className={cx(ui.body, 'mt-3')}>Open your course, continue the next lesson, and complete today's task.</p>
           </div>
           <button onClick={() => go('Courses')} className={ui.btnPrimary}>
-            Go to courses <ArrowRight className="h-4 w-4" />
+            Go to courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </button>
         </div>
       </section>
@@ -2495,8 +2497,8 @@ function CourseCard({ course, onViewDetail }: { course: CourseCardRecord; onView
       <h3 className={ui.h3}>{course.title}</h3>
       <p className={cx(ui.bodySm, 'mt-2')}>{course.level}</p>
       <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
-      <button onClick={() => onViewDetail(course.title)} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-300 transition hover:text-emerald-200">
-        View detail <ArrowRight className="h-4 w-4" />
+      <button onClick={() => onViewDetail(course.title)} className={cx(ui.btnSubtle, 'mt-6 w-fit px-5')}>
+        View detail <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
       </button>
     </div>
   );
@@ -2514,22 +2516,21 @@ function HeroLearningPreview({ go, onViewCourse }: { go: (v: PageName) => void; 
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1 }}
-      className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/70"
+      className="relative overflow-hidden rounded-[2.25rem] border border-emerald-300/15 bg-[#08111b]/90 p-4 shadow-2xl shadow-emerald-950/30 backdrop-blur"
     >
-      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-teal-100 via-emerald-50 to-amber-100" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(94,234,212,0.22),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(16,185,129,0.18),transparent_32%)]" />
       <div className="relative space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <LogoMark size="md" />
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Live LMS Preview</p>
-              <p className="text-sm font-semibold text-slate-600">Student + Admin workspace</p>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">Live LMS Preview</p>
             </div>
           </div>
-          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">Online</span>
+          <span className="rounded-full bg-emerald-300 px-3 py-1 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20">Online</span>
         </div>
 
-        <div className="lms-visual-dark overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-lg shadow-slate-300/50">
+        <div className="lms-visual-dark overflow-hidden rounded-3xl border border-white/[0.08] bg-slate-950 shadow-2xl shadow-black/40">
           <div className="relative aspect-video bg-slate-950">
             <img src={heroLearningImageUrl} alt="Digital marketing lesson dashboard preview" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent" />
@@ -2552,17 +2553,17 @@ function HeroLearningPreview({ go, onViewCourse }: { go: (v: PageName) => void; 
         </div>
 
         <div className="grid gap-3 sm:grid-cols-[1fr_0.85fr]">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-3xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-bold text-slate-950">Course progress</p>
-              <span className="text-xs font-bold text-teal-700">Today</span>
+              <p className="text-sm font-bold text-white">Course progress</p>
+              <span className="text-xs font-bold text-emerald-300">Today</span>
             </div>
             <div className="space-y-3">
               {miniLessons.map((lesson) => (
                 <div key={lesson.title}>
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <p className="truncate text-xs font-semibold text-slate-600">{lesson.title}</p>
-                    <p className="text-xs font-bold text-slate-900">{lesson.progress}%</p>
+                    <p className="truncate text-xs font-semibold text-slate-400">{lesson.title}</p>
+                    <p className="text-xs font-bold text-white">{lesson.progress}%</p>
                   </div>
                   <ProgressBar value={lesson.progress} />
                 </div>
@@ -2570,9 +2571,9 @@ function HeroLearningPreview({ go, onViewCourse }: { go: (v: PageName) => void; 
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-4">
-            <p className="text-sm font-bold text-slate-950">Latest question</p>
-            <div className="mt-3 rounded-2xl bg-teal-50 p-3 text-sm leading-6 text-slate-700 ring-1 ring-teal-100">
+          <div className="rounded-3xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur">
+            <p className="text-sm font-bold text-white">Latest question</p>
+            <div className="mt-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.07] p-3 text-sm leading-6 text-slate-300">
               Funnel template ကို ဘယ်လိုသုံးရမလဲ?
             </div>
             <button onClick={() => go('Login')} className={cx(ui.btnPrimary, 'mt-4 w-full')}>
@@ -2631,7 +2632,7 @@ function LearningPathPage({ go }: { go: (v: PageName) => void }) {
           <RuleCard title="2. Complete" items={['Watch the required percentage', 'Take the quiz if shown', 'Submit the assignment if shown']} />
           <RuleCard title="3. Unlock" items={['Next lesson becomes available', 'Progress updates automatically', 'Your coach can review your progress']} />
           <button onClick={() => go('Courses')} className={cx(ui.btnPrimary, 'w-full')}>
-            View courses <ArrowRight className="h-4 w-4" />
+            View courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </button>
         </aside>
       </div>
@@ -2696,7 +2697,7 @@ function CourseDetailPage({ go, courseTitle }: { go: (v: PageName) => void; cour
         description={courseDetail.description}
         actions={
           <button onClick={() => go('Login')} className={ui.btnPrimary}>
-            Login to continue <ArrowRight className="h-4 w-4" />
+            Login to continue <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </button>
         }
       />
@@ -2730,9 +2731,9 @@ function Metric({ icon: Icon, label, value, detail }: { icon: IconType; label: s
       <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300">
         <Icon className="h-5 w-5" />
       </div>
-      <p className="text-2xl font-extrabold text-slate-950">{value}</p>
-      <p className="mt-1 text-sm font-bold text-slate-900">{label}</p>
-      <p className="mt-1 text-sm text-slate-500">{detail}</p>
+      <p className="text-2xl font-black text-emerald-300">{value}</p>
+      <p className="mt-1 text-sm font-bold text-white">{label}</p>
+      <p className="mt-1 text-sm text-slate-400">{detail}</p>
     </div>
   );
 }
@@ -2836,7 +2837,7 @@ function StudentDashboardPage({
         </div>
         <div className={ui.card}>
           <p className={ui.eyebrow}>Course progress</p>
-          <p className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">{overallProgress}%</p>
+          <p className="mt-3 text-3xl font-black tracking-normal text-emerald-300">{overallProgress}%</p>
           <div className="mt-4">
             <ProgressBar value={overallProgress} height="md" />
           </div>
@@ -5222,7 +5223,7 @@ function StudentDirectory({
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
               <p className="text-xs font-semibold text-slate-400">Course progress</p>
               <div className="mt-3 flex items-end justify-between gap-3">
-                <p className="text-2xl font-extrabold tracking-tight text-slate-950">{selectedProgressPercent}%</p>
+                <p className="text-2xl font-black tracking-normal text-emerald-300">{selectedProgressPercent}%</p>
                 <span className={ui.chipMuted}>{selectedCompletedCount}/{selectedStudentLessons.length}</span>
               </div>
               <div className="mt-3">
@@ -5523,8 +5524,8 @@ function StudentActivityReport({
 function ActivityMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className={ui.cardSubtle}>
-      <p className="break-words text-xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-2xl">{value}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
+      <p className="break-words text-xl font-black leading-tight tracking-normal text-emerald-300 sm:text-2xl">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-400">{label}</p>
     </div>
   );
 }
@@ -5674,7 +5675,7 @@ function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult })
           <div className="mb-6 flex justify-center">
             <LogoMark size="md" />
           </div>
-          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl">
+          <h1 className="text-2xl font-black leading-tight tracking-normal text-white sm:text-3xl">
             Sign in to your learning space
           </h1>
           <p className="mt-3 text-sm text-slate-400">
