@@ -2063,12 +2063,12 @@ const ui = {
   body: 'text-[15px] leading-7 text-slate-300 sm:text-base',
   bodySm: 'text-sm leading-6 text-slate-400',
   btnPrimary:
-    'group inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-6 py-3.5 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] active:translate-y-0',
+    'group inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-5 py-3 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] active:translate-y-0 sm:px-6 sm:py-3.5',
   btnGhost:
-    'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.045] px-6 py-3.5 text-sm font-bold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur transition duration-200 hover:-translate-y-1 hover:border-emerald-300/35 hover:bg-emerald-300/[0.08] hover:text-white active:translate-y-0',
+    'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.045] px-5 py-3 text-sm font-bold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur transition duration-200 hover:-translate-y-1 hover:border-emerald-300/35 hover:bg-emerald-300/[0.08] hover:text-white active:translate-y-0 sm:px-6 sm:py-3.5',
   btnSubtle:
     'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.10] bg-white/[0.035] px-4 py-2.5 text-sm font-bold text-slate-300 backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300/30 hover:bg-white/[0.08] hover:text-white active:translate-y-0',
-  chip: 'inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-200 shadow-lg shadow-emerald-950/20',
+  chip: 'inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200 shadow-lg shadow-emerald-950/20 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]',
   chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-white/[0.10] bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-slate-300',
   divider: 'border-t border-white/[0.08]',
 } as const;
@@ -2138,14 +2138,17 @@ function Shell({
   return (
     <main className="lms-dark-theme min-h-screen overflow-hidden bg-[#050913] text-white">
       <div className="lms-ambient pointer-events-none fixed inset-0" />
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-30 mb-10 pt-4 sm:pt-6">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-[1.75rem] border border-white/[0.08] bg-[#050913]/92 px-5 py-4 shadow-2xl shadow-black/30 backdrop-blur-xl sm:px-7">
-            <button onClick={() => handleGo(homeTarget)} className="flex min-w-0 items-center gap-4">
+      <div className="relative mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 mb-8 pt-3 sm:mb-10 sm:pt-6">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 rounded-[1.35rem] border border-white/[0.08] bg-[#050913]/92 px-3 py-3 shadow-2xl shadow-black/30 backdrop-blur-xl sm:gap-4 sm:rounded-[1.75rem] sm:px-7 sm:py-4">
+            <button onClick={() => handleGo(homeTarget)} className="flex min-w-0 items-center gap-3 sm:gap-4">
               <LogoMark size="sm" />
               <div className="min-w-0 text-left">
-                <p className="text-lg font-black leading-none tracking-normal text-white sm:text-xl">Ye Htet Aung</p>
-                <p className="mt-1 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300/65">Digital Edu</p>
+                <p className="truncate text-base font-black leading-none tracking-normal text-white sm:text-xl">
+                  <span className="sm:hidden">Ye Htet</span>
+                  <span className="hidden sm:inline">Ye Htet Aung</span>
+                </p>
+                <p className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-emerald-300/65 sm:text-[10px] sm:tracking-[0.28em]">Digital Edu</p>
               </div>
             </button>
 
@@ -2177,13 +2180,15 @@ function Shell({
                   Logout
                 </button>
               ) : (
-                <button onClick={() => handleGo('Login')} className="group inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-6 py-3 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)]">
-                  Sign in <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                <button onClick={() => handleGo('Login')} className="group inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-4 py-2.5 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] sm:gap-2 sm:px-6 sm:py-3">
+                  <span className="sm:hidden">Login</span>
+                  <span className="hidden sm:inline">Sign in</span>
+                  <ArrowRight className="hidden h-4 w-4 transition group-hover:translate-x-0.5 sm:block" />
                 </button>
               )}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-slate-200 lg:hidden"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 lg:hidden"
                 aria-label="Toggle menu"
               >
                 <span className="text-lg leading-none">{mobileOpen ? '×' : '☰'}</span>
@@ -2298,22 +2303,22 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
   return (
     <div className={ui.page}>
       {/* Hero — one focused message */}
-      <section className="grid gap-10 pt-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:pt-8">
+      <section className="grid gap-8 pt-2 sm:gap-10 sm:pt-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:pt-8">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className={ui.chip}>
             <LogoMark size="sm" /> Ye Htet · Digital Edu
           </span>
-          <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.98] tracking-normal text-white sm:text-6xl lg:text-[82px]">
+          <h1 className="mt-7 max-w-3xl text-[3rem] font-black leading-[1.03] tracking-normal text-white min-[420px]:text-[3.45rem] sm:text-6xl lg:text-[82px]">
             Learn digital skills with a <span className="text-emerald-300">premium LMS</span>.
           </h1>
-          <p className={cx(ui.body, 'mt-6 max-w-2xl text-lg')}>
+          <p className={cx(ui.body, 'mt-5 max-w-2xl text-base sm:mt-6 sm:text-lg')}>
             Study in order, download templates, ask questions under each lesson, and keep every learning activity organized in one clean dashboard.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button onClick={() => go('Courses')} className={ui.btnPrimary}>
+          <div className="mt-7 grid gap-3 min-[430px]:grid-cols-2 sm:mt-8 sm:flex sm:flex-wrap">
+            <button onClick={() => go('Courses')} className={cx(ui.btnPrimary, 'w-full min-[430px]:w-auto')}>
               Explore courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </button>
-            <button onClick={() => go('Learning Path')} className={ui.btnGhost}>
+            <button onClick={() => go('Learning Path')} className={cx(ui.btnGhost, 'w-full min-[430px]:w-auto')}>
               View roadmap
             </button>
           </div>
