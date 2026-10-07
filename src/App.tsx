@@ -35,6 +35,12 @@ import {
   X,
 } from 'lucide-react';
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 // =====================================================================
 // Types & routing
 // =====================================================================
@@ -204,6 +210,19 @@ const readUrlPage = (): PageName => {
   const raw = legacyHashSlug || window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
   return (slugToPage[raw] as PageName) || 'Home';
 };
+
+const getAnalyticsPageTitle = (page: PageName) =>
+  page === 'Home' ? 'Ye Htet Digital Edu LMS' : `Ye Htet Digital Edu LMS - ${page}`;
+
+function trackAnalyticsPageView(page: PageName) {
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+  const pagePath = pageToPath(page);
+  window.gtag('event', 'page_view', {
+    page_title: getAnalyticsPageTitle(page),
+    page_location: `${window.location.origin}${pagePath}`,
+    page_path: pagePath,
+  });
+}
 
 const publicNavItems: NavItem[] = [
   { label: 'Home', target: 'Home' },
@@ -6198,6 +6217,7 @@ export default function App() {
     }
     // Scroll to top on page change so users don't land mid-page
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    trackAnalyticsPageView(active);
   }, [active]);
 
   useEffect(() => {
