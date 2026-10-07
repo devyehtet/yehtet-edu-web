@@ -147,6 +147,15 @@ type CourseDetailConfig = {
   modules: CourseModule[];
   metrics: Array<{ icon: IconType; label: string; value: string; detail: string }>;
 };
+type EnrollmentFormValues = {
+  course: string;
+  name: string;
+  email: string;
+  phone: string;
+  contactPreference: string;
+  paymentStatus: string;
+  note: string;
+};
 type LessonComment = {
   id: string;
   lessonId: string;
@@ -1694,6 +1703,10 @@ const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = 
   { title: 'Start learning', text: 'Watch lessons in order, download resources, and ask questions under videos.', icon: MessageCircle },
 ];
 
+const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
+const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
+const enrollmentPaymentOptions = ['Need course details first', 'Ready to enroll', 'Payment already sent', 'Need installment support'];
+
 const instructorHighlights: Array<{ label: string; value: string }> = [
   { label: 'Teaching focus', value: 'Practical digital marketing execution' },
   { label: 'Live support', value: 'Weekly live class and lesson comments' },
@@ -1788,6 +1801,8 @@ const seededStudentAccounts: Student[] = [
   { id: 'STU-SEED-046', name: 'Win Myat Tun', email: 'winmyattun599@gmail.com', phone: '09666276404', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-047', name: 'Wai Phyo', email: 'waiphyo.mike@outlook.com', phone: '09783624921', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 15, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
   { id: 'STU-SEED-048', name: 'Kyaw Min Naing', email: 'davidkyawminnaing.mm@gmail.com', phone: '09254040200', password: seededStudentPassword, course: mediaPlanningBuyingCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Sep 16, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-049', name: 'Htun Nandar Aung', email: 'htunnandaraung92@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Oct 7, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
+  { id: 'STU-SEED-050', name: 'Thet Htar Aung', email: 'thethtaraung012@gmail.com', password: seededStudentPassword, course: defaultCourseTitle, progress: 0, status: 'Active', lastActive: 'Not started', joined: 'Oct 7, 2026', assignments: '0 / 0 submitted', quizScore: 'Not started' },
 ];
 
 const tuitionPaymentRecords: TuitionPaymentRecord[] = [
@@ -2121,6 +2136,7 @@ function Shell({
   isLoggedIn,
   role,
   onLogout,
+  onEnroll,
 }: {
   children: React.ReactNode;
   active: PageName;
@@ -2128,6 +2144,7 @@ function Shell({
   isLoggedIn: boolean;
   role: Role;
   onLogout: () => void;
+  onEnroll: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const visibleNav: NavItem[] = !isLoggedIn
@@ -2189,11 +2206,15 @@ function Shell({
                   Logout
                 </button>
               ) : (
-                <button onClick={() => handleGo('Login')} className="group inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-4 py-2.5 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] sm:gap-2 sm:px-6 sm:py-3">
-                  <span className="sm:hidden">Login</span>
-                  <span className="hidden sm:inline">Sign in</span>
-                  <ArrowRight className="hidden h-4 w-4 transition group-hover:translate-x-0.5 sm:block" />
-                </button>
+                <>
+                  <button onClick={onEnroll} className="group inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-4 py-2.5 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] sm:gap-2 sm:px-6 sm:py-3">
+                    Enroll
+                    <ArrowRight className="hidden h-4 w-4 transition group-hover:translate-x-0.5 sm:block" />
+                  </button>
+                  <button onClick={() => handleGo('Login')} className="hidden rounded-full border border-white/[0.10] bg-white/[0.035] px-5 py-3 text-sm font-bold text-slate-200 transition hover:border-emerald-300/30 hover:bg-white/[0.08] hover:text-white sm:inline-flex">
+                    Sign in
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
@@ -2224,6 +2245,15 @@ function Shell({
                   <ChevronRight className="h-4 w-4 opacity-60" />
                 </button>
               ))}
+              {!isLoggedIn && (
+                <button
+                  onClick={() => handleGo('Login')}
+                  className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-300 transition hover:bg-white/[0.04]"
+                >
+                  Student sign in
+                  <ChevronRight className="h-4 w-4 opacity-60" />
+                </button>
+              )}
             </motion.nav>
           )}
         </header>
@@ -2303,7 +2333,15 @@ function BackLink({ go, to, label }: { go: (v: PageName) => void; to: PageName; 
 // Home page
 // =====================================================================
 
-function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectCourse: (courseTitle: string) => void }) {
+function HomePage({
+  go,
+  onSelectCourse,
+  onEnroll,
+}: {
+  go: (v: PageName) => void;
+  onSelectCourse: (courseTitle: string) => void;
+  onEnroll: (courseTitle?: string) => void;
+}) {
   const viewCourse = (courseTitle: string) => {
     onSelectCourse(courseTitle);
     go('Course Detail');
@@ -2324,8 +2362,11 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
             Study in order, download templates, ask questions under each lesson, and keep every learning activity organized in one clean dashboard.
           </p>
           <div className="mt-7 grid gap-3 min-[430px]:grid-cols-2 sm:mt-8 sm:flex sm:flex-wrap">
-            <button onClick={() => go('Courses')} className={cx(ui.btnPrimary, 'w-full min-[430px]:w-auto')}>
-              Explore courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            <button onClick={() => onEnroll(defaultCourseTitle)} className={cx(ui.btnPrimary, 'w-full min-[430px]:w-auto')}>
+              Enroll now <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </button>
+            <button onClick={() => go('Courses')} className={cx(ui.btnGhost, 'w-full min-[430px]:w-auto')}>
+              Explore courses
             </button>
             <button onClick={() => go('Learning Path')} className={cx(ui.btnGhost, 'w-full min-[430px]:w-auto')}>
               View roadmap
@@ -2360,7 +2401,7 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
         <PageHeader eyebrow="Courses" title="Three programs to build your career." description="Pick the right starting point — from foundation to capstone — and follow the lessons assigned to your account." />
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {courseCards.map((course) => (
-            <CourseCard key={course.title} course={course} onViewDetail={viewCourse} />
+            <CourseCard key={course.title} course={course} onViewDetail={viewCourse} onEnroll={onEnroll} />
           ))}
         </div>
       </section>
@@ -2441,7 +2482,16 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
       </section>
 
       <section>
-        <PageHeader eyebrow="Enrollment" title="Simple guided account setup." description="Students receive access, follow the assigned course path, and continue learning from the next available lesson." />
+        <PageHeader
+          eyebrow="Enrollment"
+          title="Simple guided account setup."
+          description="Students receive access, follow the assigned course path, and continue learning from the next available lesson."
+          actions={
+            <button onClick={() => onEnroll(defaultCourseTitle)} className={ui.btnPrimary}>
+              Start enrollment <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </button>
+          }
+        />
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {enrollmentSteps.map((step) => {
             const Icon = step.icon;
@@ -2477,8 +2527,8 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
             <h2 className={ui.h2}>Ready to start?</h2>
             <p className={cx(ui.body, 'mt-3')}>Open your course, continue the next lesson, and complete today's task.</p>
           </div>
-          <button onClick={() => go('Courses')} className={ui.btnPrimary}>
-            Go to courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+          <button onClick={() => onEnroll(defaultCourseTitle)} className={ui.btnPrimary}>
+            Enroll now <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </button>
         </div>
       </section>
@@ -2486,7 +2536,15 @@ function HomePage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectC
   );
 }
 
-function CourseCard({ course, onViewDetail }: { course: CourseCardRecord; onViewDetail: (courseTitle: string) => void }) {
+function CourseCard({
+  course,
+  onViewDetail,
+  onEnroll,
+}: {
+  course: CourseCardRecord;
+  onViewDetail: (courseTitle: string) => void;
+  onEnroll: (courseTitle?: string) => void;
+}) {
   const visual = courseVisualsByTitle[course.title] || courseVisualsByTitle[defaultCourseTitle];
 
   return (
@@ -2511,9 +2569,14 @@ function CourseCard({ course, onViewDetail }: { course: CourseCardRecord; onView
       <h3 className={ui.h3}>{course.title}</h3>
       <p className={cx(ui.bodySm, 'mt-2')}>{course.level}</p>
       <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
-      <button onClick={() => onViewDetail(course.title)} className={cx(ui.btnSubtle, 'mt-6 w-fit px-5')}>
-        View detail <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-      </button>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button onClick={() => onEnroll(course.title)} className={cx(ui.btnPrimary, 'px-5 py-2.5')}>
+          Enroll
+        </button>
+        <button onClick={() => onViewDetail(course.title)} className={cx(ui.btnSubtle, 'px-5')}>
+          View detail <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -2674,7 +2737,15 @@ function RuleCard({ title, items }: { title: string; items: string[] }) {
 // Courses listing
 // =====================================================================
 
-function CoursesPage({ go, onSelectCourse }: { go: (v: PageName) => void; onSelectCourse: (courseTitle: string) => void }) {
+function CoursesPage({
+  go,
+  onSelectCourse,
+  onEnroll,
+}: {
+  go: (v: PageName) => void;
+  onSelectCourse: (courseTitle: string) => void;
+  onEnroll: (courseTitle?: string) => void;
+}) {
   const viewCourse = (courseTitle: string) => {
     onSelectCourse(courseTitle);
     go('Course Detail');
@@ -2689,7 +2760,7 @@ function CoursesPage({ go, onSelectCourse }: { go: (v: PageName) => void; onSele
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courseCards.map((course) => (
-          <CourseCard key={course.title} course={course} onViewDetail={viewCourse} />
+          <CourseCard key={course.title} course={course} onViewDetail={viewCourse} onEnroll={onEnroll} />
         ))}
       </div>
     </div>
@@ -2700,7 +2771,15 @@ function CoursesPage({ go, onSelectCourse }: { go: (v: PageName) => void; onSele
 // Course detail
 // =====================================================================
 
-function CourseDetailPage({ go, courseTitle }: { go: (v: PageName) => void; courseTitle: string }) {
+function CourseDetailPage({
+  go,
+  courseTitle,
+  onEnroll,
+}: {
+  go: (v: PageName) => void;
+  courseTitle: string;
+  onEnroll: (courseTitle?: string) => void;
+}) {
   const courseDetail = courseDetailsByTitle[courseTitle] || courseDetailsByTitle[defaultCourseTitle];
 
   return (
@@ -2710,9 +2789,14 @@ function CourseDetailPage({ go, courseTitle }: { go: (v: PageName) => void; cour
         title={courseDetail.title}
         description={courseDetail.description}
         actions={
-          <button onClick={() => go('Login')} className={ui.btnPrimary}>
-            Login to continue <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-          </button>
+          <>
+            <button onClick={() => onEnroll(courseDetail.title)} className={ui.btnPrimary}>
+              Enroll this course <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </button>
+            <button onClick={() => go('Login')} className={ui.btnGhost}>
+              Student login
+            </button>
+          </>
         }
       />
 
@@ -5758,6 +5842,277 @@ function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult })
   );
 }
 
+function EnrollmentFlowModal({
+  isOpen,
+  courseTitle,
+  onCourseChange,
+  onClose,
+}: {
+  isOpen: boolean;
+  courseTitle: string;
+  onCourseChange: (courseTitle: string) => void;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [values, setValues] = useState<EnrollmentFormValues>({
+    course: courseTitle || defaultCourseTitle,
+    name: '',
+    email: '',
+    phone: '',
+    contactPreference: enrollmentContactOptions[0],
+    paymentStatus: enrollmentPaymentOptions[0],
+    note: '',
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setStep(0);
+    setStatus('idle');
+    setErrorMessage('');
+    setValues((prev) => ({
+      ...prev,
+      course: courseTitle || defaultCourseTitle,
+    }));
+  }, [courseTitle, isOpen]);
+
+  if (!isOpen) return null;
+
+  const selectedCourse = courseCards.find((course) => course.title === values.course) || courseCards[0];
+  const selectedDetail = courseDetailsByTitle[values.course] || courseDetailsByTitle[defaultCourseTitle];
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim());
+  const canContinue = step === 0
+    ? Boolean(values.course)
+    : step === 1
+    ? Boolean(values.name.trim()) && isValidEmail && Boolean(values.phone.trim())
+    : true;
+
+  const updateValue = (field: keyof EnrollmentFormValues, value: string) => {
+    setStatus('idle');
+    setErrorMessage('');
+    setValues((prev) => ({ ...prev, [field]: value }));
+    if (field === 'course') onCourseChange(value);
+  };
+
+  const submitEnrollment = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (step < 2) {
+      if (!canContinue) {
+        setStatus('error');
+        setErrorMessage(step === 1 ? 'Please enter name, valid email, and phone number.' : 'Please choose a course.');
+        return;
+      }
+      setStatus('idle');
+      setStep((current) => current + 1);
+      return;
+    }
+
+    if (!values.name.trim() || !isValidEmail || !values.phone.trim()) {
+      setStatus('error');
+      setErrorMessage('Please check name, email, and phone number before submitting.');
+      setStep(1);
+      return;
+    }
+
+    setStatus('submitting');
+    setErrorMessage('');
+
+    try {
+      const response = await fetch(enrollmentFormEndpoint, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          _subject: `New enrollment request - ${values.course}`,
+          name: values.name.trim(),
+          email: values.email.trim(),
+          phone: values.phone.trim(),
+          course: values.course,
+          contact_preference: values.contactPreference,
+          payment_status: values.paymentStatus,
+          note: values.note.trim(),
+          message: [
+            `Course: ${values.course}`,
+            `Name: ${values.name.trim()}`,
+            `Email: ${values.email.trim()}`,
+            `Phone: ${values.phone.trim()}`,
+            `Preferred contact: ${values.contactPreference}`,
+            `Payment status: ${values.paymentStatus}`,
+            values.note.trim() ? `Note: ${values.note.trim()}` : '',
+          ].filter(Boolean).join('\n'),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Formspree did not accept the enrollment request.');
+      setStatus('success');
+    } catch {
+      setStatus('error');
+      setErrorMessage('Enrollment request could not be sent. Please try again or contact the admin directly.');
+    }
+  };
+
+  const stepLabels = ['Course', 'Contact', 'Confirm'];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/75 p-3 backdrop-blur-md sm:items-center sm:p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-emerald-300/20 bg-[#07111b] p-5 shadow-2xl shadow-black/50 sm:p-7"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={ui.eyebrow}>Enrollment</p>
+            <h2 className={cx(ui.h2, 'mt-2')}>Start your course application.</h2>
+            <p className={cx(ui.bodySm, 'mt-2')}>Fill this once. The admin will contact you to confirm payment and student account access.</p>
+          </div>
+          <button onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/[0.10] bg-white/[0.04] text-slate-300 transition hover:bg-white/[0.08] hover:text-white" aria-label="Close enrollment form">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {status === 'success' ? (
+          <div className="mt-7 rounded-[1.5rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-6">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-slate-950">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <h3 className={cx(ui.h3, 'mt-5')}>Enrollment request sent.</h3>
+            <p className={cx(ui.bodySm, 'mt-2')}>Thanks, {values.name.trim() || 'student'}. We received your request for {values.course}. The admin will contact you with the next steps.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button onClick={onClose} className={ui.btnPrimary}>Done</button>
+              <button onClick={() => { setStatus('idle'); setStep(0); }} className={ui.btnGhost}>Submit another</button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={submitEnrollment} className="mt-7 space-y-6">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {stepLabels.map((label, index) => (
+                <div key={label} className={cx(
+                  'rounded-2xl border px-4 py-3',
+                  index === step ? 'border-emerald-300/35 bg-emerald-300/[0.08]' : 'border-white/[0.08] bg-white/[0.03]',
+                )}>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Step {index + 1}</p>
+                  <p className={cx('mt-1 text-sm font-bold', index === step ? 'text-emerald-200' : 'text-slate-300')}>{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {step === 0 && (
+              <div className="grid gap-4 md:grid-cols-[1fr_0.9fr]">
+                <div className="space-y-3">
+                  {courseCards.filter((course) => course.title !== capstoneSupportCourseTitle).map((course) => {
+                    const selected = course.title === values.course;
+                    return (
+                      <button
+                        key={course.title}
+                        type="button"
+                        onClick={() => updateValue('course', course.title)}
+                        className={cx(
+                          'w-full rounded-2xl border p-4 text-left transition',
+                          selected ? 'border-emerald-300/45 bg-emerald-300/[0.10]' : 'border-white/[0.08] bg-white/[0.03] hover:border-emerald-300/25 hover:bg-white/[0.06]',
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-base font-black text-white">{course.title}</p>
+                            <p className="mt-1 text-sm text-slate-400">{course.level}</p>
+                          </div>
+                          {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />}
+                        </div>
+                        <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">{course.modules} · {course.lessons}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className={ui.cardSubtle}>
+                  <p className={ui.eyebrow}>Selected course</p>
+                  <h3 className={cx(ui.h3, 'mt-3')}>{selectedCourse.title}</h3>
+                  <p className={cx(ui.bodySm, 'mt-2')}>{selectedDetail.description}</p>
+                  <div className="mt-5 grid gap-2">
+                    {selectedDetail.metrics.slice(0, 3).map((metric) => (
+                      <ProfileField key={metric.label} label={metric.label} value={`${metric.value} ${metric.detail}`} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-400">Student name</span>
+                  <input value={values.name} onChange={(event) => updateValue('name', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Your full name" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-400">Email</span>
+                  <input value={values.email} onChange={(event) => updateValue('email', event.target.value)} type="email" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="name@email.com" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-400">Phone / Viber number</span>
+                  <input value={values.phone} onChange={(event) => updateValue('phone', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="09..." />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-400">Preferred contact</span>
+                  <select value={values.contactPreference} onChange={(event) => updateValue('contactPreference', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                    {enrollmentContactOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+                <div className={ui.cardSubtle}>
+                  <p className={ui.eyebrow}>Review</p>
+                  <div className="mt-4">
+                    <ProfileField label="Course" value={values.course} />
+                    <ProfileField label="Name" value={values.name.trim() || '-'} />
+                    <ProfileField label="Email" value={values.email.trim() || '-'} />
+                    <ProfileField label="Phone" value={values.phone.trim() || '-'} />
+                    <ProfileField label="Contact" value={values.contactPreference} />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Payment / enrollment status</span>
+                    <select value={values.paymentStatus} onChange={(event) => updateValue('paymentStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                      {enrollmentPaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Note (optional)</span>
+                    <textarea value={values.note} onChange={(event) => updateValue('note', event.target.value)} rows={5} className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Any question, preferred start date, or payment note..." />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {status === 'error' && errorMessage && (
+              <div className="rounded-xl border border-amber-300/30 bg-amber-300/5 px-4 py-3 text-sm font-medium text-amber-200">
+                {errorMessage}
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-between gap-3 border-t border-white/[0.08] pt-5">
+              <button type="button" onClick={() => (step === 0 ? onClose() : setStep((current) => current - 1))} className={ui.btnGhost}>
+                {step === 0 ? 'Close' : 'Back'}
+              </button>
+              <button type="submit" disabled={status === 'submitting'} className={cx(ui.btnPrimary, status === 'submitting' && 'cursor-wait opacity-70')}>
+                {status === 'submitting' ? 'Sending...' : step === 2 ? 'Submit enrollment' : 'Continue'}
+                {step < 2 && <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />}
+                {step === 2 && <Send className="h-4 w-4" />}
+              </button>
+            </div>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 type LoginAttemptState = {
   count: number;
   lockedUntil: number;
@@ -5830,6 +6185,8 @@ export default function App() {
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
   const [tuitionPayments, setTuitionPayments] = useState<TuitionPaymentRecord[]>(() => readStoredTuitionPayments());
   const [hasLoadedCloudAppState, setHasLoadedCloudAppState] = useState(false);
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
+  const [enrollmentCourseTitle, setEnrollmentCourseTitle] = useState(defaultCourseTitle);
   const currentStudent = students.find((student) => student.id === currentStudentId) || null;
   const selectedCourseLessons = getCourseLessons(selectedCourseTitle, lessons);
 
@@ -6014,6 +6371,11 @@ export default function App() {
     setActive(next);
   };
 
+  const openEnrollment = (courseTitle = selectedCourseTitle) => {
+    setEnrollmentCourseTitle(courseTitle || defaultCourseTitle);
+    setIsEnrollmentOpen(true);
+  };
+
   const login = ({ role: loginRole, username, password }: LoginRequest): LoginResult => {
     const normalizedUsername = username.trim().toLowerCase();
     if (!normalizedUsername || !password) {
@@ -6094,11 +6456,11 @@ export default function App() {
   }, [isLoggedIn]);
 
   return (
-    <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout}>
-      {active === 'Home' && <HomePage go={go} onSelectCourse={setSelectedCourseTitle} />}
-      {active === 'Courses' && <CoursesPage go={go} onSelectCourse={setSelectedCourseTitle} />}
+    <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout} onEnroll={() => openEnrollment()}>
+      {active === 'Home' && <HomePage go={go} onSelectCourse={setSelectedCourseTitle} onEnroll={openEnrollment} />}
+      {active === 'Courses' && <CoursesPage go={go} onSelectCourse={setSelectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
-      {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} />}
+      {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPayments} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} lessons={selectedCourseLessons} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={selectedCourseLessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
@@ -6108,6 +6470,12 @@ export default function App() {
       {active === 'Reports' && <ReportsPage go={go} students={students} lessons={lessons} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Live Meeting' && <LiveMeetingPage go={go} meetings={liveMeetings} initialMeetingId={activeMeetingId} />}
       {active === 'Login' && <LoginPage login={login} />}
+      <EnrollmentFlowModal
+        isOpen={isEnrollmentOpen}
+        courseTitle={enrollmentCourseTitle}
+        onCourseChange={setEnrollmentCourseTitle}
+        onClose={() => setIsEnrollmentOpen(false)}
+      />
     </Shell>
   );
 }
