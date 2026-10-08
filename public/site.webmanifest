@@ -1,0 +1,17 @@
+{
+  "name": "Ye Htet Digital Edu LMS",
+  "short_name": "Ye Htet Edu",
+  "description": "Digital marketing and media buying learning platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#061018",
+  "theme_color": "#061018",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

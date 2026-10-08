@@ -147,6 +147,11 @@ type CourseDetailConfig = {
   modules: CourseModule[];
   metrics: Array<{ icon: IconType; label: string; value: string; detail: string }>;
 };
+type UrlRouteState = {
+  page: PageName;
+  courseTitle?: string;
+  enrollmentOpen: boolean;
+};
 type EnrollmentFormValues = {
   course: string;
   name: string;
@@ -204,6 +209,17 @@ const readUrlPage = (): PageName => {
   const raw = legacyHashSlug || window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
   return (slugToPage[raw] as PageName) || 'Home';
 };
+
+function getPathSegments() {
+  if (typeof window === 'undefined') return [];
+  const legacyHashSlug = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  const raw = legacyHashSlug || window.location.pathname;
+  return raw
+    .replace(/^\/+|\/+$/g, '')
+    .toLowerCase()
+    .split('/')
+    .filter(Boolean);
+}
 
 const publicNavItems: NavItem[] = [
   { label: 'Home', target: 'Home' },
@@ -780,6 +796,79 @@ const courseDetailsByTitle: Record<string, CourseDetailConfig> = {
     ],
   },
 };
+
+const publicCourseSlugsByTitle: Record<string, string> = {
+  [defaultCourseTitle]: 'digital-marketing-beginner-to-professional',
+  [mediaPlanningBuyingCourseTitle]: 'digital-media-planning-buying',
+};
+
+const courseTitlesByPublicSlug: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(publicCourseSlugsByTitle).map(([title, slug]) => [slug, title])),
+  'digital-marketing': defaultCourseTitle,
+  'digital-marketing-beginner': defaultCourseTitle,
+  'media-planning-buying': mediaPlanningBuyingCourseTitle,
+  'digital-media-buying': mediaPlanningBuyingCourseTitle,
+};
+
+function slugifyCourseTitle(courseTitle: string) {
+  return courseTitle
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getCourseRouteSlug(courseTitle: string) {
+  return publicCourseSlugsByTitle[courseTitle] || slugifyCourseTitle(courseTitle || defaultCourseTitle);
+}
+
+function getCourseTitleFromRouteSlug(slug?: string) {
+  if (!slug) return defaultCourseTitle;
+  const normalizedSlug = slug.toLowerCase();
+  return courseTitlesByPublicSlug[normalizedSlug] || courseCards.find((course) => getCourseRouteSlug(course.title) === normalizedSlug)?.title || defaultCourseTitle;
+}
+
+function getCoursePublicPath(courseTitle: string) {
+  return `/courses/${getCourseRouteSlug(courseTitle)}`;
+}
+
+function getEnrollmentPublicPath(courseTitle: string) {
+  return `/enroll/${getCourseRouteSlug(courseTitle)}`;
+}
+
+function readUrlRoute(): UrlRouteState {
+  if (typeof window === 'undefined') return { page: 'Home', enrollmentOpen: false };
+  const segments = getPathSegments();
+  const [section, slug] = segments;
+
+  if (section === 'enroll') {
+    return {
+      page: 'Course Detail',
+      courseTitle: getCourseTitleFromRouteSlug(slug),
+      enrollmentOpen: true,
+    };
+  }
+
+  if (section === 'courses' && slug) {
+    return {
+      page: 'Course Detail',
+      courseTitle: getCourseTitleFromRouteSlug(slug),
+      enrollmentOpen: false,
+    };
+  }
+
+  return {
+    page: readUrlPage(),
+    courseTitle: undefined,
+    enrollmentOpen: false,
+  };
+}
+
+function buildCurrentPath(active: PageName, selectedCourseTitle: string, isEnrollmentOpen: boolean, enrollmentCourseTitle: string) {
+  if (isEnrollmentOpen) return getEnrollmentPublicPath(enrollmentCourseTitle || selectedCourseTitle || defaultCourseTitle);
+  if (active === 'Course Detail') return getCoursePublicPath(selectedCourseTitle || defaultCourseTitle);
+  return pageToPath(active);
+}
 
 const stableLessonIdsByTitle: Record<string, string> = {
   [ecosystemMapTemplateTitle]: 'm1-l8-ecosystem-map-template',
@@ -2087,11 +2176,11 @@ const ui = {
   body: 'text-[15px] leading-7 text-slate-300 sm:text-base',
   bodySm: 'text-sm leading-6 text-slate-400',
   btnPrimary:
-    'group inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-5 py-3 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] active:translate-y-0 sm:px-6 sm:py-3.5',
+    'lms-btn lms-btn-primary group inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.05rem] px-5 py-3 text-sm font-black text-[#041016] transition duration-200 active:translate-y-0 sm:px-6',
   btnGhost:
-    'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.045] px-5 py-3 text-sm font-bold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur transition duration-200 hover:-translate-y-1 hover:border-emerald-300/35 hover:bg-emerald-300/[0.08] hover:text-white active:translate-y-0 sm:px-6 sm:py-3.5',
+    'lms-btn lms-btn-ghost group inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.05rem] px-5 py-3 text-sm font-bold text-slate-200 transition duration-200 active:translate-y-0 sm:px-6',
   btnSubtle:
-    'group inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.10] bg-white/[0.035] px-4 py-2.5 text-sm font-bold text-slate-300 backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300/30 hover:bg-white/[0.08] hover:text-white active:translate-y-0',
+    'lms-btn lms-btn-subtle group inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.95rem] px-4 py-2.5 text-sm font-bold text-slate-300 transition duration-200 active:translate-y-0',
   chip: 'inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200 shadow-lg shadow-emerald-950/20 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]',
   chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-white/[0.10] bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-slate-300',
   divider: 'border-t border-white/[0.08]',
@@ -2113,13 +2202,14 @@ function getNextPage(page: PageName, isLoggedIn: boolean, role: Role): PageName 
 
 function LogoMark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const boxSize = size === 'lg' ? 'h-16 w-16 rounded-[1.5rem]' : size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl';
-  const markSize = size === 'lg' ? 'h-7 w-9' : size === 'sm' ? 'h-4 w-6' : 'h-5 w-7';
+  const panelSize = size === 'lg' ? 'h-9 w-11 rounded-[1rem]' : size === 'sm' ? 'h-6 w-7 rounded-lg' : 'h-7 w-9 rounded-xl';
+  const playSize = size === 'lg' ? 'border-y-[9px] border-l-[14px]' : size === 'sm' ? 'border-y-[6px] border-l-[9px]' : 'border-y-[7px] border-l-[11px]';
   return (
-    <div className={cx('relative grid shrink-0 place-items-center overflow-hidden bg-emerald-300 shadow-xl shadow-emerald-500/20 ring-1 ring-emerald-200/40', boxSize)}>
-      <div className={cx('relative rounded-full bg-[#07111b]', markSize)}>
-        <span className="absolute -right-0.5 top-0 h-[68%] w-[54%] rounded-full bg-[#07111b]" />
-        <span className="absolute -left-0.5 bottom-0 h-[58%] w-[58%] rounded-full bg-[#07111b]" />
-        <span className="absolute left-[16%] top-[36%] h-[30%] w-[58%] rounded-full bg-emerald-300/10" />
+    <div className={cx('relative grid shrink-0 place-items-center overflow-hidden bg-gradient-to-br from-emerald-300 via-teal-300 to-cyan-300 shadow-xl shadow-emerald-500/20 ring-1 ring-emerald-100/50', boxSize)}>
+      <div className="absolute inset-px rounded-[inherit] bg-white/10" />
+      <div className={cx('relative grid place-items-center bg-[#07111b] shadow-inner shadow-black/30', panelSize)}>
+        <span className={cx('ml-0.5 h-0 w-0 border-y-transparent border-l-emerald-200', playSize)} />
+        <span className="absolute right-[18%] top-[22%] h-[56%] w-[12%] rounded-full bg-emerald-200/85" />
       </div>
     </div>
   );
@@ -2207,18 +2297,18 @@ function Shell({
                 </button>
               ) : (
                 <>
-                  <button onClick={onEnroll} className="group inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 px-4 py-2.5 text-sm font-black text-[#041016] shadow-[0_18px_45px_rgba(16,185,129,0.24)] ring-1 ring-white/20 transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(45,212,191,0.30)] sm:gap-2 sm:px-6 sm:py-3">
+                  <button onClick={onEnroll} className={cx(ui.btnPrimary, 'min-h-11 px-4 py-2.5 sm:px-6')}>
                     Enroll
                     <ArrowRight className="hidden h-4 w-4 transition group-hover:translate-x-0.5 sm:block" />
                   </button>
-                  <button onClick={() => handleGo('Login')} className="hidden rounded-full border border-white/[0.10] bg-white/[0.035] px-5 py-3 text-sm font-bold text-slate-200 transition hover:border-emerald-300/30 hover:bg-white/[0.08] hover:text-white sm:inline-flex">
+                  <button onClick={() => handleGo('Login')} className={cx(ui.btnGhost, 'hidden min-h-11 px-5 py-2.5 sm:inline-flex')}>
                     Sign in
                   </button>
                 </>
               )}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 lg:hidden"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-[1rem] border border-white/10 bg-white/[0.04] text-slate-200 shadow-lg shadow-black/15 transition hover:border-emerald-300/30 hover:bg-emerald-300/10 lg:hidden"
                 aria-label="Toggle menu"
               >
                 <span className="text-lg leading-none">{mobileOpen ? '×' : '☰'}</span>
@@ -2780,7 +2870,8 @@ function CourseDetailPage({
   courseTitle: string;
   onEnroll: (courseTitle?: string) => void;
 }) {
-  const courseDetail = courseDetailsByTitle[courseTitle] || courseDetailsByTitle[defaultCourseTitle];
+  const currentCourseTitle = courseDetailsByTitle[courseTitle] ? courseTitle : defaultCourseTitle;
+  const courseDetail = courseDetailsByTitle[currentCourseTitle] || courseDetailsByTitle[defaultCourseTitle];
 
   return (
     <div className={ui.page}>
@@ -2790,7 +2881,7 @@ function CourseDetailPage({
         description={courseDetail.description}
         actions={
           <>
-            <button onClick={() => onEnroll(courseDetail.title)} className={ui.btnPrimary}>
+            <button onClick={() => onEnroll(currentCourseTitle)} className={ui.btnPrimary}>
               Enroll this course <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </button>
             <button onClick={() => go('Login')} className={ui.btnGhost}>
@@ -6170,7 +6261,7 @@ function recordFailedLoginAttempt(role: 'admin' | 'student', username: string) {
 // =====================================================================
 
 export default function App() {
-  const [active, setActive] = useState<PageName>(() => getNextPage(readUrlPage(), false, null));
+  const [active, setActive] = useState<PageName>(() => getNextPage(readUrlRoute().page, false, null));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState<Role>(null);
   const [liveMeetings, setLiveMeetings] = useState<LiveClassMeeting[]>(() => readStoredMeetings());
@@ -6178,32 +6269,37 @@ export default function App() {
   const [lessons, setLessons] = useState<LessonRecord[]>(() => readStoredLessons());
   const [students, setStudents] = useState<Student[]>(() => readStoredStudents());
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(null);
-  const [selectedCourseTitle, setSelectedCourseTitle] = useState(defaultCourseTitle);
+  const [selectedCourseTitle, setSelectedCourseTitle] = useState(() => readUrlRoute().courseTitle || defaultCourseTitle);
   const [lessonComments, setLessonComments] = useState<LessonComment[]>(() => readStoredLessonComments());
   const [deletedLessonCommentIds, setDeletedLessonCommentIds] = useState<string[]>(() => readStoredDeletedLessonCommentIds());
   const [studentProgressById, setStudentProgressById] = useState<StudentProgressById>(() => readStoredStudentProgress(lessons));
   const [learningProgress, setLearningProgress] = useState<LearningProgress>(() => readStoredLearningProgress(lessons));
   const [tuitionPayments, setTuitionPayments] = useState<TuitionPaymentRecord[]>(() => readStoredTuitionPayments());
   const [hasLoadedCloudAppState, setHasLoadedCloudAppState] = useState(false);
-  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
-  const [enrollmentCourseTitle, setEnrollmentCourseTitle] = useState(defaultCourseTitle);
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(() => readUrlRoute().enrollmentOpen);
+  const [enrollmentCourseTitle, setEnrollmentCourseTitle] = useState(() => readUrlRoute().courseTitle || defaultCourseTitle);
   const currentStudent = students.find((student) => student.id === currentStudentId) || null;
   const selectedCourseLessons = getCourseLessons(selectedCourseTitle, lessons);
 
   useEffect(() => {
-    const desired = pageToPath(active);
+    const desired = buildCurrentPath(active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle);
     if (window.location.pathname !== desired || window.location.hash) {
       const method = window.location.hash ? 'replaceState' : 'pushState';
       window.history[method](null, '', desired);
     }
     // Scroll to top on page change so users don't land mid-page
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [active]);
+  }, [active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle]);
 
   useEffect(() => {
     const sync = () => {
-      const next = readUrlPage();
-      const resolved = getNextPage(next, isLoggedIn, role);
+      const nextRoute = readUrlRoute();
+      if (nextRoute.courseTitle) {
+        setSelectedCourseTitle(nextRoute.courseTitle);
+        setEnrollmentCourseTitle(nextRoute.courseTitle);
+      }
+      setIsEnrollmentOpen(nextRoute.enrollmentOpen);
+      const resolved = getNextPage(nextRoute.page, isLoggedIn, role);
       setActive(resolved);
     };
     window.addEventListener('hashchange', sync);
@@ -6213,6 +6309,22 @@ export default function App() {
       window.removeEventListener('popstate', sync);
     };
   }, [isLoggedIn, role]);
+
+  useEffect(() => {
+    const routeCourseTitle = isEnrollmentOpen ? enrollmentCourseTitle : selectedCourseTitle;
+    const routeCourseDetail = courseDetailsByTitle[routeCourseTitle];
+    const pageTitle = isEnrollmentOpen
+      ? `Enroll - ${routeCourseTitle} | Ye Htet Digital Edu`
+      : active === 'Course Detail' && routeCourseDetail
+      ? `${routeCourseTitle} | Ye Htet Digital Edu`
+      : `${active} | Ye Htet Digital Edu`;
+    const description = routeCourseDetail?.description || 'Study digital marketing, media planning, and buying lessons with Ye Htet Digital Edu.';
+    document.title = pageTitle;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', pageTitle);
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', description);
+    document.querySelector('meta[property="og:url"]')?.setAttribute('content', `https://www.yehtetedu.com${buildCurrentPath(active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle)}`);
+  }, [active, enrollmentCourseTitle, isEnrollmentOpen, selectedCourseTitle]);
 
   useEffect(() => {
     window.localStorage.setItem(meetingStorageKey, JSON.stringify(liveMeetings));
@@ -6368,12 +6480,27 @@ export default function App() {
 
   const go = (page: PageName) => {
     const next = getNextPage(page, isLoggedIn, role);
+    setIsEnrollmentOpen(false);
     setActive(next);
   };
 
   const openEnrollment = (courseTitle = selectedCourseTitle) => {
-    setEnrollmentCourseTitle(courseTitle || defaultCourseTitle);
+    const nextCourseTitle = courseTitle || selectedCourseTitle || defaultCourseTitle;
+    setSelectedCourseTitle(nextCourseTitle);
+    setEnrollmentCourseTitle(nextCourseTitle);
+    setActive('Course Detail');
     setIsEnrollmentOpen(true);
+  };
+
+  const closeEnrollment = () => {
+    setIsEnrollmentOpen(false);
+    setSelectedCourseTitle(enrollmentCourseTitle || defaultCourseTitle);
+    setActive('Course Detail');
+  };
+
+  const handleEnrollmentCourseChange = (courseTitle: string) => {
+    setEnrollmentCourseTitle(courseTitle);
+    setSelectedCourseTitle(courseTitle);
   };
 
   const login = ({ role: loginRole, username, password }: LoginRequest): LoginResult => {
@@ -6473,8 +6600,8 @@ export default function App() {
       <EnrollmentFlowModal
         isOpen={isEnrollmentOpen}
         courseTitle={enrollmentCourseTitle}
-        onCourseChange={setEnrollmentCourseTitle}
-        onClose={() => setIsEnrollmentOpen(false)}
+        onCourseChange={handleEnrollmentCourseChange}
+        onClose={closeEnrollment}
       />
     </Shell>
   );
