@@ -15,6 +15,7 @@ import {
   Download,
   ExternalLink,
   GraduationCap,
+  Landmark,
   LayoutDashboard,
   ListFilter,
   Lock,
@@ -29,6 +30,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Smartphone,
   Trash2,
   UploadCloud,
   Users,
@@ -161,8 +163,20 @@ type EnrollmentFormValues = {
   contactPreference: string;
   paymentStatus: string;
   paymentPlan: string;
+  paymentAccount: string;
   paymentReference: string;
   note: string;
+};
+type EnrollmentPaymentAccount = {
+  key: string;
+  region: string;
+  title: string;
+  bank: string;
+  name: string;
+  accountLabel: string;
+  accountNumber: string;
+  helper: string;
+  icon: IconType;
 };
 type LessonComment = {
   id: string;
@@ -1800,6 +1814,30 @@ const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
 const enrollmentPaymentOptions = ['Ready to pay', 'Payment already sent', 'Need payment instructions', 'Need installment support'];
 const enrollmentPaymentPlanOptions = ['Full payment', 'Installment / partial payment', 'Admin guidance needed'];
+const enrollmentPaymentAccounts: EnrollmentPaymentAccount[] = [
+  {
+    key: 'Myanmar - KBZ Pay',
+    region: 'Myanmar',
+    title: 'KBZ Pay',
+    bank: 'KBZ Pay',
+    name: 'Khant Kyaw Swar',
+    accountLabel: 'Phone number',
+    accountNumber: '095414499',
+    helper: 'For students paying from Myanmar.',
+    icon: Smartphone,
+  },
+  {
+    key: 'Thailand - SCB Bank',
+    region: 'Thailand',
+    title: 'SCB Bank',
+    bank: 'SCB (Siam Commercial Bank)',
+    name: 'Ye Htet Aung',
+    accountLabel: 'Account number',
+    accountNumber: '816-288602-3',
+    helper: 'For students paying from Thailand.',
+    icon: Landmark,
+  },
+];
 
 const instructorHighlights: Array<{ label: string; value: string }> = [
   { label: 'Teaching focus', value: 'Practical digital marketing execution' },
@@ -2105,6 +2143,10 @@ function getCourseEnrollmentFee(courseTitle: string) {
   if (courseTitle === mediaPlanningBuyingCourseTitle) return mediaPlanningBuyingTuitionFee;
   if (courseTitle === capstoneSupportCourseTitle) return 0;
   return defaultCourseTuitionFee;
+}
+
+function getEnrollmentPaymentAccount(paymentAccountKey: string) {
+  return enrollmentPaymentAccounts.find((account) => account.key === paymentAccountKey) || enrollmentPaymentAccounts[0];
 }
 
 function getTuitionBalance(payment: TuitionPaymentRecord) {
@@ -5966,6 +6008,7 @@ function EnrollmentFlowModal({
     contactPreference: enrollmentContactOptions[0],
     paymentStatus: enrollmentPaymentOptions[0],
     paymentPlan: enrollmentPaymentPlanOptions[0],
+    paymentAccount: enrollmentPaymentAccounts[0].key,
     paymentReference: '',
     note: '',
   });
@@ -5986,13 +6029,14 @@ function EnrollmentFlowModal({
   const selectedCourse = courseCards.find((course) => course.title === values.course) || courseCards[0];
   const selectedDetail = courseDetailsByTitle[values.course] || courseDetailsByTitle[defaultCourseTitle];
   const selectedCourseFee = getCourseEnrollmentFee(values.course);
+  const selectedPaymentAccount = getEnrollmentPaymentAccount(values.paymentAccount);
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim());
   const canContinue = step === 0
     ? Boolean(values.course)
     : step === 1
     ? Boolean(values.name.trim()) && isValidEmail && Boolean(values.phone.trim())
     : step === 2
-    ? Boolean(values.paymentStatus) && Boolean(values.paymentPlan)
+    ? Boolean(values.paymentStatus) && Boolean(values.paymentPlan) && Boolean(values.paymentAccount)
     : true;
 
   const updateValue = (field: keyof EnrollmentFormValues, value: string) => {
@@ -6048,6 +6092,10 @@ function EnrollmentFlowModal({
           contact_preference: values.contactPreference,
           payment_status: values.paymentStatus,
           payment_plan: values.paymentPlan,
+          payment_account: selectedPaymentAccount.key,
+          payment_bank: selectedPaymentAccount.bank,
+          payment_account_name: selectedPaymentAccount.name,
+          payment_account_number: selectedPaymentAccount.accountNumber,
           payment_reference: values.paymentReference.trim(),
           note: values.note.trim(),
           message: [
@@ -6059,6 +6107,10 @@ function EnrollmentFlowModal({
             `Preferred contact: ${values.contactPreference}`,
             `Payment status: ${values.paymentStatus}`,
             `Payment plan: ${values.paymentPlan}`,
+            `Payment account: ${selectedPaymentAccount.key}`,
+            `Payment bank: ${selectedPaymentAccount.bank}`,
+            `Payment account name: ${selectedPaymentAccount.name}`,
+            `Payment account number: ${selectedPaymentAccount.accountNumber}`,
             values.paymentReference.trim() ? `Payment reference: ${values.paymentReference.trim()}` : '',
             values.note.trim() ? `Note: ${values.note.trim()}` : '',
           ].filter(Boolean).join('\n'),
@@ -6199,6 +6251,7 @@ function EnrollmentFlowModal({
                   <div className="mt-5 rounded-2xl border border-white/[0.08] bg-slate-950/30 p-4">
                     <ProfileField label="Selected course" value={values.course} />
                     <ProfileField label="Payment status" value={values.paymentStatus} />
+                    <ProfileField label="Payment account" value={selectedPaymentAccount.key} />
                   </div>
                 </div>
 
@@ -6215,6 +6268,55 @@ function EnrollmentFlowModal({
                       {enrollmentPaymentPlanOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
                   </label>
+                  <div>
+                    <span className="text-xs font-semibold text-slate-400">Payment account</span>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      {enrollmentPaymentAccounts.map((account) => {
+                        const selected = account.key === values.paymentAccount;
+                        const AccountIcon = account.icon;
+                        return (
+                          <button
+                            key={account.key}
+                            type="button"
+                            onClick={() => updateValue('paymentAccount', account.key)}
+                            className={cx(
+                              'rounded-2xl border p-4 text-left transition',
+                              selected
+                                ? 'border-emerald-300/45 bg-emerald-300/[0.10] shadow-lg shadow-emerald-950/20'
+                                : 'border-white/[0.08] bg-white/[0.03] hover:border-emerald-300/25 hover:bg-white/[0.06]',
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className={cx(
+                                  'grid h-10 w-10 place-items-center rounded-2xl',
+                                  selected ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-emerald-200',
+                                )}>
+                                  <AccountIcon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-black text-white">{account.title}</p>
+                                  <p className="text-xs font-semibold text-slate-500">{account.region}</p>
+                                </div>
+                              </div>
+                              {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />}
+                            </div>
+                            <div className="mt-4 space-y-2 text-sm">
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{account.accountLabel}</span>
+                                <span className="text-right font-black text-emerald-100">{account.accountNumber}</span>
+                              </div>
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Name</span>
+                                <span className="text-right font-semibold text-slate-200">{account.name}</span>
+                              </div>
+                            </div>
+                            <p className="mt-3 text-xs leading-5 text-slate-500">{account.helper}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-400">Payment reference / screenshot note (optional)</span>
                     <input value={values.paymentReference} onChange={(event) => updateValue('paymentReference', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Transaction ID, payment date, or screenshot note" />
@@ -6245,6 +6347,9 @@ function EnrollmentFlowModal({
                     <ProfileField label="Course fee" value={formatMmk(selectedCourseFee)} />
                     <ProfileField label="Payment readiness" value={values.paymentStatus} />
                     <ProfileField label="Payment plan" value={values.paymentPlan} />
+                    <ProfileField label="Payment account" value={selectedPaymentAccount.key} />
+                    <ProfileField label="Account name" value={selectedPaymentAccount.name} />
+                    <ProfileField label="Account number" value={selectedPaymentAccount.accountNumber} />
                     <ProfileField label="Reference" value={values.paymentReference.trim() || '-'} />
                     <ProfileField label="Note" value={values.note.trim() || '-'} />
                   </div>
