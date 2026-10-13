@@ -164,6 +164,7 @@ type EnrollmentFormValues = {
   paymentStatus: string;
   paymentPlan: string;
   paymentAccount: string;
+  paymentSlipStatus: string;
   paymentReference: string;
   note: string;
 };
@@ -1814,6 +1815,11 @@ const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
 const enrollmentPaymentOptions = ['Ready to pay', 'Payment already sent', 'Need payment instructions', 'Need installment support'];
 const enrollmentPaymentPlanOptions = ['Full payment', 'Installment / partial payment', 'Admin guidance needed'];
+const enrollmentPaymentSlipOptions = [
+  'I will send payment slip after transfer',
+  'Payment slip already sent',
+  'Need help sending payment slip',
+];
 const enrollmentPaymentAccounts: EnrollmentPaymentAccount[] = [
   {
     key: 'Myanmar - KBZ Pay',
@@ -6009,6 +6015,7 @@ function EnrollmentFlowModal({
     paymentStatus: enrollmentPaymentOptions[0],
     paymentPlan: enrollmentPaymentPlanOptions[0],
     paymentAccount: enrollmentPaymentAccounts[0].key,
+    paymentSlipStatus: enrollmentPaymentSlipOptions[0],
     paymentReference: '',
     note: '',
   });
@@ -6036,7 +6043,7 @@ function EnrollmentFlowModal({
     : step === 1
     ? Boolean(values.name.trim()) && isValidEmail && Boolean(values.phone.trim())
     : step === 2
-    ? Boolean(values.paymentStatus) && Boolean(values.paymentPlan) && Boolean(values.paymentAccount)
+    ? Boolean(values.paymentStatus) && Boolean(values.paymentPlan) && Boolean(values.paymentAccount) && Boolean(values.paymentSlipStatus)
     : true;
 
   const updateValue = (field: keyof EnrollmentFormValues, value: string) => {
@@ -6055,7 +6062,7 @@ function EnrollmentFlowModal({
           step === 1
             ? 'Please enter name, valid email, and phone number.'
             : step === 2
-            ? 'Please choose a payment option before continuing.'
+            ? 'Please choose payment and slip options before continuing.'
             : 'Please choose a course.',
         );
         return;
@@ -6096,6 +6103,7 @@ function EnrollmentFlowModal({
           payment_bank: selectedPaymentAccount.bank,
           payment_account_name: selectedPaymentAccount.name,
           payment_account_number: selectedPaymentAccount.accountNumber,
+          payment_slip_status: values.paymentSlipStatus,
           payment_reference: values.paymentReference.trim(),
           note: values.note.trim(),
           message: [
@@ -6111,6 +6119,7 @@ function EnrollmentFlowModal({
             `Payment bank: ${selectedPaymentAccount.bank}`,
             `Payment account name: ${selectedPaymentAccount.name}`,
             `Payment account number: ${selectedPaymentAccount.accountNumber}`,
+            `Payment slip: ${values.paymentSlipStatus}`,
             values.paymentReference.trim() ? `Payment reference: ${values.paymentReference.trim()}` : '',
             values.note.trim() ? `Note: ${values.note.trim()}` : '',
           ].filter(Boolean).join('\n'),
@@ -6151,7 +6160,7 @@ function EnrollmentFlowModal({
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <h3 className={cx(ui.h3, 'mt-5')}>Enrollment request sent.</h3>
-            <p className={cx(ui.bodySm, 'mt-2')}>Thanks, {values.name.trim() || 'student'}. We received your request for {values.course}. The admin will review the payment level and contact you with account access next.</p>
+            <p className={cx(ui.bodySm, 'mt-2')}>Thanks, {values.name.trim() || 'student'}. We received your request for {values.course}. The admin will review the payment level and payment slip, then contact you with account access next.</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button onClick={onClose} className={ui.btnPrimary}>Done</button>
               <button onClick={() => { setStatus('idle'); setStep(0); }} className={ui.btnGhost}>Submit another</button>
@@ -6247,11 +6256,12 @@ function EnrollmentFlowModal({
                     </div>
                   </div>
                   <p className="mt-6 text-3xl font-black tracking-normal text-white">{formatMmk(selectedCourseFee)}</p>
-                  <p className={cx(ui.bodySm, 'mt-2')}>Submit this step so the admin can confirm payment, balance, and student account access.</p>
+                  <p className={cx(ui.bodySm, 'mt-2')}>Submit this step so the admin can confirm payment, slip, balance, and student account access.</p>
                   <div className="mt-5 rounded-2xl border border-white/[0.08] bg-slate-950/30 p-4">
                     <ProfileField label="Selected course" value={values.course} />
                     <ProfileField label="Payment status" value={values.paymentStatus} />
                     <ProfileField label="Payment account" value={selectedPaymentAccount.key} />
+                    <ProfileField label="Payment slip" value={values.paymentSlipStatus} />
                   </div>
                 </div>
 
@@ -6321,10 +6331,31 @@ function EnrollmentFlowModal({
                       })}
                     </div>
                   </div>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Payment reference / screenshot note (optional)</span>
-                    <input value={values.paymentReference} onChange={(event) => updateValue('paymentReference', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Transaction ID, payment date, or screenshot note" />
-                  </label>
+                  <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-4">
+                    <div className="flex gap-3">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/20">
+                        <UploadCloud className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-white">Payment slip required</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-300">
+                          ငွေလွှဲပြီးပါက slip screenshot ကို Viber, Telegram, Messenger, Email တစ်ခုခုကနေ admin ဆီ ပို့ပေးပါ။ Slip ရပြီးမှ payment ကိုစစ်ပြီး student access ဖွင့်ပေးပါမယ်။
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Payment slip</span>
+                      <select value={values.paymentSlipStatus} onChange={(event) => updateValue('paymentSlipStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                        {enrollmentPaymentSlipOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Slip / transaction note (optional)</span>
+                      <input value={values.paymentReference} onChange={(event) => updateValue('paymentReference', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Transaction ID, slip sent channel, or payment date" />
+                    </label>
+                  </div>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-400">Note (optional)</span>
                     <textarea value={values.note} onChange={(event) => updateValue('note', event.target.value)} rows={3} className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Any question, preferred start date, or payment note..." />
@@ -6354,6 +6385,7 @@ function EnrollmentFlowModal({
                     <ProfileField label="Payment account" value={selectedPaymentAccount.key} />
                     <ProfileField label="Account name" value={selectedPaymentAccount.name} />
                     <ProfileField label="Account number" value={selectedPaymentAccount.accountNumber} />
+                    <ProfileField label="Payment slip" value={values.paymentSlipStatus} />
                     <ProfileField label="Reference" value={values.paymentReference.trim() || '-'} />
                     <ProfileField label="Note" value={values.note.trim() || '-'} />
                   </div>
