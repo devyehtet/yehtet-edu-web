@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
+  CreditCard,
   Download,
   ExternalLink,
   GraduationCap,
@@ -159,6 +160,8 @@ type EnrollmentFormValues = {
   phone: string;
   contactPreference: string;
   paymentStatus: string;
+  paymentPlan: string;
+  paymentReference: string;
   note: string;
 };
 type LessonComment = {
@@ -473,6 +476,7 @@ function getJitsiMeetingUrl(meeting: LiveClassMeeting) {
 // =====================================================================
 
 const defaultCourseTitle = 'Digital Marketing Beginner to Professional';
+const defaultCourseTuitionFee = 620000;
 const mediaPlanningBuyingCourseTitle = 'Digital Media Planning & Buying';
 const mediaPlanningBuyingTuitionFee = 650000;
 const capstoneSupportCourseTitle = 'Campaign Portfolio & Capstone Support';
@@ -1787,14 +1791,15 @@ const platformSignals: Array<{ label: string; value: string; detail: string }> =
 
 const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = [
   { title: 'Choose the right course', text: 'Review the course outcome, modules, and study path before enrolling.', icon: BookOpen },
-  { title: 'Confirm enrollment', text: 'Payment, course access, and learning timeline are prepared in one flow.', icon: ShieldCheck },
+  { title: 'Payment level', text: 'Students see the course fee and choose the payment readiness before submitting.', icon: CreditCard },
+  { title: 'Confirm enrollment', text: 'Course access and learning timeline are prepared after payment review.', icon: ShieldCheck },
   { title: 'Receive account access', text: 'Student logs in with the assigned email and password.', icon: Users },
-  { title: 'Start learning', text: 'Watch lessons in order, download resources, and ask questions under videos.', icon: MessageCircle },
 ];
 
 const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
-const enrollmentPaymentOptions = ['Need course details first', 'Ready to enroll', 'Payment already sent', 'Need installment support'];
+const enrollmentPaymentOptions = ['Ready to pay', 'Payment already sent', 'Need payment instructions', 'Need installment support'];
+const enrollmentPaymentPlanOptions = ['Full payment', 'Installment / partial payment', 'Admin guidance needed'];
 
 const instructorHighlights: Array<{ label: string; value: string }> = [
   { label: 'Teaching focus', value: 'Practical digital marketing execution' },
@@ -2096,6 +2101,12 @@ function formatMmk(amount: number) {
   return `${new Intl.NumberFormat('en-US').format(amount)} MMK`;
 }
 
+function getCourseEnrollmentFee(courseTitle: string) {
+  if (courseTitle === mediaPlanningBuyingCourseTitle) return mediaPlanningBuyingTuitionFee;
+  if (courseTitle === capstoneSupportCourseTitle) return 0;
+  return defaultCourseTuitionFee;
+}
+
 function getTuitionBalance(payment: TuitionPaymentRecord) {
   return Math.max(payment.tuitionFee - payment.paidAmount, 0);
 }
@@ -2176,11 +2187,11 @@ const ui = {
   body: 'text-[15px] leading-7 text-slate-300 sm:text-base',
   bodySm: 'text-sm leading-6 text-slate-400',
   btnPrimary:
-    'lms-btn lms-btn-primary group inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.05rem] px-5 py-3 text-sm font-black text-[#041016] transition duration-200 active:translate-y-0 sm:px-6',
+    'lms-btn lms-btn-primary group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-black text-[#03100f] transition duration-200 active:translate-y-0 sm:px-6',
   btnGhost:
-    'lms-btn lms-btn-ghost group inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.05rem] px-5 py-3 text-sm font-bold text-slate-200 transition duration-200 active:translate-y-0 sm:px-6',
+    'lms-btn lms-btn-ghost group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-slate-200 transition duration-200 active:translate-y-0 sm:px-6',
   btnSubtle:
-    'lms-btn lms-btn-subtle group inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.95rem] px-4 py-2.5 text-sm font-bold text-slate-300 transition duration-200 active:translate-y-0',
+    'lms-btn lms-btn-subtle group inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-slate-300 transition duration-200 active:translate-y-0',
   chip: 'inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200 shadow-lg shadow-emerald-950/20 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]',
   chipMuted: 'inline-flex items-center gap-1.5 rounded-full border border-white/[0.10] bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-slate-300',
   divider: 'border-t border-white/[0.08]',
@@ -5954,6 +5965,8 @@ function EnrollmentFlowModal({
     phone: '',
     contactPreference: enrollmentContactOptions[0],
     paymentStatus: enrollmentPaymentOptions[0],
+    paymentPlan: enrollmentPaymentPlanOptions[0],
+    paymentReference: '',
     note: '',
   });
 
@@ -5972,11 +5985,14 @@ function EnrollmentFlowModal({
 
   const selectedCourse = courseCards.find((course) => course.title === values.course) || courseCards[0];
   const selectedDetail = courseDetailsByTitle[values.course] || courseDetailsByTitle[defaultCourseTitle];
+  const selectedCourseFee = getCourseEnrollmentFee(values.course);
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim());
   const canContinue = step === 0
     ? Boolean(values.course)
     : step === 1
     ? Boolean(values.name.trim()) && isValidEmail && Boolean(values.phone.trim())
+    : step === 2
+    ? Boolean(values.paymentStatus) && Boolean(values.paymentPlan)
     : true;
 
   const updateValue = (field: keyof EnrollmentFormValues, value: string) => {
@@ -5988,10 +6004,16 @@ function EnrollmentFlowModal({
 
   const submitEnrollment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (step < 2) {
+    if (step < 3) {
       if (!canContinue) {
         setStatus('error');
-        setErrorMessage(step === 1 ? 'Please enter name, valid email, and phone number.' : 'Please choose a course.');
+        setErrorMessage(
+          step === 1
+            ? 'Please enter name, valid email, and phone number.'
+            : step === 2
+            ? 'Please choose a payment option before continuing.'
+            : 'Please choose a course.',
+        );
         return;
       }
       setStatus('idle');
@@ -6022,16 +6044,22 @@ function EnrollmentFlowModal({
           email: values.email.trim(),
           phone: values.phone.trim(),
           course: values.course,
+          tuition_fee: formatMmk(selectedCourseFee),
           contact_preference: values.contactPreference,
           payment_status: values.paymentStatus,
+          payment_plan: values.paymentPlan,
+          payment_reference: values.paymentReference.trim(),
           note: values.note.trim(),
           message: [
             `Course: ${values.course}`,
+            `Course fee: ${formatMmk(selectedCourseFee)}`,
             `Name: ${values.name.trim()}`,
             `Email: ${values.email.trim()}`,
             `Phone: ${values.phone.trim()}`,
             `Preferred contact: ${values.contactPreference}`,
             `Payment status: ${values.paymentStatus}`,
+            `Payment plan: ${values.paymentPlan}`,
+            values.paymentReference.trim() ? `Payment reference: ${values.paymentReference.trim()}` : '',
             values.note.trim() ? `Note: ${values.note.trim()}` : '',
           ].filter(Boolean).join('\n'),
         }),
@@ -6045,7 +6073,7 @@ function EnrollmentFlowModal({
     }
   };
 
-  const stepLabels = ['Course', 'Contact', 'Confirm'];
+  const stepLabels = ['Course', 'Contact', 'Payment', 'Confirm'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/75 p-3 backdrop-blur-md sm:items-center sm:p-6">
@@ -6071,7 +6099,7 @@ function EnrollmentFlowModal({
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <h3 className={cx(ui.h3, 'mt-5')}>Enrollment request sent.</h3>
-            <p className={cx(ui.bodySm, 'mt-2')}>Thanks, {values.name.trim() || 'student'}. We received your request for {values.course}. The admin will contact you with the next steps.</p>
+            <p className={cx(ui.bodySm, 'mt-2')}>Thanks, {values.name.trim() || 'student'}. We received your request for {values.course}. The admin will review the payment level and contact you with account access next.</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button onClick={onClose} className={ui.btnPrimary}>Done</button>
               <button onClick={() => { setStatus('idle'); setStep(0); }} className={ui.btnGhost}>Submit another</button>
@@ -6079,7 +6107,7 @@ function EnrollmentFlowModal({
           </div>
         ) : (
           <form onSubmit={submitEnrollment} className="mt-7 space-y-6">
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-4">
               {stepLabels.map((label, index) => (
                 <div key={label} className={cx(
                   'rounded-2xl border px-4 py-3',
@@ -6155,9 +6183,54 @@ function EnrollmentFlowModal({
             )}
 
             {step === 2 && (
-              <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+              <div className="grid gap-4 md:grid-cols-[0.85fr_1.15fr]">
+                <div className="rounded-[1.5rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-5 shadow-2xl shadow-emerald-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/20">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className={ui.eyebrow}>Payment level</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-400">Course fee confirmation</p>
+                    </div>
+                  </div>
+                  <p className="mt-6 text-3xl font-black tracking-normal text-white">{formatMmk(selectedCourseFee)}</p>
+                  <p className={cx(ui.bodySm, 'mt-2')}>Submit this step so the admin can confirm payment, balance, and student account access.</p>
+                  <div className="mt-5 rounded-2xl border border-white/[0.08] bg-slate-950/30 p-4">
+                    <ProfileField label="Selected course" value={values.course} />
+                    <ProfileField label="Payment status" value={values.paymentStatus} />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Payment readiness</span>
+                    <select value={values.paymentStatus} onChange={(event) => updateValue('paymentStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                      {enrollmentPaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Payment plan</span>
+                    <select value={values.paymentPlan} onChange={(event) => updateValue('paymentPlan', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                      {enrollmentPaymentPlanOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Payment reference / screenshot note (optional)</span>
+                    <input value={values.paymentReference} onChange={(event) => updateValue('paymentReference', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Transaction ID, payment date, or screenshot note" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-400">Note (optional)</span>
+                    <textarea value={values.note} onChange={(event) => updateValue('note', event.target.value)} rows={4} className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Any question, preferred start date, or payment note..." />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className={ui.cardSubtle}>
-                  <p className={ui.eyebrow}>Review</p>
+                  <p className={ui.eyebrow}>Student detail</p>
                   <div className="mt-4">
                     <ProfileField label="Course" value={values.course} />
                     <ProfileField label="Name" value={values.name.trim() || '-'} />
@@ -6166,17 +6239,15 @@ function EnrollmentFlowModal({
                     <ProfileField label="Contact" value={values.contactPreference} />
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Payment / enrollment status</span>
-                    <select value={values.paymentStatus} onChange={(event) => updateValue('paymentStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
-                      {enrollmentPaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Note (optional)</span>
-                    <textarea value={values.note} onChange={(event) => updateValue('note', event.target.value)} rows={5} className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Any question, preferred start date, or payment note..." />
-                  </label>
+                <div className={ui.cardSubtle}>
+                  <p className={ui.eyebrow}>Payment summary</p>
+                  <div className="mt-4">
+                    <ProfileField label="Course fee" value={formatMmk(selectedCourseFee)} />
+                    <ProfileField label="Payment readiness" value={values.paymentStatus} />
+                    <ProfileField label="Payment plan" value={values.paymentPlan} />
+                    <ProfileField label="Reference" value={values.paymentReference.trim() || '-'} />
+                    <ProfileField label="Note" value={values.note.trim() || '-'} />
+                  </div>
                 </div>
               </div>
             )}
@@ -6192,9 +6263,9 @@ function EnrollmentFlowModal({
                 {step === 0 ? 'Close' : 'Back'}
               </button>
               <button type="submit" disabled={status === 'submitting'} className={cx(ui.btnPrimary, status === 'submitting' && 'cursor-wait opacity-70')}>
-                {status === 'submitting' ? 'Sending...' : step === 2 ? 'Submit enrollment' : 'Continue'}
-                {step < 2 && <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />}
-                {step === 2 && <Send className="h-4 w-4" />}
+                {status === 'submitting' ? 'Sending...' : step === 3 ? 'Submit enrollment' : step === 1 ? 'Continue to payment' : 'Continue'}
+                {step < 3 && <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />}
+                {step === 3 && <Send className="h-4 w-4" />}
               </button>
             </div>
           </form>

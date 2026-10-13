@@ -22,31 +22,48 @@ button, input, select, textarea {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   letter-spacing: 0;
+  transform: translateY(0);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 16px 36px rgba(0, 0, 0, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 18px 42px rgba(0, 0, 0, 0.24);
 }
 
 .lms-btn::before {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
+  pointer-events: none;
   background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.28), transparent 34%, transparent 62%, rgba(255, 255, 255, 0.14)),
-    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.22), transparent 34%);
-  opacity: 0;
-  transition: opacity 180ms ease;
+    linear-gradient(120deg, rgba(255, 255, 255, 0.18), transparent 30%, transparent 68%, rgba(255, 255, 255, 0.10)),
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.18), transparent 38%);
+  opacity: 0.58;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.lms-btn > svg {
+  position: relative;
+  z-index: 1;
+}
+
+.lms-btn::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .lms-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
 }
 
 .lms-btn:hover::before {
-  opacity: 1;
+  opacity: 0.9;
+  transform: translateX(3%);
 }
 
 .lms-btn:focus-visible {
@@ -60,30 +77,44 @@ button, input, select, textarea {
 }
 
 .lms-btn-primary {
-  border-color: rgba(204, 251, 241, 0.72);
-  background: linear-gradient(135deg, #67f0bd 0%, #35dfcf 56%, #67ddff 100%);
+  border-color: rgba(167, 243, 208, 0.86);
+  background:
+    radial-gradient(circle at 16% 12%, rgba(255, 255, 255, 0.62), transparent 28%),
+    linear-gradient(135deg, #6af2bd 0%, #24ddc5 48%, #55dbff 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.40),
-    inset 0 -1px 0 rgba(4, 16, 22, 0.12),
-    0 18px 44px rgba(16, 185, 129, 0.26);
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -7px 18px rgba(2, 55, 56, 0.13),
+    0 18px 44px rgba(20, 184, 166, 0.30),
+    0 0 0 5px rgba(94, 234, 212, 0.045);
 }
 
 .lms-btn-primary:hover {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.44),
-    inset 0 -1px 0 rgba(4, 16, 22, 0.12),
-    0 24px 58px rgba(45, 212, 191, 0.32);
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -7px 18px rgba(2, 55, 56, 0.12),
+    0 28px 64px rgba(45, 212, 191, 0.38),
+    0 0 0 6px rgba(94, 234, 212, 0.07);
+}
+
+.lms-btn-primary svg {
+  border-radius: 999px;
+  background: rgba(3, 16, 15, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(3, 16, 15, 0.08);
 }
 
 .lms-btn-ghost {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
-  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.028)),
+    rgba(8, 17, 27, 0.64);
+  border-color: rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(14px);
 }
 
 .lms-btn-subtle {
-  background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(255, 255, 255, 0.10);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
+    rgba(8, 17, 27, 0.56);
+  border-color: rgba(255, 255, 255, 0.13);
   backdrop-filter: blur(14px);
 }
 
