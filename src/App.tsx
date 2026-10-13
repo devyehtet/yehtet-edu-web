@@ -6132,7 +6132,7 @@ function EnrollmentFlowModal({
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-emerald-300/20 bg-[#07111b] p-5 shadow-2xl shadow-black/50 sm:p-7"
+        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-emerald-300/20 bg-[#07111b] p-5 shadow-2xl shadow-black/50 sm:p-7"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -6235,8 +6235,8 @@ function EnrollmentFlowModal({
             )}
 
             {step === 2 && (
-              <div className="grid gap-4 md:grid-cols-[0.85fr_1.15fr]">
-                <div className="rounded-[1.5rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-5 shadow-2xl shadow-emerald-950/20">
+              <div className="grid gap-5 md:grid-cols-[0.8fr_1.2fr] md:items-start">
+                <div className="self-start rounded-[1.5rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-5 shadow-2xl shadow-emerald-950/20">
                   <div className="flex items-center gap-3">
                     <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/20">
                       <CreditCard className="h-5 w-5" />
@@ -6256,21 +6256,23 @@ function EnrollmentFlowModal({
                 </div>
 
                 <div className="space-y-4">
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Payment readiness</span>
-                    <select value={values.paymentStatus} onChange={(event) => updateValue('paymentStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
-                      {enrollmentPaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-semibold text-slate-400">Payment plan</span>
-                    <select value={values.paymentPlan} onChange={(event) => updateValue('paymentPlan', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
-                      {enrollmentPaymentPlanOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Payment readiness</span>
+                      <select value={values.paymentStatus} onChange={(event) => updateValue('paymentStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                        {enrollmentPaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-400">Payment plan</span>
+                      <select value={values.paymentPlan} onChange={(event) => updateValue('paymentPlan', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                        {enrollmentPaymentPlanOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </label>
+                  </div>
                   <div>
                     <span className="text-xs font-semibold text-slate-400">Payment account</span>
-                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-2 grid gap-3">
                       {enrollmentPaymentAccounts.map((account) => {
                         const selected = account.key === values.paymentAccount;
                         const AccountIcon = account.icon;
@@ -6286,32 +6288,34 @@ function EnrollmentFlowModal({
                                 : 'border-white/[0.08] bg-white/[0.03] hover:border-emerald-300/25 hover:bg-white/[0.06]',
                             )}
                           >
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="grid gap-4 lg:grid-cols-[1fr_1.25fr] lg:items-center">
                               <div className="flex items-center gap-3">
                                 <div className={cx(
-                                  'grid h-10 w-10 place-items-center rounded-2xl',
+                                  'grid h-11 w-11 shrink-0 place-items-center rounded-2xl',
                                   selected ? 'bg-emerald-300 text-slate-950' : 'bg-white/[0.06] text-emerald-200',
                                 )}>
                                   <AccountIcon className="h-5 w-5" />
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                   <p className="text-sm font-black text-white">{account.title}</p>
-                                  <p className="text-xs font-semibold text-slate-500">{account.region}</p>
+                                  <p className="mt-0.5 text-xs font-semibold text-slate-500">{account.region} payment</p>
                                 </div>
+                                {selected && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-emerald-300" />}
                               </div>
-                              {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />}
+                              <div className="rounded-2xl border border-white/[0.08] bg-slate-950/25 p-3">
+                                <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr]">
+                                  <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{account.accountLabel}</p>
+                                    <p className="mt-1 whitespace-nowrap font-mono text-base font-black tracking-normal text-emerald-100">{account.accountNumber}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Name</p>
+                                    <p className="mt-1 text-sm font-bold text-slate-200">{account.name}</p>
+                                  </div>
+                                </div>
+                                <p className="mt-2 text-[11px] font-semibold text-slate-500">{account.bank}</p>
+                              </div>
                             </div>
-                            <div className="mt-4 space-y-2 text-sm">
-                              <div className="flex items-start justify-between gap-3">
-                                <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{account.accountLabel}</span>
-                                <span className="text-right font-black text-emerald-100">{account.accountNumber}</span>
-                              </div>
-                              <div className="flex items-start justify-between gap-3">
-                                <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Name</span>
-                                <span className="text-right font-semibold text-slate-200">{account.name}</span>
-                              </div>
-                            </div>
-                            <p className="mt-3 text-xs leading-5 text-slate-500">{account.helper}</p>
                           </button>
                         );
                       })}
@@ -6323,7 +6327,7 @@ function EnrollmentFlowModal({
                   </label>
                   <label className="block">
                     <span className="text-xs font-semibold text-slate-400">Note (optional)</span>
-                    <textarea value={values.note} onChange={(event) => updateValue('note', event.target.value)} rows={4} className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Any question, preferred start date, or payment note..." />
+                    <textarea value={values.note} onChange={(event) => updateValue('note', event.target.value)} rows={3} className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Any question, preferred start date, or payment note..." />
                   </label>
                 </div>
               </div>
