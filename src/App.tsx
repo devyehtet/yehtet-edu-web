@@ -159,6 +159,7 @@ type EnrollmentFormValues = {
   course: string;
   name: string;
   email: string;
+  phoneCountry: string;
   phone: string;
   contactPreference: string;
   paymentStatus: string;
@@ -178,6 +179,19 @@ type EnrollmentPaymentAccount = {
   accountNumber: string;
   helper: string;
   icon: IconType;
+};
+type EnrollmentPhoneCountry = {
+  key: string;
+  label: string;
+  dialCode: string;
+  placeholder: string;
+  minDigits: number;
+  maxDigits: number;
+};
+type EnrollmentChoiceOption = {
+  value: string;
+  title: string;
+  detail: string;
 };
 type LessonComment = {
   id: string;
@@ -1813,8 +1827,24 @@ const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = 
 
 const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
-const enrollmentPaymentOptions = ['Ready to pay', 'Payment already sent', 'Need payment instructions', 'Need installment support'];
-const enrollmentPaymentPlanOptions = ['Full payment', 'Installment / partial payment', 'Admin guidance needed'];
+const enrollmentPhoneCountries: EnrollmentPhoneCountry[] = [
+  { key: 'Myanmar', label: 'Myanmar', dialCode: '+95', placeholder: '09 541 4499', minDigits: 7, maxDigits: 11 },
+  { key: 'Thailand', label: 'Thailand', dialCode: '+66', placeholder: '081 234 5678', minDigits: 8, maxDigits: 10 },
+  { key: 'UAE', label: 'UAE', dialCode: '+971', placeholder: '50 949 1015', minDigits: 8, maxDigits: 10 },
+  { key: 'Singapore', label: 'Singapore', dialCode: '+65', placeholder: '8123 4567', minDigits: 8, maxDigits: 8 },
+  { key: 'Other', label: 'Other country', dialCode: '+', placeholder: 'Country code + phone number', minDigits: 8, maxDigits: 15 },
+];
+const enrollmentPaymentOptions: EnrollmentChoiceOption[] = [
+  { value: 'Ready to pay', title: 'Ready to pay', detail: 'I will transfer after checking the payment account.' },
+  { value: 'Payment already sent', title: 'Payment already sent', detail: 'Slip file must be attached before continuing.' },
+  { value: 'Need payment instructions', title: 'Need instructions', detail: 'Admin should explain the payment steps first.' },
+  { value: 'Need installment support', title: 'Need installment support', detail: 'I want admin help with partial payment timing.' },
+];
+const enrollmentPaymentPlanOptions: EnrollmentChoiceOption[] = [
+  { value: 'Full payment', title: 'Full payment', detail: 'Pay the full course fee in one transfer.' },
+  { value: 'Installment / partial payment', title: 'Installment / partial payment', detail: 'Start with a partial payment and settle the balance later.' },
+  { value: 'Admin guidance needed', title: 'Admin guidance needed', detail: 'Let the admin confirm the best payment plan.' },
+];
 const enrollmentPaymentSlipDefault = 'No slip file attached yet';
 const enrollmentPaymentSlipAttached = 'Slip attached in enrollment form';
 const enrollmentPaymentSlipMaxSize = 8 * 1024 * 1024;
@@ -2153,6 +2183,33 @@ function getCourseEnrollmentFee(courseTitle: string) {
 
 function getEnrollmentPaymentAccount(paymentAccountKey: string) {
   return enrollmentPaymentAccounts.find((account) => account.key === paymentAccountKey) || enrollmentPaymentAccounts[0];
+}
+
+function getEnrollmentPhoneCountry(phoneCountryKey: string) {
+  return enrollmentPhoneCountries.find((country) => country.key === phoneCountryKey) || enrollmentPhoneCountries[0];
+}
+
+function normalizePhoneDigits(phone: string) {
+  return phone.replace(/\D/g, '');
+}
+
+function isValidEnrollmentName(name: string) {
+  const trimmed = name.trim().replace(/\s+/g, ' ');
+  return trimmed.length >= 2 && /\p{L}/u.test(trimmed) && !/^\d+$/.test(trimmed);
+}
+
+function isValidEnrollmentPhone(phone: string, countryKey: string) {
+  const country = getEnrollmentPhoneCountry(countryKey);
+  const digits = normalizePhoneDigits(phone);
+  return digits.length >= country.minDigits && digits.length <= country.maxDigits;
+}
+
+function formatEnrollmentPhone(phone: string, countryKey: string) {
+  const country = getEnrollmentPhoneCountry(countryKey);
+  const digits = normalizePhoneDigits(phone);
+  if (!digits) return '';
+  if (country.dialCode === '+') return `+${digits}`;
+  return `${country.dialCode} ${digits.replace(/^0+/, '') || digits}`;
 }
 
 function formatFileSize(bytes: number) {
@@ -6022,10 +6079,11 @@ function EnrollmentFlowModal({
     course: courseTitle || defaultCourseTitle,
     name: '',
     email: '',
+    phoneCountry: enrollmentPhoneCountries[0].key,
     phone: '',
     contactPreference: enrollmentContactOptions[0],
-    paymentStatus: enrollmentPaymentOptions[0],
-    paymentPlan: enrollmentPaymentPlanOptions[0],
+    paymentStatus: enrollmentPaymentOptions[0].value,
+    paymentPlan: enrollmentPaymentPlanOptions[0].value,
     paymentAccount: enrollmentPaymentAccounts[0].key,
     paymentSlipStatus: enrollmentPaymentSlipDefault,
     paymentReference: '',
@@ -6038,11 +6096,20 @@ function EnrollmentFlowModal({
     setStatus('idle');
     setErrorMessage('');
     setPaymentSlipFile(null);
-    setValues((prev) => ({
-      ...prev,
+    setValues({
       course: courseTitle || defaultCourseTitle,
+      name: '',
+      email: '',
+      phoneCountry: enrollmentPhoneCountries[0].key,
+      phone: '',
+      contactPreference: enrollmentContactOptions[0],
+      paymentStatus: enrollmentPaymentOptions[0].value,
+      paymentPlan: enrollmentPaymentPlanOptions[0].value,
+      paymentAccount: enrollmentPaymentAccounts[0].key,
       paymentSlipStatus: enrollmentPaymentSlipDefault,
-    }));
+      paymentReference: '',
+      note: '',
+    });
   }, [courseTitle, isOpen]);
 
   if (!isOpen) return null;
@@ -6051,12 +6118,16 @@ function EnrollmentFlowModal({
   const selectedDetail = courseDetailsByTitle[values.course] || courseDetailsByTitle[defaultCourseTitle];
   const selectedCourseFee = getCourseEnrollmentFee(values.course);
   const selectedPaymentAccount = getEnrollmentPaymentAccount(values.paymentAccount);
+  const selectedPhoneCountry = getEnrollmentPhoneCountry(values.phoneCountry);
+  const formattedPhone = formatEnrollmentPhone(values.phone, values.phoneCountry);
+  const isValidName = isValidEnrollmentName(values.name);
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim());
+  const isValidPhone = isValidEnrollmentPhone(values.phone, values.phoneCountry);
   const isPaymentSlipRequired = values.paymentStatus === 'Payment already sent';
   const canContinue = step === 0
     ? Boolean(values.course)
     : step === 1
-    ? Boolean(values.name.trim()) && isValidEmail && Boolean(values.phone.trim())
+    ? isValidName && isValidEmail && isValidPhone
     : step === 2
     ? Boolean(values.paymentStatus) && Boolean(values.paymentPlan) && Boolean(values.paymentAccount) && (!isPaymentSlipRequired || Boolean(paymentSlipFile))
     : true;
@@ -6099,7 +6170,7 @@ function EnrollmentFlowModal({
         setStatus('error');
         setErrorMessage(
           step === 1
-            ? 'Please enter name, valid email, and phone number.'
+            ? 'Please enter a real name, valid email, and country phone number.'
             : step === 2
             ? isPaymentSlipRequired && !paymentSlipFile
               ? 'Please attach the payment slip file before continuing.'
@@ -6113,9 +6184,9 @@ function EnrollmentFlowModal({
       return;
     }
 
-    if (!values.name.trim() || !isValidEmail || !values.phone.trim()) {
+    if (!isValidName || !isValidEmail || !isValidPhone) {
       setStatus('error');
-      setErrorMessage('Please check name, email, and phone number before submitting.');
+      setErrorMessage('Please check name, email, and country phone number before submitting.');
       setStep(1);
       return;
     }
@@ -6138,7 +6209,9 @@ function EnrollmentFlowModal({
         `Course fee: ${formatMmk(selectedCourseFee)}`,
         `Name: ${values.name.trim()}`,
         `Email: ${values.email.trim()}`,
-        `Phone: ${values.phone.trim()}`,
+        `Phone: ${formattedPhone}`,
+        `Phone country: ${selectedPhoneCountry.label}`,
+        `Phone local number: ${values.phone.trim()}`,
         `Preferred contact: ${values.contactPreference}`,
         `Payment status: ${values.paymentStatus}`,
         `Payment plan: ${values.paymentPlan}`,
@@ -6155,7 +6228,10 @@ function EnrollmentFlowModal({
       appendField('_subject', `New enrollment request - ${values.course}`);
       appendField('name', values.name.trim());
       appendField('email', values.email.trim());
-      appendField('phone', values.phone.trim());
+      appendField('phone', formattedPhone);
+      appendField('phone_country', selectedPhoneCountry.label);
+      appendField('phone_dial_code', selectedPhoneCountry.dialCode);
+      appendField('phone_local_number', values.phone.trim());
       appendField('course', values.course);
       appendField('tuition_fee', formatMmk(selectedCourseFee));
       appendField('contact_preference', values.contactPreference);
@@ -6279,15 +6355,31 @@ function EnrollmentFlowModal({
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-xs font-semibold text-slate-400">Student name</span>
-                  <input value={values.name} onChange={(event) => updateValue('name', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="Your full name" />
+                  <input value={values.name} onChange={(event) => updateValue('name', event.target.value)} className={cx('mt-2 w-full rounded-xl border bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40', values.name.trim() && !isValidName ? 'border-amber-300/40' : 'border-white/[0.08]')} placeholder="Your full name" autoComplete="name" />
+                  {values.name.trim() && !isValidName && <p className="mt-1 text-xs font-semibold text-amber-200">Please enter the student's real name.</p>}
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold text-slate-400">Email</span>
-                  <input value={values.email} onChange={(event) => updateValue('email', event.target.value)} type="email" className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="name@email.com" />
+                  <input value={values.email} onChange={(event) => updateValue('email', event.target.value)} type="email" className={cx('mt-2 w-full rounded-xl border bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40', values.email.trim() && !isValidEmail ? 'border-amber-300/40' : 'border-white/[0.08]')} placeholder="name@email.com" autoComplete="email" />
+                  {values.email.trim() && !isValidEmail && <p className="mt-1 text-xs font-semibold text-amber-200">Please enter a valid email address.</p>}
                 </label>
+                <div className="block">
+                  <span className="text-xs font-semibold text-slate-400">Country</span>
+                  <select value={values.phoneCountry} onChange={(event) => updateValue('phoneCountry', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
+                    {enrollmentPhoneCountries.map((country) => (
+                      <option key={country.key} value={country.key}>{country.label} ({country.dialCode})</option>
+                    ))}
+                  </select>
+                </div>
                 <label className="block">
                   <span className="text-xs font-semibold text-slate-400">Phone / Viber number</span>
-                  <input value={values.phone} onChange={(event) => updateValue('phone', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40" placeholder="09..." />
+                  <div className={cx('mt-2 flex overflow-hidden rounded-xl border bg-white/[0.03] focus-within:border-emerald-300/40', values.phone.trim() && !isValidPhone ? 'border-amber-300/40' : 'border-white/[0.08]')}>
+                    <span className="grid min-w-16 place-items-center border-r border-white/[0.08] px-3 text-sm font-black text-emerald-200">{selectedPhoneCountry.dialCode}</span>
+                    <input value={values.phone} onChange={(event) => updateValue('phone', event.target.value)} inputMode="tel" autoComplete="tel" className="w-full bg-transparent px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600" placeholder={selectedPhoneCountry.placeholder} />
+                  </div>
+                  <p className={cx('mt-1 text-xs font-semibold', values.phone.trim() && !isValidPhone ? 'text-amber-200' : 'text-slate-500')}>
+                    {selectedPhoneCountry.label} phone number, {selectedPhoneCountry.minDigits}-{selectedPhoneCountry.maxDigits} digits.
+                  </p>
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold text-slate-400">Preferred contact</span>
@@ -6321,19 +6413,65 @@ function EnrollmentFlowModal({
                 </div>
 
                 <div className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="block">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div>
                       <span className="text-xs font-semibold text-slate-400">Payment readiness</span>
-                      <select value={values.paymentStatus} onChange={(event) => updateValue('paymentStatus', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
-                        {enrollmentPaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                    </label>
-                    <label className="block">
+                      <div className="mt-2 grid gap-2">
+                        {enrollmentPaymentOptions.map((option) => {
+                          const selected = option.value === values.paymentStatus;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => updateValue('paymentStatus', option.value)}
+                              className={cx(
+                                'flex min-h-20 items-start gap-3 rounded-2xl border p-3 text-left transition',
+                                selected
+                                  ? 'border-emerald-300/45 bg-emerald-300/[0.10] shadow-lg shadow-emerald-950/20'
+                                  : 'border-white/[0.08] bg-white/[0.03] hover:border-emerald-300/25 hover:bg-white/[0.06]',
+                              )}
+                            >
+                              <span className={cx('mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border', selected ? 'border-emerald-300 bg-emerald-300 text-slate-950' : 'border-white/[0.12] text-slate-500')}>
+                                {selected && <CheckCircle2 className="h-4 w-4" />}
+                              </span>
+                              <span>
+                                <span className="block text-sm font-black text-white">{option.title}</span>
+                                <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{option.detail}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
                       <span className="text-xs font-semibold text-slate-400">Payment plan</span>
-                      <select value={values.paymentPlan} onChange={(event) => updateValue('paymentPlan', event.target.value)} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/40">
-                        {enrollmentPaymentPlanOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                    </label>
+                      <div className="mt-2 grid gap-2">
+                        {enrollmentPaymentPlanOptions.map((option) => {
+                          const selected = option.value === values.paymentPlan;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => updateValue('paymentPlan', option.value)}
+                              className={cx(
+                                'flex min-h-20 items-start gap-3 rounded-2xl border p-3 text-left transition',
+                                selected
+                                  ? 'border-emerald-300/45 bg-emerald-300/[0.10] shadow-lg shadow-emerald-950/20'
+                                  : 'border-white/[0.08] bg-white/[0.03] hover:border-emerald-300/25 hover:bg-white/[0.06]',
+                              )}
+                            >
+                              <span className={cx('mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border', selected ? 'border-emerald-300 bg-emerald-300 text-slate-950' : 'border-white/[0.12] text-slate-500')}>
+                                {selected && <CheckCircle2 className="h-4 w-4" />}
+                              </span>
+                              <span>
+                                <span className="block text-sm font-black text-white">{option.title}</span>
+                                <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{option.detail}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-slate-400">Payment account</span>
@@ -6452,7 +6590,8 @@ function EnrollmentFlowModal({
                     <ProfileField label="Course" value={values.course} />
                     <ProfileField label="Name" value={values.name.trim() || '-'} />
                     <ProfileField label="Email" value={values.email.trim() || '-'} />
-                    <ProfileField label="Phone" value={values.phone.trim() || '-'} />
+                    <ProfileField label="Phone country" value={`${selectedPhoneCountry.label} (${selectedPhoneCountry.dialCode})`} />
+                    <ProfileField label="Phone" value={formattedPhone || '-'} />
                     <ProfileField label="Contact" value={values.contactPreference} />
                   </div>
                 </div>
