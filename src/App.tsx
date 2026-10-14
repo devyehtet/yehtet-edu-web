@@ -371,6 +371,8 @@ const mediaPlanningBuyingFunnelVideoUrl = 'https://vimeo.com/1229236174?share=co
 const mediaPlanningBuyingClientBriefVideoUrl = 'https://vimeo.com/1230629707?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingAudienceStrategyJourneyVideoUrl = 'https://vimeo.com/1232809385?share=copy&fl=sv&fe=ci';
 const mediaPlanningBuyingTargetAudienceFoundationVideoUrl = 'https://vimeo.com/1232809669?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingCustomerJourneyVideoUrl = 'https://vimeo.com/1235969665?share=copy&fl=sv&fe=ci';
+const mediaPlanningBuyingCustomerJourneyResourceUrl = 'https://docs.google.com/spreadsheets/d/11ELMUqX1yvsHiahhm0FBq7ccoLB2UGQ8Ziklf2OefBE/edit?usp=sharing';
 const mediaPlanningBuyingClientBriefResourceUrl = 'https://docs.google.com/document/d/1cFEkbqW1vdKaDo9o90f5plnLvu4c6HZACi2i3H3S9Nc/edit?usp=sharing';
 const sampleLessonVideoUrl = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const defaultLessonVideoUrls = [
@@ -415,6 +417,7 @@ const mediaPlanningBuyingVideoUrls = [
   mediaPlanningBuyingClientBriefVideoUrl,
   mediaPlanningBuyingAudienceStrategyJourneyVideoUrl,
   mediaPlanningBuyingTargetAudienceFoundationVideoUrl,
+  mediaPlanningBuyingCustomerJourneyVideoUrl,
 ];
 
 function isStaleMediaPlanningBuyingCourseIntroductionVideoUrl(value: string | undefined) {
@@ -614,9 +617,7 @@ const mediaPlanningBuyingModules: CourseModule[] = [
     progress: 0,
     lessons: [
       'Target Audience Foundation',
-      'Audience Targeting Methods',
-      'Cold၊ Warm နဲ့ Hot Audiences',
-      'Customer Journey & Buyer Persona',
+      'Customer Journey and Persona Building',
       'Platform-Based Audience Behavior',
       'Assignment: Audience Strategy Sheet',
     ],
@@ -973,6 +974,7 @@ const lessonResourceUrlsByTitle: Record<string, string> = {
   [marketingFunnelFrameworkPartTwoTitle]: marketingFunnelFrameworkPartOneResourceUrl,
   'Web Developing & Meta Pixel Install': webDevelopingMetaPixelInstallResourceUrl,
   'Client Brief & Campaign Planning': mediaPlanningBuyingClientBriefResourceUrl,
+  'Customer Journey and Persona Building': mediaPlanningBuyingCustomerJourneyResourceUrl,
 };
 
 const lessonDurationsByTitle: Record<string, string> = {
@@ -987,7 +989,15 @@ function getCourseModulesByTitle(courseTitle: string) {
 
 function getCourseLessonId(courseTitle: string, title: string, moduleIndex: number, lessonIndex: number) {
   if (courseTitle === defaultCourseTitle) return stableLessonIdsByTitle[title] || `m${moduleIndex + 1}-l${lessonIndex + 1}`;
-  if (courseTitle === mediaPlanningBuyingCourseTitle) return `dmpb-m${moduleIndex + 1}-l${lessonIndex + 1}`;
+  if (courseTitle === mediaPlanningBuyingCourseTitle) {
+    // Keep existing progress and comments attached when Module 02 is reordered.
+    const audienceLessonIds: Record<string, string> = {
+      'Customer Journey and Persona Building': 'dmpb-m3-l4',
+      'Platform-Based Audience Behavior': 'dmpb-m3-l5',
+      'Assignment: Audience Strategy Sheet': 'dmpb-m3-l6',
+    };
+    return (moduleIndex === 2 && audienceLessonIds[title]) || `dmpb-m${moduleIndex + 1}-l${lessonIndex + 1}`;
+  }
   return `capstone-m${moduleIndex + 1}-l${lessonIndex + 1}`;
 }
 
@@ -4280,7 +4290,7 @@ function LessonPlayerPage({
                 <h2 className="mt-2 text-lg font-bold text-white">{activeLesson.resource}</h2>
               </div>
               <a href={activeLesson.resourceUrl} target="_blank" rel="noopener noreferrer" className={ui.btnPrimary}>
-                <Download className="h-4 w-4" /> File ရယူရန်
+                <Download className="h-4 w-4" /> File ကို Download ရယူရန်
               </a>
             </section>
           )}
@@ -4314,7 +4324,7 @@ function LessonPlayerPage({
               <p className="mt-3 text-sm leading-6 text-slate-300">{activeLesson.resource}</p>
               {activeLesson.resourceUrl && (
                 <a href={activeLesson.resourceUrl} target="_blank" rel="noopener noreferrer" className={cx(ui.btnSubtle, 'mt-4')}>
-                  <ExternalLink className="h-4 w-4" /> File ရယူရန်
+                  <ExternalLink className="h-4 w-4" /> File ကို Download ရယူရန်
                 </a>
               )}
             </div>
@@ -5512,6 +5522,12 @@ function LessonManagerAdmin({
                 )}
               </div>
             </div>
+
+            {activeLesson.resourceUrl && (
+              <a href={activeLesson.resourceUrl} target="_blank" rel="noopener noreferrer" className={cx(ui.btnPrimary, 'mt-4')}>
+                <Download className="h-4 w-4" /> File ကို Download ရယူရန်
+              </a>
+            )}
 
             <div className="mt-5 space-y-2">
               <LessonMetaField label="Course" value={activeLesson.courseTitle} />
