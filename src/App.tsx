@@ -1825,6 +1825,90 @@ const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = 
   { title: 'Receive account access', text: 'Student logs in with the assigned email and password.', icon: Users },
 ];
 
+const courseCatalogDetails: Record<
+  string,
+  {
+    duration: string;
+    credential: string;
+    workload: string;
+    outcome: string;
+    project: string;
+    skills: string[];
+  }
+> = {
+  [defaultCourseTitle]: {
+    duration: '8 modules',
+    credential: 'Certificate-ready',
+    workload: 'Beginner friendly',
+    outcome: 'Build a complete digital marketing foundation from funnel to campaign execution.',
+    project: 'Final portfolio and campaign setup practice',
+    skills: ['Marketing funnel', 'Meta ads', 'SEO basics', 'Analytics', 'Content planning'],
+  },
+  [mediaPlanningBuyingCourseTitle]: {
+    duration: 'Intro + 11 modules',
+    credential: 'Portfolio outcome',
+    workload: 'Intermediate path',
+    outcome: 'Plan, buy, optimize, and report campaigns across Meta, Google, and TikTok.',
+    project: 'Client-ready media plan and KPI forecast',
+    skills: ['Media planning', 'Budget pacing', 'Audience strategy', 'KPI forecasting', 'Reporting'],
+  },
+  [capstoneSupportCourseTitle]: {
+    duration: 'Guided capstone',
+    credential: 'Case-study support',
+    workload: 'Project based',
+    outcome: 'Turn your campaign work into a clean, presentation-ready portfolio case.',
+    project: 'Campaign case study and presentation',
+    skills: ['Case study', 'Creative direction', 'Campaign report', 'Presentation'],
+  },
+};
+
+const learningAssuranceCards: Array<{ title: string; text: string; icon: IconType; tag: string }> = [
+  {
+    title: 'Guided course path',
+    text: 'Lessons are arranged in sequence so students know exactly what to study next.',
+    icon: BookOpen,
+    tag: 'Structured',
+  },
+  {
+    title: 'Practical assignments',
+    text: 'Templates, briefs, and campaign exercises help students apply each topic.',
+    icon: ClipboardCheck,
+    tag: 'Hands-on',
+  },
+  {
+    title: 'Progress tracking',
+    text: 'Watch progress, comments, and learning activity stay connected to each lesson.',
+    icon: BarChart3,
+    tag: 'Tracked',
+  },
+  {
+    title: 'Enrollment support',
+    text: 'Students can submit contact details, payment level, and slip attachment in one flow.',
+    icon: ShieldCheck,
+    tag: 'Clear access',
+  },
+];
+
+const learningJourneyRows: Array<{ step: string; title: string; text: string; icon: IconType }> = [
+  { step: '01', title: 'Explore the syllabus', text: 'Review course modules, outcomes, and skill coverage before enrolling.', icon: Search },
+  { step: '02', title: 'Enroll and confirm payment', text: 'Submit your student detail, payment status, and slip attachment.', icon: CreditCard },
+  { step: '03', title: 'Study in order', text: 'Watch lessons, unlock the next topic, and keep progress organized.', icon: PlayCircle },
+  { step: '04', title: 'Finish with proof of skill', text: 'Complete assignments, templates, and the final portfolio project.', icon: GraduationCap },
+];
+
+const careerSkillTags = [
+  'Meta ads setup',
+  'Audience research',
+  'Marketing funnel',
+  'Media buying',
+  'Budget planning',
+  'KPI forecasting',
+  'Campaign reporting',
+  'Landing page tracking',
+  'Creative testing',
+  'Client communication',
+];
+
 const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
 const enrollmentPhoneCountries: EnrollmentPhoneCountry[] = [
@@ -2613,12 +2697,103 @@ function HomePage({
         ))}
       </section>
 
+      <section>
+        <PageHeader
+          eyebrow="Platform experience"
+          title="A cleaner learning platform, not just a course page."
+          description="Students should feel what they get before they enroll: guided lessons, skill practice, progress tracking, and clear account access."
+        />
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {learningAssuranceCards.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="group relative overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#0b1620]/85 p-5 shadow-2xl shadow-black/20 transition duration-200 hover:-translate-y-1 hover:border-emerald-300/25 sm:p-6">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 opacity-80" />
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-950/30">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-200">
+                    {item.tag}
+                  </span>
+                </div>
+                <h3 className={ui.h3}>{item.title}</h3>
+                <p className={cx(ui.bodySm, 'mt-2')}>{item.text}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Courses */}
       <section>
-        <PageHeader eyebrow="Courses" title="Three programs to build your career." description="Pick the right starting point — from foundation to capstone — and follow the lessons assigned to your account." />
+        <PageHeader eyebrow="Course catalog" title="Choose a course with clear outcomes." description="Each course shows the level, path, practical project, and skills students can expect before they enroll." />
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {courseCards.map((course) => (
             <CourseCard key={course.title} course={course} onViewDetail={viewCourse} onEnroll={onEnroll} />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch">
+        <div className={cx(ui.cardSolid, 'relative overflow-hidden')}>
+          <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-300/10 blur-3xl" />
+          <div className="relative">
+            <p className={ui.eyebrow}>Credential preview</p>
+            <h2 className={cx(ui.h2, 'mt-3')}>Give students a visible finish line.</h2>
+            <p className={cx(ui.body, 'mt-4')}>
+              The public page now communicates that the course is structured around skills, assignments, and portfolio-ready outcomes.
+            </p>
+            <div className="mt-8 rounded-[1.5rem] border border-emerald-300/20 bg-emerald-300/[0.08] p-5 shadow-2xl shadow-emerald-950/20">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-200">Certificate-ready learning</p>
+                  <h3 className="mt-4 text-2xl font-black leading-tight text-white">Digital Marketing Skill Path</h3>
+                </div>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-slate-950">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+              </div>
+              <div className="mt-6 grid gap-3 text-sm font-semibold text-slate-300 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4">Video lessons</div>
+                <div className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4">Templates</div>
+                <div className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4">Assignments</div>
+                <div className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4">Portfolio project</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={ui.card}>
+          <p className={ui.eyebrow}>Learning journey</p>
+          <h2 className={cx(ui.h2, 'mt-3')}>From course discovery to payment confirmation.</h2>
+          <div className="mt-7 grid gap-3">
+            {learningJourneyRows.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.step} className="flex gap-4 rounded-3xl border border-white/[0.08] bg-white/[0.035] p-4">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-300/10 text-emerald-300 ring-1 ring-emerald-300/20">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Step {item.step}</p>
+                    <h3 className="mt-1 text-base font-black text-white">{item.title}</h3>
+                    <p className={cx(ui.bodySm, 'mt-1')}>{item.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <PageHeader eyebrow="Skills you will build" title="Career-focused skills students can recognize fast." />
+        <div className="mt-7 flex flex-wrap gap-3">
+          {careerSkillTags.map((skill) => (
+            <span key={skill} className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-4 py-2 text-sm font-bold text-emerald-100 shadow-lg shadow-black/10">
+              {skill}
+            </span>
           ))}
         </div>
       </section>
@@ -2763,6 +2938,7 @@ function CourseCard({
   onEnroll: (courseTitle?: string) => void;
 }) {
   const visual = courseVisualsByTitle[course.title] || courseVisualsByTitle[defaultCourseTitle];
+  const catalog = courseCatalogDetails[course.title] || courseCatalogDetails[defaultCourseTitle];
 
   return (
     <div className={cx(ui.card, 'flex h-full flex-col overflow-hidden')}>
@@ -2785,7 +2961,31 @@ function CourseCard({
       </div>
       <h3 className={ui.h3}>{course.title}</h3>
       <p className={cx(ui.bodySm, 'mt-2')}>{course.level}</p>
-      <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {[catalog.workload, catalog.duration, catalog.credential].map((item) => (
+          <span key={item} className="rounded-full border border-white/[0.10] bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-slate-300">
+            {item}
+          </span>
+        ))}
+      </div>
+      <p className="mt-4 text-sm leading-6 text-slate-300">{catalog.outcome}</p>
+      <div className="mt-5 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.06] p-4">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-200">Practical project</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-white">{catalog.project}</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {catalog.skills.slice(0, 4).map((skill) => (
+          <span key={skill} className="rounded-full bg-slate-950/45 px-3 py-1 text-xs font-semibold text-slate-300 ring-1 ring-white/[0.08]">
+            {skill}
+          </span>
+        ))}
+      </div>
+      <p className="mt-5 text-xs font-medium uppercase tracking-[0.14em] text-emerald-300">{course.modules}</p>
       <div className="mt-6 flex flex-wrap gap-3">
         <button onClick={() => onEnroll(course.title)} className={cx(ui.btnPrimary, 'px-5 py-2.5')}>
           Enroll
