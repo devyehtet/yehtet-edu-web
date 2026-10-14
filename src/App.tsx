@@ -2510,15 +2510,15 @@ function readStoredDeletedLessonCommentIds(): string[] {
 
 const ui = {
   page: 'space-y-12 sm:space-y-16',
-  card: 'rounded-[1.75rem] border border-white/[0.08] bg-white/[0.04] p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8',
-  cardSolid: 'rounded-[1.75rem] border border-white/[0.09] bg-[#0b1620]/90 p-6 shadow-2xl shadow-emerald-950/20 sm:p-8',
-  cardSubtle: 'rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] p-5 shadow-xl shadow-black/10 backdrop-blur sm:p-6',
+  card: 'lms-surface-panel rounded-[1.75rem] border p-6 backdrop-blur sm:p-8',
+  cardSolid: 'lms-surface-panel-strong rounded-[1.75rem] border p-6 backdrop-blur sm:p-8',
+  cardSubtle: 'lms-surface-panel rounded-[1.5rem] border p-5 backdrop-blur sm:p-6',
   eyebrow: 'text-[11px] font-black uppercase tracking-[0.24em] text-emerald-300',
   h1: 'text-4xl font-black leading-[1.02] tracking-normal text-white sm:text-5xl lg:text-6xl',
   h2: 'text-2xl font-black leading-tight tracking-normal text-white sm:text-3xl',
   h3: 'text-lg font-black text-white',
   body: 'text-[15px] leading-7 text-slate-300 sm:text-base',
-  bodySm: 'text-sm leading-6 text-slate-400',
+  bodySm: 'text-sm leading-6 text-slate-300',
   btnPrimary:
     'lms-btn lms-btn-primary group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-black text-[#03100f] transition duration-200 active:translate-y-0 sm:px-6',
   btnGhost:
@@ -2731,13 +2731,13 @@ function StatRow({ stats }: { stats: Array<{ label: string; value: string; icon:
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <div key={stat.label} className="flex min-h-[118px] items-center gap-4 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] px-5 py-4 shadow-xl shadow-black/10 backdrop-blur">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-300/10 text-emerald-300 ring-1 ring-emerald-300/20">
+          <div key={stat.label} className="lms-surface-panel flex min-h-[118px] items-center gap-5 rounded-[1.5rem] border px-5 py-4 backdrop-blur transition duration-200 hover:-translate-y-0.5">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-300/15 text-emerald-200 ring-1 ring-emerald-200/30">
               <Icon className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-black leading-tight text-emerald-300">{stat.value}</p>
-              <p className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{stat.label}</p>
+              <p className="text-2xl font-black leading-tight text-emerald-200">{stat.value}</p>
+              <p className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-300/90">{stat.label}</p>
             </div>
           </div>
         );
@@ -2817,14 +2817,14 @@ function HomePage({
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {platformSignals.map((signal) => (
-          <div key={signal.label} className="group overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-white/[0.04] shadow-2xl shadow-black/20 backdrop-blur transition duration-200 hover:-translate-y-1 hover:border-emerald-300/25 hover:bg-white/[0.06]">
+          <div key={signal.label} className="lms-surface-panel-strong group overflow-hidden rounded-[1.75rem] border backdrop-blur transition duration-200 hover:-translate-y-1">
             <div className="h-1 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300" />
             <div className="flex min-h-[148px] flex-col justify-between p-5 sm:p-6">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-300/80">{signal.label}</p>
-                <p className="mt-4 text-[2rem] font-black leading-none tracking-normal text-emerald-300">{signal.value}</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200">{signal.label}</p>
+                <p className="mt-4 text-[2rem] font-black leading-none tracking-normal text-emerald-200">{signal.value}</p>
               </div>
-              <p className="mt-4 max-w-[16rem] text-sm leading-6 text-slate-400">{signal.detail}</p>
+              <p className="mt-4 max-w-[16rem] text-sm leading-6 text-slate-300">{signal.detail}</p>
             </div>
           </div>
         ))}
