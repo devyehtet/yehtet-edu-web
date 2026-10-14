@@ -45,6 +45,8 @@ import {
 type PageName =
   | 'Home'
   | 'Courses'
+  | 'Teaching Method'
+  | 'Growth Resources'
   | 'Learning Path'
   | 'Course Detail'
   | 'Admin Panel'
@@ -209,6 +211,8 @@ type CommentMutationHandlers = {
 const pageSlugs: Record<PageName, string> = {
   Home: '',
   Courses: 'courses',
+  'Teaching Method': 'teaching-method',
+  'Growth Resources': 'marketing-resources',
   'Learning Path': 'learning-path',
   'Course Detail': 'course-detail',
   'Admin Panel': 'admin',
@@ -256,6 +260,8 @@ function getPathSegments() {
 const publicNavItems: NavItem[] = [
   { label: 'Home', target: 'Home' },
   { label: 'Courses', target: 'Courses' },
+  { label: 'Teaching', target: 'Teaching Method' },
+  { label: 'Resources', target: 'Growth Resources' },
   { label: 'Learning Path', target: 'Learning Path' },
 ];
 
@@ -796,6 +802,9 @@ const courseVisualsByTitle: Record<string, CourseVisualRecord> = {
 
 const heroLearningImageUrl = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=80';
 const adminOperationsImageUrl = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80';
+const teachingMethodImageUrl = 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1400&q=80';
+const growthResourcesImageUrl = 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1400&q=80';
+const practicalWorkshopImageUrl = 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1400&q=80';
 
 const courseDetailsByTitle: Record<string, CourseDetailConfig> = {
   [defaultCourseTitle]: {
@@ -1825,6 +1834,39 @@ const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = 
   { title: 'Receive account access', text: 'Student logs in with the assigned email and password.', icon: Users },
 ];
 
+const publicPageSeoDetails: Record<string, { title: string; description: string; path: string }> = {
+  Home: {
+    title: 'Ye Htet Digital Edu - Digital Marketing LMS',
+    description: 'Learn digital marketing, media planning, and media buying with guided video lessons, practical templates, and student progress tracking.',
+    path: '/',
+  },
+  Courses: {
+    title: 'Digital Marketing Courses | Ye Htet Digital Edu',
+    description: 'Explore digital marketing and media buying courses with clear outcomes, practical projects, and guided enrollment.',
+    path: '/courses',
+  },
+  'Teaching Method': {
+    title: 'Teaching Method | Ye Htet Digital Edu',
+    description: 'See how Ye Htet Digital Edu teaches digital marketing with guided lessons, assignments, feedback, live support, and portfolio practice.',
+    path: '/teaching-method',
+  },
+  'Growth Resources': {
+    title: 'Digital Marketing Resources | Ye Htet Digital Edu',
+    description: 'Read practical digital marketing, media planning, SEO, AEO, and GEO learning resources for students and business owners.',
+    path: '/marketing-resources',
+  },
+  'Learning Path': {
+    title: 'Learning Path | Ye Htet Digital Edu',
+    description: 'Follow a structured roadmap from digital marketing fundamentals to media buying, optimization, reporting, and portfolio work.',
+    path: '/learning-path',
+  },
+  Login: {
+    title: 'Student Login | Ye Htet Digital Edu',
+    description: 'Log in to access assigned lessons, resources, comments, and progress tracking in Ye Htet Digital Edu LMS.',
+    path: '/login',
+  },
+};
+
 const courseCatalogDetails: Record<
   string,
   {
@@ -1907,6 +1949,97 @@ const careerSkillTags = [
   'Landing page tracking',
   'Creative testing',
   'Client communication',
+];
+
+const relatedPublicPages: Array<{ title: string; text: string; image: string; target: PageName; cta: string }> = [
+  {
+    title: 'Teaching method',
+    text: 'See how lessons, templates, assignments, and live support are organized for practical learning.',
+    image: teachingMethodImageUrl,
+    target: 'Teaching Method',
+    cta: 'View teaching method',
+  },
+  {
+    title: 'Growth resources',
+    text: 'Learn the basics of SEO, AEO, GEO, tracking, media planning, and campaign strategy before enrolling.',
+    image: growthResourcesImageUrl,
+    target: 'Growth Resources',
+    cta: 'Read resources',
+  },
+];
+
+const teachingMethodCards: Array<{ title: string; text: string; icon: IconType }> = [
+  {
+    title: 'Concept first',
+    text: 'Each topic starts with the business reason behind the tactic, so students understand why the tool matters.',
+    icon: BookOpen,
+  },
+  {
+    title: 'Watch and practice',
+    text: 'Video lessons are paired with templates, exercises, and campaign examples students can apply immediately.',
+    icon: PlayCircle,
+  },
+  {
+    title: 'Feedback loop',
+    text: 'Students can ask questions under lessons and bring blockers into live class or admin review.',
+    icon: MessageCircle,
+  },
+  {
+    title: 'Portfolio outcome',
+    text: 'The learning path points toward a campaign plan, reporting summary, and portfolio-ready case study.',
+    icon: GraduationCap,
+  },
+];
+
+const teachingProofPoints = [
+  'Sequential lessons with unlock behavior',
+  'Downloadable templates and resource files',
+  'Assignment-driven campaign practice',
+  'Lesson comments for questions and feedback',
+  'Live class support for review and discussion',
+  'Portfolio and capstone project direction',
+];
+
+const resourceGuides: Array<{ title: string; summary: string; keywords: string[] }> = [
+  {
+    title: 'What is digital marketing?',
+    summary: 'Digital marketing is the process of reaching, educating, and converting customers through online channels such as content, ads, search, tracking, and analytics.',
+    keywords: ['Digital marketing', 'Funnel', 'Customer journey'],
+  },
+  {
+    title: 'What is media planning and buying?',
+    summary: 'Media planning decides the audience, message, channel, budget, and KPI. Media buying turns that plan into campaigns across platforms like Meta, Google, and TikTok.',
+    keywords: ['Media planning', 'Media buying', 'KPI'],
+  },
+  {
+    title: 'What are SEO, AEO, and GEO?',
+    summary: 'SEO helps search engines crawl, index, and rank useful pages. AEO prepares concise answers for search assistants. GEO focuses on visibility inside generative AI search experiences.',
+    keywords: ['SEO', 'AEO', 'GEO'],
+  },
+  {
+    title: 'Why tracking matters before running ads',
+    summary: 'Campaign tracking connects clicks, landing pages, events, leads, and sales so students can optimize based on data instead of guessing.',
+    keywords: ['Meta Pixel', 'Analytics', 'Conversion tracking'],
+  },
+];
+
+const answerEngineTopics: Array<{ question: string; answer: string }> = [
+  {
+    question: 'Who is Ye Htet Digital Edu for?',
+    answer: 'It is for students, freelancers, and business owners who want practical digital marketing and media buying training with lessons, templates, and guided projects.',
+  },
+  {
+    question: 'What courses are available?',
+    answer: 'The current public course paths cover Digital Marketing Beginner to Professional and Digital Media Planning & Buying, with portfolio support available as a practical capstone path.',
+  },
+  {
+    question: 'How does enrollment work?',
+    answer: 'Students choose a course, submit contact details, select payment readiness, attach a payment slip when available, and wait for account access confirmation.',
+  },
+  {
+    question: 'What makes the training practical?',
+    answer: 'The training combines video lessons, downloadable templates, assignments, campaign planning exercises, live class support, and lesson-level questions.',
+  },
 ];
 
 const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
@@ -2798,6 +2931,38 @@ function HomePage({
         </div>
       </section>
 
+      <section>
+        <PageHeader
+          eyebrow="Explore more"
+          title="Related pages for students and search visitors."
+          description="These pages explain how the training works and answer common digital marketing questions in a clear, crawlable way."
+        />
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {relatedPublicPages.map((page) => (
+            <button
+              key={page.title}
+              onClick={() => go(page.target)}
+              className="group overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-white/[0.04] text-left shadow-2xl shadow-black/20 transition duration-200 hover:-translate-y-1 hover:border-emerald-300/25 hover:bg-white/[0.06]"
+            >
+              <div className="lms-visual-dark relative aspect-[16/8] overflow-hidden bg-slate-950">
+                <img src={page.image} alt={`${page.title} preview`} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/25 to-transparent" />
+                <div className="absolute inset-x-5 bottom-5">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-200">{page.cta}</p>
+                  <h3 className="mt-2 text-2xl font-black text-white">{page.title}</h3>
+                </div>
+              </div>
+              <div className="p-5 sm:p-6">
+                <p className={ui.bodySm}>{page.text}</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-emerald-300">
+                  Open page <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Benefits */}
       <section>
         <PageHeader eyebrow="Why this platform" title="Everything you need to learn end-to-end." />
@@ -3082,6 +3247,186 @@ function HeroLearningPreview({ go, onViewCourse }: { go: (v: PageName) => void; 
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// =====================================================================
+// Public teaching and resource pages
+// =====================================================================
+
+function TeachingMethodPage({ go, onEnroll }: { go: (v: PageName) => void; onEnroll: (courseTitle?: string) => void }) {
+  return (
+    <div className={ui.page}>
+      <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+        <div>
+          <span className={ui.chip}>
+            <GraduationCap className="h-4 w-4" /> Teaching Method
+          </span>
+          <h1 className={cx(ui.h1, 'mt-7 max-w-3xl')}>Practical digital marketing training with a clear study system.</h1>
+          <p className={cx(ui.body, 'mt-5 max-w-2xl')}>
+            Ye Htet Digital Edu is built for students who want more than videos. The course flow combines guided lessons, templates,
+            assignments, lesson comments, live support, and portfolio direction.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button onClick={() => onEnroll(defaultCourseTitle)} className={ui.btnPrimary}>
+              Enroll now <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </button>
+            <button onClick={() => go('Courses')} className={ui.btnGhost}>
+              View courses
+            </button>
+          </div>
+        </div>
+        <div className="lms-visual-dark relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-slate-950 shadow-2xl shadow-black/30">
+          <img src={teachingMethodImageUrl} alt="Digital marketing class learning session" className="aspect-[4/3] h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+          <div className="absolute inset-x-6 bottom-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-200">Learning with support</p>
+            <h2 className="mt-3 max-w-lg text-3xl font-black leading-tight text-white">Concept, practice, feedback, and portfolio.</h2>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <PageHeader eyebrow="How students learn" title="The teaching system is designed for application." />
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {teachingMethodCards.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className={ui.card}>
+                <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-950/30">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className={ui.h3}>{item.title}</h3>
+                <p className={cx(ui.bodySm, 'mt-2')}>{item.text}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
+        <div className={cx(ui.cardSolid, 'overflow-hidden')}>
+          <p className={ui.eyebrow}>Practical workshop</p>
+          <h2 className={cx(ui.h2, 'mt-3')}>Students practice with campaign briefs, funnels, audiences, budgets, and reports.</h2>
+          <p className={cx(ui.body, 'mt-4')}>
+            The training is arranged so a student can connect strategy to execution: understand the business goal, choose the audience,
+            build the campaign, review the data, and explain the result.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {teachingProofPoints.map((point) => (
+              <div key={point} className="flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                <p className="text-sm font-semibold leading-6 text-slate-300">{point}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="lms-visual-dark overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-slate-950 shadow-2xl shadow-black/30">
+          <img src={practicalWorkshopImageUrl} alt="Marketing workshop and team strategy session" className="h-full min-h-[360px] w-full object-cover" loading="lazy" />
+        </div>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-emerald-300/25 bg-emerald-300/[0.07] p-6 sm:p-8">
+        <div className="grid gap-6 lg:flex lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p className={ui.eyebrow}>Start learning</p>
+            <h2 className={cx(ui.h2, 'mt-3')}>Choose the course path that matches your current level.</h2>
+          </div>
+          <button onClick={() => go('Courses')} className={ui.btnPrimary}>
+            Compare courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function GrowthResourcesPage({ go, onEnroll }: { go: (v: PageName) => void; onEnroll: (courseTitle?: string) => void }) {
+  return (
+    <div className={ui.page}>
+      <section className="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-center">
+        <div>
+          <span className={ui.chip}>
+            <Search className="h-4 w-4" /> SEO · AEO · GEO
+          </span>
+          <h1 className={cx(ui.h1, 'mt-7 max-w-3xl')}>Digital marketing resources built for search and AI answers.</h1>
+          <p className={cx(ui.body, 'mt-5 max-w-2xl')}>
+            This resource hub explains the learning topics in a clear Q&A style so students, search engines, and AI answer systems can
+            understand what the school teaches.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button onClick={() => go('Courses')} className={ui.btnPrimary}>
+              Explore courses <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </button>
+            <button onClick={() => onEnroll(defaultCourseTitle)} className={ui.btnGhost}>
+              Enroll now
+            </button>
+          </div>
+        </div>
+        <div className="lms-visual-dark relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-slate-950 shadow-2xl shadow-black/30">
+          <img src={growthResourcesImageUrl} alt="Digital marketing analytics and strategy planning resources" className="aspect-[4/3] h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
+          <div className="absolute inset-x-6 bottom-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-200">Answer-ready content</p>
+            <h2 className="mt-3 max-w-md text-3xl font-black leading-tight text-white">Clear explanations for learners and crawlers.</h2>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <PageHeader
+          eyebrow="Learning guides"
+          title="Short explanations students can understand quickly."
+          description="These summaries support search intent and help visitors decide which course fits their goal."
+        />
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {resourceGuides.map((guide) => (
+            <article key={guide.title} className={ui.card}>
+              <h2 className={ui.h3}>{guide.title}</h2>
+              <p className={cx(ui.bodySm, 'mt-3')}>{guide.summary}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {guide.keywords.map((keyword) => (
+                  <span key={keyword} className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-3 py-1 text-xs font-bold text-emerald-100">
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className={ui.cardSolid}>
+          <p className={ui.eyebrow}>AEO / GEO preparation</p>
+          <h2 className={cx(ui.h2, 'mt-3')}>Answer the exact questions people ask before they enroll.</h2>
+          <p className={cx(ui.body, 'mt-4')}>
+            The page uses concise questions, direct answers, descriptive headings, internal links, and structured metadata. These are
+            healthier long-term signals than keyword stuffing or thin AI-generated pages.
+          </p>
+        </div>
+        <div className="grid gap-3">
+          {answerEngineTopics.map((item) => (
+            <article key={item.question} className={ui.cardSubtle}>
+              <h3 className="text-base font-black text-white">{item.question}</h3>
+              <p className={cx(ui.bodySm, 'mt-2')}>{item.answer}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-emerald-300/25 bg-emerald-300/[0.07] p-6 sm:p-8">
+        <div className="grid gap-6 lg:flex lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p className={ui.eyebrow}>Next action</p>
+            <h2 className={cx(ui.h2, 'mt-3')}>Turn the resources into a full learning path.</h2>
+          </div>
+          <button onClick={() => onEnroll(defaultCourseTitle)} className={ui.btnPrimary}>
+            Start enrollment <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -6945,17 +7290,25 @@ export default function App() {
   useEffect(() => {
     const routeCourseTitle = isEnrollmentOpen ? enrollmentCourseTitle : selectedCourseTitle;
     const routeCourseDetail = courseDetailsByTitle[routeCourseTitle];
+    const publicPageSeo = publicPageSeoDetails[active];
     const pageTitle = isEnrollmentOpen
       ? `Enroll - ${routeCourseTitle} | Ye Htet Digital Edu`
       : active === 'Course Detail' && routeCourseDetail
       ? `${routeCourseTitle} | Ye Htet Digital Edu`
-      : `${active} | Ye Htet Digital Edu`;
-    const description = routeCourseDetail?.description || 'Study digital marketing, media planning, and buying lessons with Ye Htet Digital Edu.';
+      : publicPageSeo?.title || `${active} | Ye Htet Digital Edu`;
+    const description = active === 'Course Detail' || isEnrollmentOpen
+      ? routeCourseDetail?.description || 'Study digital marketing, media planning, and buying lessons with Ye Htet Digital Edu.'
+      : publicPageSeo?.description || 'Study digital marketing, media planning, and buying lessons with Ye Htet Digital Edu.';
+    const currentPath = buildCurrentPath(active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle);
+    const canonicalUrl = `https://www.yehtetedu.com${currentPath}`;
     document.title = pageTitle;
     document.querySelector('meta[name="description"]')?.setAttribute('content', description);
     document.querySelector('meta[property="og:title"]')?.setAttribute('content', pageTitle);
     document.querySelector('meta[property="og:description"]')?.setAttribute('content', description);
-    document.querySelector('meta[property="og:url"]')?.setAttribute('content', `https://www.yehtetedu.com${buildCurrentPath(active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle)}`);
+    document.querySelector('meta[property="og:url"]')?.setAttribute('content', canonicalUrl);
+    document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', pageTitle);
+    document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
   }, [active, enrollmentCourseTitle, isEnrollmentOpen, selectedCourseTitle]);
 
   useEffect(() => {
@@ -7218,6 +7571,8 @@ export default function App() {
     <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout} onEnroll={() => openEnrollment()}>
       {active === 'Home' && <HomePage go={go} onSelectCourse={setSelectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Courses' && <CoursesPage go={go} onSelectCourse={setSelectedCourseTitle} onEnroll={openEnrollment} />}
+      {active === 'Teaching Method' && <TeachingMethodPage go={go} onEnroll={openEnrollment} />}
+      {active === 'Growth Resources' && <GrowthResourcesPage go={go} onEnroll={openEnrollment} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPayments} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
