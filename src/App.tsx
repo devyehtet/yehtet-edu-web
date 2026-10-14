@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   ArrowLeft,
+  AlertCircle,
   BarChart3,
   BookOpen,
   CalendarClock,
@@ -4649,6 +4650,7 @@ function AdminPanelPage({
   lessonComments: LessonComment[];
 } & CommentMutationHandlers) {
   const adminMenu = ['Dashboard', 'Students', 'Payments', 'Courses', 'Modules', 'Lessons', 'Quizzes', 'Assignments', 'Meetings', 'Reports', 'Settings'];
+  const adminMenuIcons: Record<string, IconType> = { Dashboard: LayoutDashboard, Students: Users, Payments: CreditCard, Courses: BookOpen, Modules: ListFilter, Lessons: PlayCircle, Quizzes: ClipboardCheck, Assignments: GraduationCap, Meetings: Video, Reports: BarChart3, Settings };
   const [adminActive, setAdminActive] = useState('Dashboard');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
@@ -4879,6 +4881,11 @@ function AdminPanelPage({
     go('Live Meeting');
   };
   const openDashboardArea = (cardTitle: string) => {
+    if (adminMenu.includes(cardTitle)) {
+      setAdminActive(cardTitle);
+      setActiveAction(null);
+      return;
+    }
     if (cardTitle.includes('Student')) {
       setAdminActive('Students');
       return;
@@ -4900,38 +4907,46 @@ function AdminPanelPage({
 
   return (
     <div className={ui.page}>
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-8">
-        <aside className="self-start rounded-[1.75rem] border border-slate-200 bg-white/90 p-3 shadow-sm shadow-slate-200/70 xl:sticky xl:top-28">
-          <div className="mb-4 flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
+      <div className="grid gap-6 xl:grid-cols-[200px_minmax(0,1fr)] xl:gap-7">
+        <aside aria-label="Admin navigation" className="min-w-0 self-start rounded-lg border border-white/10 bg-[#09121b] p-2 xl:sticky xl:top-28">
+          <div className="mb-3 hidden items-center gap-3 border-b border-white/10 p-3 pb-5 xl:flex">
             <LogoMark size="sm" />
             <div>
-              <p className="text-sm font-black text-slate-950">Admin Workspace</p>
-              <p className="text-xs text-slate-500">Students · Lessons · Payments</p>
+              <p className="text-sm font-bold text-white">Administration</p>
+              <p className="mt-1 text-xs text-slate-400">Ye Htet Digital Edu</p>
             </div>
           </div>
-          {adminMenu.map((item) => (
+          <nav className="flex gap-1 overflow-x-auto xl:grid" aria-label="Admin sections">
+          {adminMenu.map((item) => {
+            const Icon = adminMenuIcons[item];
+            return (
             <button
               key={item}
               onClick={() => { setAdminActive(item); setActiveAction(null); setSavedMessage(''); if (item === 'Students') setSelectedStudentId(students[0]?.id || defaultStudents[0].id); }}
               className={cx(
-                'flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition',
-                adminActive === item ? 'bg-emerald-300 text-slate-950 shadow-sm shadow-emerald-900/10' : 'text-slate-600 hover:bg-slate-50 hover:text-teal-700',
+                'flex shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold transition xl:w-full',
+                adminActive === item ? 'bg-emerald-300/15 text-emerald-200 ring-1 ring-inset ring-emerald-300/25' : 'text-slate-400 hover:bg-white/5 hover:text-white',
               )}
+              aria-current={adminActive === item ? 'page' : undefined}
             >
-              {item === 'Dashboard' ? (
-                <LayoutDashboard className="h-4 w-4" />
-              ) : item === 'Settings' ? (
-                <Settings className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4 opacity-60" />
-              )}
+              <Icon className="h-4 w-4 shrink-0" />
               {item}
             </button>
-          ))}
+          ); })}
+          </nav>
         </aside>
 
         <div className="min-w-0 space-y-10">
-          <PageHeader
+          {adminActive === 'Dashboard' ? (
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+              <div>
+                <p className="text-xs font-semibold text-emerald-200">Administration</p>
+                <h1 className="mt-1 text-2xl font-bold text-white">Dashboard</h1>
+                <p className="mt-2 text-sm text-slate-300">Students, learning progress, and tuition at a glance.</p>
+              </div>
+              <button className="admin-control admin-control-primary" onClick={() => { setAdminActive('Students'); openAction('Add Student'); }}><Plus className="h-4 w-4" /> Add student</button>
+            </div>
+          ) : <PageHeader
             eyebrow={`${adminActive}`}
             title={current.title}
             description={current.description}
@@ -4951,7 +4966,7 @@ function AdminPanelPage({
                 </button>
               )
             }
-          />
+          />}
 
           {savedMessage && (
             <div className="rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm font-bold text-teal-700">
@@ -5022,15 +5037,15 @@ function AdminPanelPage({
             />
           ) : adminActive === 'Dashboard' ? (
             <AdminDashboardOverview
-              stats={adminOverviewStats}
-              cards={current.cards}
               students={students}
               payments={tuitionPayments}
               lessons={lessons}
               lessonComments={lessonComments}
+              studentProgressById={studentProgressById}
+              meetings={meetings}
               onOpenCard={openDashboardArea}
-              onCreateStudent={() => openAction('Add Student')}
-              onStartInstantMeeting={startInstantMeeting}
+              onSelectStudent={(id) => { setSelectedStudentId(id); setAdminActive('Students'); setActiveAction(null); }}
+              onSelectLesson={(id) => { setSelectedLessonId(id); setAdminActive('Lessons'); setActiveAction(null); }}
             />
           ) : adminActive === 'Meetings' ? (
             <div className="space-y-6">
@@ -5164,185 +5179,151 @@ function AdminPanelPage({
 }
 
 function AdminDashboardOverview({
-  stats,
-  cards,
-  students,
-  payments,
-  lessons,
-  lessonComments,
-  onOpenCard,
-  onCreateStudent,
-  onStartInstantMeeting,
+  students, payments, lessons, lessonComments, studentProgressById, meetings,
+  onOpenCard, onSelectStudent, onSelectLesson,
 }: {
-  stats: Array<{ label: string; value: string; icon: IconType }>;
-  cards: Array<{ title: string; items: string[] }>;
   students: Student[];
   payments: TuitionPaymentRecord[];
   lessons: LessonRecord[];
   lessonComments: LessonComment[];
-  onOpenCard: (cardTitle: string) => void;
-  onCreateStudent: () => void;
-  onStartInstantMeeting: () => void;
+  studentProgressById: StudentProgressById;
+  meetings: LiveClassMeeting[];
+  onOpenCard: (section: string) => void;
+  onSelectStudent: (id: string) => void;
+  onSelectLesson: (id: string) => void;
 }) {
-  const totalBalance = payments.reduce((total, payment) => total + getTuitionBalance(payment), 0);
-  const partialPayments = payments.filter((payment) => getTuitionPaymentStatus(payment) === 'Partial').length;
-  const recentStudents = students.slice(0, 4);
-  const recentComments = lessonComments.slice(0, 3);
-  const statTones = ['from-teal-50 to-emerald-50', 'from-sky-50 to-cyan-50', 'from-amber-50 to-orange-50', 'from-violet-50 to-fuchsia-50'];
+  const [courseFilter, setCourseFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [studentView, setStudentView] = useState('recent');
+  const directoryRef = useRef<HTMLElement>(null);
+  const courseTitles = Array.from(new Set([...courseCards.map((course) => course.title), ...students.flatMap(getStudentCourses)]));
+  const scopedStudents = students.filter((student) => !courseFilter || getStudentCourses(student).includes(courseFilter));
+  const scopedPayments = payments.filter((payment) => !courseFilter || payment.course === courseFilter);
+  const scopedLessons = lessons.filter((lesson) => !courseFilter || lesson.courseTitle === courseFilter);
+  const lessonIds = new Set(scopedLessons.map((lesson) => lesson.id));
+  const comments = lessonComments.filter((comment) => lessonIds.has(comment.lessonId)).sort((a, b) => b.createdAt - a.createdAt);
+  const progressFor = (student: Student) => {
+    const titles = courseFilter ? [courseFilter] : getStudentCourses(student);
+    return getCourseProgressPercent(getStudentProgress(student.id, studentProgressById, lessons), lessons.filter((lesson) => titles.includes(lesson.courseTitle)));
+  };
+  const averageProgress = scopedStudents.length ? Math.round(scopedStudents.reduce((total, student) => total + progressFor(student), 0) / scopedStudents.length) : 0;
+  const activeCount = scopedStudents.filter((student) => student.status === 'Active').length;
+  const balance = scopedPayments.reduce((total, payment) => total + getTuitionBalance(payment), 0);
+  const totalFees = scopedPayments.reduce((total, payment) => total + payment.tuitionFee, 0);
+  const paid = scopedPayments.reduce((total, payment) => total + payment.paidAmount, 0);
+  const collectionRate = totalFees > 0 ? Math.min(100, Math.round((paid / totalFees) * 100)) : 0;
+  const missingFees = scopedStudents.filter((student) => {
+    const courses = courseFilter ? [courseFilter] : getStudentCourses(student);
+    return courses.some((course) => getCourseEnrollmentFee(course) > 0 && !payments.some((payment) => payment.course === course && (payment.studentId === student.id || payment.studentEmail.toLowerCase() === student.email.toLowerCase())));
+  });
+  const pending = scopedStudents.filter((student) => student.status === 'Pending');
+  const outstanding = scopedPayments.filter((payment) => getTuitionBalance(payment) > 0).sort((a, b) => getTuitionBalance(b) - getTuitionBalance(a));
+  const visibleStudents = [...scopedStudents]
+    .filter((student) => studentView !== 'pending' || student.status === 'Pending')
+    .filter((student) => studentView !== 'missing' || missingFees.includes(student))
+    .filter((student) => `${student.name} ${student.email} ${student.phone || ''}`.toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => (Date.parse(b.joined) || 0) - (Date.parse(a.joined) || 0));
+  const metrics: Array<{ label: string; value: string; detail: string; icon: IconType; tone: string }> = [
+    { label: 'Students', value: String(scopedStudents.length), detail: `${activeCount} active · ${pending.length} pending`, icon: Users, tone: 'text-emerald-200' },
+    { label: 'Collected tuition', value: new Intl.NumberFormat('en-US').format(paid), detail: 'MMK · recorded payments', icon: CreditCard, tone: 'text-sky-200' },
+    { label: 'Outstanding balance', value: new Intl.NumberFormat('en-US').format(balance), detail: `MMK · ${outstanding.length} course records`, icon: AlertCircle, tone: 'text-amber-200' },
+    { label: 'Learning progress', value: `${averageProgress}%`, detail: 'Average across enrolled lessons', icon: BarChart3, tone: 'text-violet-200' },
+  ];
+  const exportStudents = () => {
+    const rows = [['Name', 'Email', 'Phone', 'Courses', 'Status', 'Joined', 'Progress (%)'], ...visibleStudents.map((student) => [student.name, student.email, student.phone || '', getStudentCourses(student).join(' | '), student.status, student.joined, String(progressFor(student))])];
+    const csv = rows.map((row) => row.map((value) => {
+      const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+      return '"' + safe.replace(/"/g, '""') + '"';
+    }).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'students-overview.csv';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-5 2xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/70">
-          <div className="grid gap-6 p-6 lg:grid-cols-[1fr_220px] lg:p-8">
-            <div>
-              <p className={ui.eyebrow}>Today overview</p>
-              <h2 className="mt-3 max-w-xl text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl">
-                Operations cockpit.
-              </h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
-                Fast access to students, fees, lesson updates, and live class tools.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button onClick={onCreateStudent} className={ui.btnPrimary}>
-                  <Plus className="h-4 w-4" /> Add student
-                </button>
-                <button onClick={onStartInstantMeeting} className={ui.btnGhost}>
-                  <Radio className="h-4 w-4" /> Live class
-                </button>
-              </div>
-            </div>
+    <div className="admin-overview space-y-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs text-slate-400">{new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeZone: 'Asia/Bangkok' }).format(new Date())}</span>
+        <label className="flex min-w-0 items-center gap-2 text-sm text-slate-300">
+          <ListFilter className="h-4 w-4 shrink-0" /><span className="sr-only">Filter dashboard by course</span>
+          <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="max-w-[min(100%,320px)] rounded-md border border-white/15 px-3 py-2 text-sm">
+            <option value="">All courses</option>{courseTitles.map((title) => <option key={title} value={title}>{title}</option>)}
+          </select>
+        </label>
+      </div>
 
-            <div className="overflow-hidden rounded-3xl bg-slate-50 ring-1 ring-slate-200">
-              <div className="lms-visual-dark relative h-28 bg-slate-950">
-                <img src={adminOperationsImageUrl} alt="Admin analytics dashboard preview" className="h-full w-full object-cover" loading="lazy" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-                <div className="absolute inset-x-4 bottom-3 flex items-center justify-between">
-                  <p className="text-sm font-bold text-white">Operations</p>
-                  <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[11px] font-black text-slate-950">SYNC</span>
-                </div>
-              </div>
-              <div className="space-y-4 p-4">
-                <MiniBar label="Lessons" value={lessons.length ? Math.min(100, Math.round((56 / lessons.length) * 100)) : 0} />
-                <MiniBar label="Students" value={Math.min(100, students.length * 2)} />
-                <MiniBar label="Comments" value={Math.min(100, lessonComments.length * 8)} />
-              </div>
-            </div>
+      <section aria-label="Overview metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map(({ label, value, detail, icon: Icon, tone }) => (
+          <div key={label} className="admin-metric">
+            <div className="flex items-center justify-between gap-3"><p className="text-xs font-medium text-slate-300">{label}</p><Icon className={cx('h-4 w-4 shrink-0', tone)} /></div>
+            <p className={cx('mt-4 break-words text-2xl font-bold tabular-nums', tone)}>{value}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
           </div>
-          <div className="grid border-t border-slate-200 sm:grid-cols-3">
-            <div className="p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Fee balance</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-950">{formatMmk(totalBalance)}</p>
-            </div>
-            <div className="border-t border-slate-200 p-5 sm:border-l sm:border-t-0">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Partial payments</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-950">{partialPayments}</p>
-            </div>
-            <div className="border-t border-slate-200 p-5 sm:border-l sm:border-t-0">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Lesson comments</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-950">{lessonComments.length}</p>
-            </div>
+        ))}
+      </section>
+
+      <section aria-label="Administrative actions" className="flex flex-wrap gap-2 border-y border-white/10 py-4">
+        {[{ title: 'Payments', label: 'Review payments', icon: CreditCard }, { title: 'Lessons', label: 'Manage lessons', icon: PlayCircle }, { title: 'Meetings', label: 'Live classes', icon: CalendarDays }, { title: 'Reports', label: 'Student reports', icon: BarChart3 }].map(({title, label, icon: Icon}) => (
+          <button key={title} onClick={() => onOpenCard(title)} className="admin-control"><Icon className="h-4 w-4" />{label}<ChevronRight className="h-3.5 w-3.5 text-slate-500" /></button>
+        ))}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-base font-bold text-white">Tuition collection</h2><span className="text-xs text-slate-400">{scopedPayments.length} records</span></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs text-slate-400">Collected / total fees</p><p className="mt-2 text-sm font-semibold text-white">{formatMmk(paid)} <span className="font-normal text-slate-400">/ {formatMmk(totalFees)}</span></p></div><span className="text-xl font-bold text-sky-200">{collectionRate}%</span></div>
+          <div role="progressbar" aria-label="Tuition collected" aria-valuenow={collectionRate} aria-valuemin={0} aria-valuemax={100} className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-sky-300" style={{ width: `${collectionRate}%` }} /></div>
+          <div className="mt-5 divide-y divide-white/10">
+            {courseTitles.filter((title) => !courseFilter || title === courseFilter).map((title) => {
+              const records = scopedPayments.filter((payment) => payment.course === title);
+              const received = records.reduce((total, payment) => total + payment.paidAmount, 0);
+              return <div key={title} className="flex flex-wrap items-center justify-between gap-2 py-3"><p className="max-w-[25rem] text-xs leading-5 text-slate-300">{title}</p><span className="text-xs font-semibold tabular-nums text-sky-200">{records.length ? formatMmk(received) : 'No fee records'}</span></div>;
+            })}
           </div>
         </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div key={stat.label} className={cx('rounded-[1.5rem] border border-slate-200 bg-gradient-to-br p-5 shadow-sm shadow-slate-200/70', statTones[index % statTones.length])}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-teal-700 shadow-sm shadow-slate-200">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <p className="text-2xl font-extrabold tracking-tight text-slate-950">{stat.value}</p>
-                </div>
-                <p className="mt-4 text-sm font-bold text-slate-800">{stat.label}</p>
-              </div>
-            );
-          })}
+        <div className="min-w-0 border-t border-white/10 pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+          <h2 className="text-base font-bold text-white">Needs attention</h2>
+          <div className="mt-3 divide-y divide-white/10">
+            {[{ label: 'Pending accounts', count: pending.length, target: 'Students' }, { label: 'Outstanding course balances', count: outstanding.length, target: 'Payments' }, { label: 'Students missing fee records', count: missingFees.length, target: 'Students' }].map((item) => <button key={item.label} onClick={() => { if (item.target === 'Payments') { onOpenCard('Payments'); } else { setStudentView(item.label === 'Pending accounts' ? 'pending' : 'missing'); setSearch(''); directoryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm text-slate-300 hover:text-white"><span>{item.label}</span><span className={cx('min-w-7 rounded px-2 py-1 text-center text-xs font-bold', item.count ? 'bg-amber-300/10 text-amber-200' : 'bg-white/5 text-slate-400')}>{item.count}</span></button>)}
+          </div>
+          {outstanding[0] && <div className="mt-4 flex items-start justify-between gap-3 border-l-2 border-amber-300 pl-3"><div className="min-w-0"><p className="text-xs text-slate-400">Largest outstanding balance</p><p className="mt-1 break-words text-sm font-medium text-white">{outstanding[0].studentName}</p><p className="mt-1 text-xs font-semibold text-amber-200">{formatMmk(getTuitionBalance(outstanding[0]))}</p></div><button className="admin-icon-button" title="Open payment ledger" aria-label="Open payment ledger" onClick={() => onOpenCard('Payments')}><ArrowRight className="h-4 w-4" /></button></div>}
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <div className="grid gap-4 md:grid-cols-2">
-          {cards.map((card) => (
-            <button
-              key={card.title}
-              type="button"
-              onClick={() => onOpenCard(card.title)}
-              className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white text-left shadow-sm shadow-slate-200/60 transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="h-2 bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300" />
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-black text-slate-950">{card.title}</h3>
-                  <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-700" />
-                </div>
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  {card.items.slice(0, 4).map((item) => (
-                    <span key={item} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600 ring-1 ring-slate-200">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </button>
-          ))}
+      <section ref={directoryRef} className="scroll-mt-28 border-t border-white/10 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-white">Student directory <span className="ml-2 text-xs font-normal text-slate-400">{visibleStudents.length}</span></h2>
+          <button onClick={exportStudents} disabled={!visibleStudents.length} className="admin-control"><Download className="h-4 w-4" /> Export CSV</button>
         </div>
-
-        <aside className="space-y-4">
-          <div className={ui.cardSubtle}>
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-base font-black text-slate-950">Recent students</h3>
-              <Users className="h-5 w-5 text-teal-700" />
-            </div>
-            <div className="mt-4 space-y-3">
-              {recentStudents.map((student) => (
-                <div key={student.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
-                  <div className="grid h-9 w-9 place-items-center rounded-full bg-white text-sm font-black text-teal-700 ring-1 ring-slate-200">
-                    {student.name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-950">{student.name}</p>
-                    <p className="truncate text-xs text-slate-500">{student.email}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="my-4 flex flex-wrap items-center gap-3">
+          <div role="group" aria-label="Student status" className="flex gap-1 rounded-md bg-white/5 p-1">
+            {[{value:'recent',label:'All students'}, {value:'pending',label:'Pending'}, {value:'missing',label:'Missing fees'}].map((view) => <button key={view.value} aria-pressed={studentView === view.value} onClick={() => setStudentView(view.value)} className={cx('rounded px-3 py-1.5 text-xs font-semibold', studentView === view.value ? 'bg-white/10 text-white' : 'text-slate-400')}>{view.label}</button>)}
           </div>
-
-          <div className={ui.cardSubtle}>
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-base font-black text-slate-950">Latest questions</h3>
-              <MessageCircle className="h-5 w-5 text-teal-700" />
-            </div>
-            <div className="mt-4 space-y-3">
-              {recentComments.length > 0 ? recentComments.map((comment) => (
-                <div key={comment.id} className="rounded-2xl bg-teal-50 p-3 ring-1 ring-teal-100">
-                  <p className="text-xs font-bold text-teal-800">{comment.studentName}</p>
-                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-700">{comment.text}</p>
-                </div>
-              )) : (
-                <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-500 ring-1 ring-slate-200">No student comments yet.</p>
-              )}
-            </div>
-          </div>
-        </aside>
+          <label className="relative min-w-0 flex-1 sm:max-w-xs"><span className="sr-only">Search students</span><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, email, or phone" className="w-full rounded-md border border-white/15 py-2.5 pl-9 pr-3 text-sm" /></label>
+        </div>
+        <div className="overflow-x-auto rounded-lg border border-white/10">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-white/5 text-xs text-slate-400"><tr><th className="px-4 py-3 font-medium">Student</th><th className="px-4 py-3 font-medium">Course</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Progress</th><th className="px-4 py-3"><span className="sr-only">Open student</span></th></tr></thead>
+            <tbody className="divide-y divide-white/10">{visibleStudents.slice(0,6).map((student) => <tr key={student.id} className="hover:bg-white/[0.025]"><td className="max-w-[230px] px-4 py-3"><button onClick={() => onSelectStudent(student.id)} className="text-left font-semibold text-white hover:text-emerald-200">{student.name}</button><p className="mt-1 truncate text-xs text-slate-400" title={student.email}>{student.email}</p></td><td className="max-w-[200px] px-4 py-3 text-xs leading-5 text-slate-300">{getStudentCourses(student).join(' · ')}</td><td className="px-4 py-3"><span className={cx('rounded px-2 py-1 text-xs', student.status === 'Active' ? 'bg-emerald-300/10 text-emerald-200' : 'bg-amber-300/10 text-amber-200')}>{student.status}</span></td><td className="px-4 py-3 text-xs tabular-nums text-slate-300">{progressFor(student)}%</td><td className="px-3 py-3"><button onClick={() => onSelectStudent(student.id)} className="admin-icon-button" title={`View ${student.name}`} aria-label={`View ${student.name}`}><ChevronRight className="h-4 w-4" /></button></td></tr>)}</tbody>
+          </table>
+          {!visibleStudents.length && <div className="p-8 text-center"><Users className="mx-auto h-6 w-6 text-slate-500" /><p className="mt-3 text-sm text-slate-300">No students found.</p><button className="mt-3 text-xs font-semibold text-emerald-200" onClick={() => { setSearch(''); setStudentView('recent'); setCourseFilter(''); }}>Reset filters</button></div>}
+        </div>
+        <div className="mt-3 flex items-center justify-between text-xs text-slate-400"><span>Showing {Math.min(6,visibleStudents.length)} of {visibleStudents.length} · newest first</span><button onClick={() => onOpenCard('Students')} className="font-semibold text-emerald-200">View all students <span aria-hidden="true">→</span></button></div>
       </section>
-    </div>
-  );
-}
 
-function MiniBar({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between">
-        <p className="text-xs font-bold text-slate-500">{label}</p>
-        <p className="text-xs font-black text-slate-900">{value}%</p>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
-        <div className="h-full rounded-full bg-teal-400" style={{ width: `${value}%` }} />
-      </div>
+      <section className="grid gap-6 border-t border-white/10 pt-6 lg:grid-cols-2">
+        <div><div className="mb-4 flex items-center gap-2"><MessageCircle className="h-4 w-4 text-violet-200" /><h2 className="text-base font-bold text-white">Latest discussions</h2></div>
+          <div className="divide-y divide-white/10">{comments.slice(0,3).map((comment) => <button key={comment.id} onClick={() => onSelectLesson(comment.lessonId)} className="block w-full py-3 text-left hover:bg-white/[0.025]"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">{comment.studentName}</span><span className="text-[11px] text-slate-400">{formatCommentTime(comment.createdAt)}</span></div><p className="mt-2 line-clamp-2 break-words text-sm leading-6 text-slate-300">{comment.text}</p><p className="mt-1 truncate text-xs text-emerald-200">{scopedLessons.find((lesson) => lesson.id === comment.lessonId)?.title}</p></button>)}</div>
+          {!comments.length && <p className="py-4 text-sm text-slate-400">No discussions for this course yet.</p>}
+        </div>
+        <div><div className="mb-4 flex items-center justify-between gap-2"><h2 className="text-base font-bold text-white">Class schedule</h2><button className="admin-icon-button" title="Manage class schedule" aria-label="Manage class schedule" onClick={() => onOpenCard('Meetings')}><CalendarDays className="h-4 w-4" /></button></div>
+          <div className="divide-y divide-white/10">{meetings.filter((meeting) => !meeting.isInstant).slice(0,3).map((meeting) => <button key={meeting.id} onClick={() => onOpenCard('Meetings')} className="flex w-full items-start gap-3 py-3 text-left"><CalendarClock className="mt-1 h-5 w-5 shrink-0 text-sky-200" /><div><p className="text-sm font-semibold text-white">{meeting.title}</p><p className="mt-1 text-xs text-slate-300">{meeting.day} · {meeting.startTime} – {meeting.endTime}</p><p className="mt-1 text-xs text-slate-400">{meeting.host}</p></div></button>)}</div>
+          {!meetings.some((meeting) => !meeting.isInstant) && <p className="py-4 text-sm text-slate-400">No scheduled classes.</p>}
+        </div>
+      </section>
     </div>
   );
 }

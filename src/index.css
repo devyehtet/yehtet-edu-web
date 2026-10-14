@@ -18,6 +18,32 @@ button, input, select, textarea {
   font: inherit;
 }
 
+.admin-control,
+.admin-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  border: 1px solid #33414e;
+  border-radius: 6px;
+  background: #101c27;
+  color: #e2e8f0;
+  padding: 0.5rem 0.875rem;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+}
+
+.admin-icon-button { width: 40px; padding: 0; flex-shrink: 0; }
+.admin-control:hover, .admin-icon-button:hover { background: #1c2c39; border-color: #64748b; }
+.admin-control-primary { background: #6ee7b7; color: #06221c; border-color: #6ee7b7; }
+.admin-control-primary:hover { background: #a7f3d0; border-color: #a7f3d0; }
+.admin-control:disabled { opacity: 0.45; cursor: not-allowed; }
+.admin-control:focus-visible, .admin-icon-button:focus-visible, .admin-overview button:focus-visible, .admin-overview input:focus-visible, .admin-overview select:focus-visible { outline: 2px solid #6ee7b7; outline-offset: 3px; }
+.admin-metric { min-width: 0; padding: 1.125rem; border: 1px solid #293845; border-radius: 8px; background: #0b1721; }
+
 .lms-btn {
   position: relative;
   isolation: isolate;
