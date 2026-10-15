@@ -21,4 +21,6 @@ Explicit funnel parameters contain only public course ID, name, advertised price
 
 The new Meta route tracking skips login and authenticated workspaces. Existing GTM page-view behavior is unchanged. New funnel events and Meta initialization are restricted to `yehtetedu.com` and `www.yehtetedu.com`; localhost and Vercel previews do not generate them.
 
+Meta SDK automatic history tracking is disabled with `fbq.disablePushState` before the SDK loads. The app emits its own deduplicated public page views instead.
+
 Run `node --test tests/marketingTracking.test.mjs` and `npm run build`. For live verification use GA4 Realtime/DebugView and Meta Events Manager Test Events. Do not submit a fake live enrollment merely to test tracking; mock the Formspree response in an isolated test instead. Ad blockers, browser privacy controls and reporting delays can prevent or delay delivery.

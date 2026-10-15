@@ -9,6 +9,7 @@ type Pixel = ((...args: unknown[]) => void) & {
   push?: Pixel;
   loaded: boolean;
   version: string;
+  disablePushState?: boolean;
 };
 
 declare global {
@@ -33,6 +34,8 @@ function getPixel() {
     else pixel.queue.push(args);
   }, { queue: [] as unknown[][], loaded: true, version: '2.0' });
   pixel.push = pixel;
+  // The app owns SPA page views, including exclusion of authenticated routes.
+  pixel.disablePushState = true;
   window.fbq = pixel;
   window._fbq = pixel;
   // Disable automatic button/form detection and automatic matching of form data.
