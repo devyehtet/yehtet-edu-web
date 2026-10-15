@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { trackCourseEvent, trackPublicPage } from './marketingTracking';
 import {
   ArrowRight,
   ArrowLeft,
@@ -6747,6 +6748,7 @@ function EnrollmentFlowModal({
 
   const submitEnrollment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (status === 'submitting' || status === 'success') return;
     if (step < 3) {
       if (!canContinue) {
         setStatus('error');
@@ -6841,6 +6843,7 @@ function EnrollmentFlowModal({
 
       if (!response.ok) throw new Error('Formspree did not accept the enrollment request.');
       setStatus('success');
+      trackCourseEvent('generate_lead', { id: getCourseRouteSlug(values.course), name: values.course, fee: selectedCourseFee });
     } catch {
       setStatus('error');
       setErrorMessage('Enrollment request could not be sent. Please try again or contact the admin directly.');
@@ -7347,6 +7350,14 @@ export default function App() {
     document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
   }, [active, enrollmentCourseTitle, isEnrollmentOpen, selectedCourseTitle]);
+
+  useEffect(() => {
+    const path = buildCurrentPath(active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle);
+    const title = isEnrollmentOpen ? enrollmentCourseTitle : selectedCourseTitle;
+    trackPublicPage(isLoggedIn ? '/private' : path, {
+      id: getCourseRouteSlug(title), name: title, fee: getCourseEnrollmentFee(title),
+    });
+  }, [active, enrollmentCourseTitle, isEnrollmentOpen, isLoggedIn, selectedCourseTitle]);
 
   useEffect(() => {
     window.localStorage.setItem(meetingStorageKey, JSON.stringify(liveMeetings));
