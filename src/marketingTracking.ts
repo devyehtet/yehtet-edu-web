@@ -1,6 +1,6 @@
 // Public course funnel only. Never pass enrollment form values to this module.
 export const googleMeasurementId = 'G-ZGY0ME7M3H';
-export const metaPixelId = '1464719308887709';
+export const metaPixelId = '1429780235198509';
 
 export type TrackingCourse = { id: string; name: string; fee: number };
 type Pixel = ((...args: unknown[]) => void) & {

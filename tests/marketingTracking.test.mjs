@@ -30,6 +30,8 @@ test('production public routes initialize once and deduplicate repeated React ef
   tracker.trackPublicPage(`/courses/${course.id}`, course);
   tracker.trackPublicPage(`/courses/${course.id}`, course);
   assert.equal(tracker.scripts.length, 1);
+  assert.equal(tracker.metaPixelId, '1429780235198509');
+  assert.equal(tracker.window.fbq.queue.find((command) => command[0] === 'init')[1], tracker.metaPixelId);
   assert.deepEqual(tracker.pixel().map((event) => event[2]), ['PageView', 'PageView', 'ViewContent']);
   assert.deepEqual(tracker.google().map((event) => event[1]), ['view_item']);
   assert.equal(tracker.google()[0][2].send_to, 'G-ZGY0ME7M3H');

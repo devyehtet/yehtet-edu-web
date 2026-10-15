@@ -2,7 +2,9 @@
 
 - Google Tag Manager: `GTM-PWD8TG8N` (existing container).
 - Google Analytics 4: `G-ZGY0ME7M3H` (existing Google Tag in GTM).
-- Meta Pixel: `1464719308887709`, dataset **Ye Htet - Digital EDU**, owned by **Ye Htet Aung - Digital**.
+- Meta Pixel: `1429780235198509`, dataset **Ye Htet Edu - Website**, owned by **Ye Htet Aung - Digital**.
+
+The old offline event set `1464719308887709` was not receiving website events and is no longer used by the site. The portfolio website's separate Pixel is unchanged.
 
 GTM remains responsible for Google initialization and its existing SPA page-view trigger. Do not install another Google base tag or add a second history page-view tag. Funnel events use the existing Google Tag command queue with an explicit `send_to`. Meta is loaded by `src/marketingTracking.ts`, not GTM; do not also add its base code to GTM.
 
