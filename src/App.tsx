@@ -69,6 +69,7 @@ type Student = {
   email: string;
   phone?: string;
   password?: string;
+  authProvider?: 'supabase';
   course: string;
   courses?: string[];
   progress: number;
@@ -1424,6 +1425,33 @@ function isSupabaseConfigured() {
   return Boolean(supabaseConfig.url && supabaseConfig.publishableKey);
 }
 
+async function signInSupabaseStudent(email: string, password: string): Promise<Student | null> {
+  if (!isSupabaseConfigured()) return null;
+  const response = await fetch(`${supabaseConfig.url}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: supabaseConfig.publishableKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (response.status === 400 || response.status === 401 || response.status === 422) return null;
+  if (!response.ok) throw new Error('Student sign-in is temporarily unavailable. Please try again.');
+  const data = await response.json();
+  const user = data.user;
+  // Enrollment is assigned by an administrator, never by editable user metadata.
+  const enrollment = user?.app_metadata;
+  if (!user?.id || user.email?.toLowerCase() !== email || enrollment?.lms_status !== 'Active') return null;
+  const courses = Array.isArray(enrollment.lms_courses)
+    ? enrollment.lms_courses.filter((title: unknown): title is string => typeof title === 'string' && Object.prototype.hasOwnProperty.call(courseDetailsByTitle, title))
+    : [];
+  if (!courses.length) return null;
+  return normalizeStoredStudent({
+    id: user.id, email, name: user.user_metadata?.name || email,
+    phone: user.user_metadata?.phone || '', authProvider: 'supabase',
+    course: courses[0], courses, status: 'Active',
+    joined: new Date(user.created_at).toLocaleDateString('en-US'),
+  }, 0);
+}
+
 function isFirebaseConfigured() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firestoreBaseUrl);
 }
@@ -2309,6 +2337,7 @@ function normalizeStoredStudent(student: Partial<Student>, index: number): Stude
     email: typeof student.email === 'string' ? student.email.toLowerCase() : '',
     phone: typeof student.phone === 'string' ? student.phone : '',
     password: typeof student.password === 'string' ? student.password : '',
+    authProvider: student.authProvider === 'supabase' ? 'supabase' : undefined,
     course,
     courses: courses.includes(course) ? courses : [course, ...courses],
     progress: typeof student.progress === 'number' ? student.progress : 0,
@@ -6514,16 +6543,26 @@ function Panel({ title, items, onAction }: { title: string; items: string[]; onA
 // Login
 // =====================================================================
 
-function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult }) {
+function LoginPage({ login }: { login: (request: LoginRequest) => Promise<LoginResult> }) {
   const [loginRole, setLoginRole] = useState<'student' | 'admin'>('student');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submitLogin = (event: React.FormEvent<HTMLFormElement>) => {
+  const submitLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const result = login({ role: loginRole, username, password });
-    setMessage(result.message || '');
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setMessage('');
+    try {
+      const result = await login({ role: loginRole, username, password });
+      setMessage(result.message || '');
+    } catch {
+      setMessage('Unable to connect. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -6547,6 +6586,7 @@ function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult })
               <button
                 key={item}
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => { setLoginRole(item); setMessage(''); }}
                 className={cx(
                   'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold capitalize transition',
@@ -6589,8 +6629,8 @@ function LoginPage({ login }: { login: (request: LoginRequest) => LoginResult })
             </div>
           )}
 
-          <button type="submit" className={cx(ui.btnPrimary, 'w-full')}>
-            Sign in <ArrowRight className="h-4 w-4" />
+          <button type="submit" disabled={isSubmitting} className={cx(ui.btnPrimary, 'w-full disabled:opacity-60')}>
+            {isSubmitting ? 'Signing in…' : 'Sign in'} <ArrowRight className="h-4 w-4" />
           </button>
 
           <p className="text-center text-xs leading-5 text-slate-500">
@@ -7485,7 +7525,7 @@ export default function App() {
     setSelectedCourseTitle(courseTitle);
   };
 
-  const login = ({ role: loginRole, username, password }: LoginRequest): LoginResult => {
+  const login = async ({ role: loginRole, username, password }: LoginRequest): Promise<LoginResult> => {
     const normalizedUsername = username.trim().toLowerCase();
     if (!normalizedUsername || !password) {
       return { ok: false, message: 'Please enter username and password.' };
@@ -7513,7 +7553,18 @@ export default function App() {
     }
 
     if (loginRole === 'student') {
-      const student = students.find((item) => item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
+      let student = students.find((item) => item.authProvider !== 'supabase' && item.email.toLowerCase() === normalizedUsername && item.password === password && item.status === 'Active');
+      if (!student && isSupabaseConfigured()) {
+        try {
+          student = await signInSupabaseStudent(normalizedUsername, password) || undefined;
+          if (student) {
+            const authenticatedStudent = student;
+            setStudents((prev) => [authenticatedStudent, ...prev.filter((item) => item.id !== authenticatedStudent.id && item.email.toLowerCase() !== normalizedUsername)]);
+          }
+        } catch {
+          return { ok: false, message: 'Unable to reach student sign-in. Please try again shortly.' };
+        }
+      }
       if (student) {
         clearLoginAttemptState(loginRole, normalizedUsername);
         const enrolledCourse = [...getStudentCourses(student)].reverse().find((courseTitle) => courseDetailsByTitle[courseTitle]) || defaultCourseTitle;
