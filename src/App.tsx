@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { trackCourseEvent, trackPublicPage } from './marketingTracking';
+import { readAuthenticatedPayment } from './authenticatedPayment';
 import {
   ArrowRight,
   ArrowLeft,
@@ -71,6 +72,7 @@ type Student = {
   phone?: string;
   password?: string;
   authProvider?: 'supabase';
+  tuitionPayment?: TuitionPaymentRecord;
   course: string;
   courses?: string[];
   progress: number;
@@ -1445,12 +1447,13 @@ async function signInSupabaseStudent(email: string, password: string): Promise<S
     ? enrollment.lms_courses.filter((title: unknown): title is string => typeof title === 'string' && Object.prototype.hasOwnProperty.call(courseDetailsByTitle, title))
     : [];
   if (!courses.length) return null;
-  return normalizeStoredStudent({
+  const student = normalizeStoredStudent({
     id: user.id, email, name: user.user_metadata?.name || email,
     phone: user.user_metadata?.phone || '', authProvider: 'supabase',
     course: courses[0], courses, status: 'Active',
     joined: new Date(user.created_at).toLocaleDateString('en-US'),
   }, 0);
+  return { ...student, tuitionPayment: readAuthenticatedPayment(enrollment.lms_payment, { ...student, courses }) };
 }
 
 function isFirebaseConfigured() {
@@ -2492,6 +2495,7 @@ function getTuitionPaymentStatus(payment: TuitionPaymentRecord) {
 }
 
 function getStudentTuitionPayment(student: Student, payments: TuitionPaymentRecord[]) {
+  if (student.authProvider === 'supabase') return student.tuitionPayment;
   const studentEmail = student.email.toLowerCase();
   return payments.find((payment) => (
     payment.studentId === student.id
@@ -3690,11 +3694,13 @@ function StudentDashboardPage({
   courseTitle,
   learningProgress,
   lessons,
+  payment,
 }: {
   go: (v: PageName) => void;
   courseTitle: string;
   learningProgress: LearningProgress;
   lessons: LessonRecord[];
+  payment?: TuitionPaymentRecord;
 }) {
   const currentCourse = courseCards.find((course) => course.title === courseTitle) || courseCards[0];
   const courseModules = getCourseModulesByTitle(currentCourse.title);
@@ -3721,6 +3727,24 @@ function StudentDashboardPage({
           </button>
         }
       />
+
+      {payment && payment.course === courseTitle && (
+        <section aria-label="Course payment" className="border-y border-emerald-300/20 py-5">
+          <dl className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+            {[
+              ['Payment status', getTuitionPaymentStatus(payment) === 'Paid' ? 'Paid in full' : getTuitionPaymentStatus(payment)],
+              ['Course fee', formatMmk(payment.tuitionFee)],
+              ['Paid', formatMmk(payment.paidAmount)],
+              ['Balance', formatMmk(getTuitionBalance(payment))],
+            ].map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-xs font-medium text-slate-400">{label}</dt>
+                <dd className="mt-2 break-words text-base font-semibold text-emerald-200">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {/* Hero progress + next lesson */}
       <section className="grid gap-4 md:grid-cols-3">
@@ -7364,7 +7388,7 @@ export default function App() {
   }, [liveMeetings]);
 
   useEffect(() => {
-    window.localStorage.setItem(studentStorageKey, JSON.stringify(students));
+    window.localStorage.setItem(studentStorageKey, JSON.stringify(students, (key, value) => key === 'tuitionPayment' ? undefined : value));
   }, [students]);
 
   useEffect(() => {
@@ -7635,7 +7659,7 @@ export default function App() {
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPayments} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
-      {active === 'Student Dashboard' && <StudentDashboardPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} lessons={selectedCourseLessons} />}
+      {active === 'Student Dashboard' && <StudentDashboardPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} lessons={selectedCourseLessons} payment={currentStudent ? getStudentTuitionPayment(currentStudent, tuitionPayments) : undefined} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={selectedCourseLessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Quiz' && <QuizPage go={go} />}
       {active === 'Assignments' && <AssignmentsPage go={go} />}
