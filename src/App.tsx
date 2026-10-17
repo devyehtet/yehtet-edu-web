@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { trackCourseEvent, trackPublicPage } from './marketingTracking';
 import { readAuthenticatedPayment } from './authenticatedPayment';
+import { getEnrollmentTransport, getPaymentSlipError, paymentSlipAccept, submitEnrollmentRequest } from './enrollmentSubmission';
 import {
   ArrowRight,
   ArrowLeft,
@@ -2085,7 +2086,11 @@ const answerEngineTopics: Array<{ question: string; answer: string }> = [
   },
 ];
 
-const enrollmentFormEndpoint = getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
+const enrollmentTransport = getEnrollmentTransport(
+  supabaseConfig.url,
+  getEnvSetting('VITE_ENROLLMENT_STORAGE'),
+  getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb',
+);
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
 const enrollmentPhoneCountries: EnrollmentPhoneCountry[] = [
   { key: 'Myanmar', label: 'Myanmar', dialCode: '+95', placeholder: '09 541 4499', minDigits: 7, maxDigits: 11 },
@@ -2107,9 +2112,6 @@ const enrollmentPaymentPlanOptions: EnrollmentChoiceOption[] = [
 ];
 const enrollmentPaymentSlipDefault = 'No slip file attached yet';
 const enrollmentPaymentSlipAttached = 'Slip attached in enrollment form';
-const enrollmentPaymentSlipMaxSize = 8 * 1024 * 1024;
-const enrollmentPaymentSlipAccept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
-const enrollmentPaymentSlipAcceptedTypes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 const enrollmentPaymentAccounts: EnrollmentPaymentAccount[] = [
   {
     key: 'Myanmar - KBZ Pay',
@@ -2476,12 +2478,6 @@ function formatEnrollmentPhone(phone: string, countryKey: string) {
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function isAllowedPaymentSlipFile(file: File) {
-  const hasAllowedType = enrollmentPaymentSlipAcceptedTypes.includes(file.type);
-  const hasAllowedExtension = /\.(png|jpe?g|webp|pdf)$/i.test(file.name);
-  return (hasAllowedType || hasAllowedExtension) && file.size <= enrollmentPaymentSlipMaxSize;
 }
 
 function getTuitionBalance(payment: TuitionPaymentRecord) {
@@ -5795,6 +5791,8 @@ function LessonMetaField({ label, value, mono = false }: { label: string; value:
 }
 
 function TuitionPaymentsAdmin({ students, payments }: { students: Student[]; payments: TuitionPaymentRecord[] }) {
+  const enrollmentProjectRef = supabaseConfig.url.match(/^https:\/\/([a-z0-9]+)\.supabase\.co$/)?.[1];
+  const enrollmentReviewBase = enrollmentProjectRef ? `https://supabase.com/dashboard/project/${enrollmentProjectRef}` : '';
   const rows = payments.map((payment) => {
     const student = students.find((item) => (
       item.id === payment.studentId
@@ -5808,6 +5806,23 @@ function TuitionPaymentsAdmin({ students, payments }: { students: Student[]; pay
 
   return (
     <div className="space-y-6">
+      {enrollmentReviewBase && (
+        <section className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+          <div>
+            <p className={ui.eyebrow}>Enrollment review</p>
+            <h2 className={cx(ui.h3, 'mt-2')}>Applications & payment slips</h2>
+            <p className="mt-2 text-sm text-slate-400">Supabase administrator access required.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <a href={`${enrollmentReviewBase}/editor`} target="_blank" rel="noopener noreferrer" className={ui.btnGhost}>
+              <Users className="h-4 w-4" /> Enrollment records <ExternalLink className="h-4 w-4" />
+            </a>
+            <a href={`${enrollmentReviewBase}/storage/files`} target="_blank" rel="noopener noreferrer" className={ui.btnGhost}>
+              <Lock className="h-4 w-4" /> Private slips <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+        </section>
+      )}
       <section className="grid gap-3 md:grid-cols-4">
         <ActivityMetric label="Payment records" value={`${payments.length}`} />
         <ActivityMetric label="Total tuition" value={formatMmk(totalTuition)} />
@@ -6682,6 +6697,9 @@ function EnrollmentFlowModal({
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [paymentSlipFile, setPaymentSlipFile] = useState<File | null>(null);
+  const submissionInFlight = useRef(false);
+  const enrollmentRequestId = useRef('');
+  const [enrollmentReceipt, setEnrollmentReceipt] = useState('');
   const [values, setValues] = useState<EnrollmentFormValues>({
     course: courseTitle || defaultCourseTitle,
     name: '',
@@ -6703,6 +6721,8 @@ function EnrollmentFlowModal({
     setStatus('idle');
     setErrorMessage('');
     setPaymentSlipFile(null);
+    enrollmentRequestId.current = crypto.randomUUID();
+    setEnrollmentReceipt('');
     setValues({
       course: courseTitle || defaultCourseTitle,
       name: '',
@@ -6740,6 +6760,7 @@ function EnrollmentFlowModal({
     : true;
 
   const updateValue = (field: keyof EnrollmentFormValues, value: string) => {
+    enrollmentRequestId.current = crypto.randomUUID();
     setStatus('idle');
     setErrorMessage('');
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -6747,6 +6768,7 @@ function EnrollmentFlowModal({
   };
 
   const updatePaymentSlipFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    enrollmentRequestId.current = crypto.randomUUID();
     const file = event.target.files?.[0] || null;
     setStatus('idle');
     setErrorMessage('');
@@ -6757,12 +6779,13 @@ function EnrollmentFlowModal({
       return;
     }
 
-    if (!isAllowedPaymentSlipFile(file)) {
+    const fileError = getPaymentSlipError(file);
+    if (fileError) {
       event.target.value = '';
       setPaymentSlipFile(null);
       setValues((prev) => ({ ...prev, paymentSlipStatus: enrollmentPaymentSlipDefault }));
       setStatus('error');
-      setErrorMessage('Please attach a PNG, JPG, WebP, or PDF payment slip under 8 MB.');
+      setErrorMessage(fileError);
       return;
     }
 
@@ -6772,7 +6795,7 @@ function EnrollmentFlowModal({
 
   const submitEnrollment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (status === 'submitting' || status === 'success') return;
+    if (submissionInFlight.current || status === 'submitting' || status === 'success') return;
     if (step < 3) {
       if (!canContinue) {
         setStatus('error');
@@ -6806,34 +6829,13 @@ function EnrollmentFlowModal({
       return;
     }
 
+    submissionInFlight.current = true;
     setStatus('submitting');
     setErrorMessage('');
 
     try {
       const formData = new FormData();
       const appendField = (key: string, value: string) => formData.append(key, value);
-      const message = [
-        `Course: ${values.course}`,
-        `Course fee: ${formatMmk(selectedCourseFee)}`,
-        `Name: ${values.name.trim()}`,
-        `Email: ${values.email.trim()}`,
-        `Phone: ${formattedPhone}`,
-        `Phone country: ${selectedPhoneCountry.label}`,
-        `Phone local number: ${values.phone.trim()}`,
-        `Preferred contact: ${values.contactPreference}`,
-        `Payment status: ${values.paymentStatus}`,
-        `Payment plan: ${values.paymentPlan}`,
-        `Payment account: ${selectedPaymentAccount.key}`,
-        `Payment bank: ${selectedPaymentAccount.bank}`,
-        `Payment account name: ${selectedPaymentAccount.name}`,
-        `Payment account number: ${selectedPaymentAccount.accountNumber}`,
-        `Payment slip: ${values.paymentSlipStatus}`,
-        paymentSlipFile ? `Payment slip file: ${paymentSlipFile.name} (${formatFileSize(paymentSlipFile.size)})` : 'Payment slip file: Not attached',
-        values.paymentReference.trim() ? `Payment reference: ${values.paymentReference.trim()}` : '',
-        values.note.trim() ? `Note: ${values.note.trim()}` : '',
-      ].filter(Boolean).join('\n');
-
-      appendField('_subject', `New enrollment request - ${values.course}`);
       appendField('name', values.name.trim());
       appendField('email', values.email.trim());
       appendField('phone', formattedPhone);
@@ -6854,23 +6856,21 @@ function EnrollmentFlowModal({
       appendField('payment_slip_file_size', paymentSlipFile ? formatFileSize(paymentSlipFile.size) : '');
       appendField('payment_reference', values.paymentReference.trim());
       appendField('note', values.note.trim());
-      appendField('message', message);
+      if (enrollmentTransport.provider === 'formspree') {
+        appendField('_subject', `New enrollment request - ${values.course}`);
+        appendField('message', `Course: ${values.course}\nName: ${values.name.trim()}\nPayment status: ${values.paymentStatus}\nNote: ${values.note.trim()}`);
+      }
       if (paymentSlipFile) formData.append('payment_slip', paymentSlipFile, paymentSlipFile.name);
 
-      const response = await fetch(enrollmentFormEndpoint, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Formspree did not accept the enrollment request.');
+      const receipt = await submitEnrollmentRequest(enrollmentTransport.endpoint, formData, enrollmentRequestId.current, enrollmentTransport.provider);
+      setEnrollmentReceipt(receipt);
       setStatus('success');
       trackCourseEvent('generate_lead', { id: getCourseRouteSlug(values.course), name: values.course, fee: selectedCourseFee });
-    } catch {
+    } catch (error) {
       setStatus('error');
-      setErrorMessage('Enrollment request could not be sent. Please try again or contact the admin directly.');
+      setErrorMessage(error instanceof Error ? error.message : 'Enrollment could not be confirmed. Please contact the admin before resubmitting.');
+    } finally {
+      submissionInFlight.current = false;
     }
   };
 
@@ -6889,7 +6889,7 @@ function EnrollmentFlowModal({
             <h2 className={cx(ui.h2, 'mt-2')}>Start your course application.</h2>
             <p className={cx(ui.bodySm, 'mt-2')}>Fill this once. The admin will contact you to confirm payment and student account access.</p>
           </div>
-          <button onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/[0.10] bg-white/[0.04] text-slate-300 transition hover:bg-white/[0.08] hover:text-white" aria-label="Close enrollment form">
+          <button onClick={onClose} disabled={status === 'submitting'} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/[0.10] bg-white/[0.04] text-slate-300 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-wait disabled:opacity-50" aria-label="Close enrollment form">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -6901,6 +6901,7 @@ function EnrollmentFlowModal({
             </div>
             <h3 className={cx(ui.h3, 'mt-5')}>Enrollment request sent.</h3>
             <p className={cx(ui.bodySm, 'mt-2')}>Thanks, {values.name.trim() || 'student'}. We received your request for {values.course}. The admin will review the payment level and attached payment slip, then contact you with account access next.</p>
+            {enrollmentReceipt && <p className="mt-4 break-all text-xs text-slate-300">Enrollment reference: {enrollmentReceipt}</p>}
             <div className="mt-6 flex flex-wrap gap-3">
               <button onClick={onClose} className={ui.btnPrimary}>Done</button>
               <button onClick={() => { setStatus('idle'); setStep(0); }} className={ui.btnGhost}>Submit another</button>
@@ -7158,7 +7159,8 @@ function EnrollmentFlowModal({
                         <input
                           type="file"
                           name="payment_slip"
-                          accept={enrollmentPaymentSlipAccept}
+                          accept={paymentSlipAccept}
+                          aria-label="Payment slip file"
                           onChange={updatePaymentSlipFile}
                           className="sr-only"
                         />
@@ -7223,13 +7225,13 @@ function EnrollmentFlowModal({
             )}
 
             {status === 'error' && errorMessage && (
-              <div className="rounded-xl border border-amber-300/30 bg-amber-300/5 px-4 py-3 text-sm font-medium text-amber-200">
+              <div role="alert" className="rounded-xl border border-amber-300/30 bg-amber-300/5 px-4 py-3 text-sm font-medium text-amber-200">
                 {errorMessage}
               </div>
             )}
 
             <div className="flex flex-wrap justify-between gap-3 border-t border-white/[0.08] pt-5">
-              <button type="button" onClick={() => (step === 0 ? onClose() : setStep((current) => current - 1))} className={ui.btnGhost}>
+              <button type="button" disabled={status === 'submitting'} onClick={() => (step === 0 ? onClose() : setStep((current) => current - 1))} className={cx(ui.btnGhost, status === 'submitting' && 'cursor-wait opacity-50')}>
                 {step === 0 ? 'Close' : 'Back'}
               </button>
               <button type="submit" disabled={status === 'submitting'} className={cx(ui.btnPrimary, status === 'submitting' && 'cursor-wait opacity-70')}>

@@ -1,0 +1,3 @@
+[functions.enroll]
+# Public intake only. The handler has no read/list/download routes.
+verify_jwt = false
