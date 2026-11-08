@@ -78,7 +78,7 @@ export function trackCourseEvent(event: 'view_item' | 'begin_checkout' | 'genera
 export function trackPublicPage(path: string, course?: TrackingCourse) {
   if (!isProductionSite()) return;
   const isPublic = ['/', '/courses', '/teaching-method', '/marketing-resources', '/learning-path'].includes(path)
-    || Boolean(course && (path === `/courses/${course.id}` || path === `/enroll/${course.id}`));
+    || Boolean(course && (path === `/courses/${course.id}` || path === `/enroll/${course.id}` || path === `/register/${course.id}`));
   if (!isPublic) {
     lastPublicPath = null;
     return;
@@ -88,5 +88,5 @@ export function trackPublicPage(path: string, course?: TrackingCourse) {
   try { getPixel()('trackSingle', metaPixelId, 'PageView'); } catch { /* Non-blocking. */ }
   // Google page views are already handled by GTM's existing SPA history trigger.
   if (course && path.startsWith('/courses/')) trackCourseEvent('view_item', course);
-  if (course && path.startsWith('/enroll/')) trackCourseEvent('begin_checkout', course);
+  if (course && (path.startsWith('/enroll/') || path.startsWith('/register/'))) trackCourseEvent('begin_checkout', course);
 }

@@ -83,3 +83,15 @@ test('blocked analytics cannot throw into the enrollment workflow', () => {
   const tracker = setup('www.yehtetedu.com', true);
   assert.doesNotThrow(() => tracker.trackCourseEvent('generate_lead', course));
 });
+
+test('full stack registration has its own funnel identity and no contact fields', () => {
+  const tracker = setup();
+  const fullStack = { id: 'full-stack-digital-marketer', name: 'Full Stack Digital Marketer', fee: 900000 };
+  tracker.trackPublicPage('/register/full-stack-digital-marketer', fullStack);
+  tracker.trackCourseEvent('generate_lead', fullStack);
+  assert.deepEqual(tracker.pixel().map((event) => event[2]), ['PageView', 'InitiateCheckout', 'Lead']);
+  assert.equal(tracker.google()[0][2].items[0].item_id, fullStack.id);
+  assert.equal(tracker.google()[0][2].value, 900000);
+  assert.equal(tracker.google()[1][2].course_id, fullStack.id);
+  assert.doesNotMatch(JSON.stringify(tracker.google()), /email|phone|name@example/);
+});

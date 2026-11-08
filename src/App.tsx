@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { trackCourseEvent, trackPublicPage } from './marketingTracking';
 import { readAuthenticatedPayment } from './authenticatedPayment';
 import { getEnrollmentTransport, getPaymentSlipError, paymentSlipAccept, submitEnrollmentRequest } from './enrollmentSubmission';
+import FullStackRegistrationPage from './FullStackRegistrationPage';
+import { fullStackCourse } from './fullStackRegistration';
+import { enrollmentPhoneCountries, formatEnrollmentPhone, getEnrollmentPhoneCountry, isValidEnrollmentName, isValidEnrollmentPhone } from './enrollmentContact';
 import {
   ArrowRight,
   ArrowLeft,
@@ -53,6 +56,7 @@ type PageName =
   | 'Growth Resources'
   | 'Learning Path'
   | 'Course Detail'
+  | 'Full Stack Registration'
   | 'Admin Panel'
   | 'Student Dashboard'
   | 'Lesson Player'
@@ -188,14 +192,6 @@ type EnrollmentPaymentAccount = {
   helper: string;
   icon: IconType;
 };
-type EnrollmentPhoneCountry = {
-  key: string;
-  label: string;
-  dialCode: string;
-  placeholder: string;
-  minDigits: number;
-  maxDigits: number;
-};
 type EnrollmentChoiceOption = {
   value: string;
   title: string;
@@ -221,6 +217,7 @@ const pageSlugs: Record<PageName, string> = {
   'Growth Resources': 'marketing-resources',
   'Learning Path': 'learning-path',
   'Course Detail': 'course-detail',
+  'Full Stack Registration': 'register/full-stack-digital-marketer',
   'Admin Panel': 'admin',
   'Student Dashboard': 'dashboard',
   'Lesson Player': 'lessons',
@@ -1879,6 +1876,11 @@ const enrollmentSteps: Array<{ title: string; text: string; icon: IconType }> = 
 ];
 
 const publicPageSeoDetails: Record<string, { title: string; description: string; path: string }> = {
+  'Full Stack Registration': {
+    title: 'Register - Full Stack Digital Marketer | Ye Htet Digital Edu',
+    description: 'Register for Full Stack Digital Marketer, starting 7 December 2026. Choose live sessions or video class. 42 lessons, 40 labs, 14 weeks and 84 hours.',
+    path: fullStackCourse.path,
+  },
   Home: {
     title: 'Ye Htet Digital Edu - Digital Marketing LMS',
     description: 'Learn digital marketing, media planning, and media buying with guided video lessons, practical templates, and student progress tracking.',
@@ -2091,14 +2093,8 @@ const enrollmentTransport = getEnrollmentTransport(
   getEnvSetting('VITE_ENROLLMENT_STORAGE'),
   getEnvSetting('VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb',
 );
+const registrationFormEndpoint = getEnvSetting('VITE_FORMSPREE_REGISTRATION_ENDPOINT', 'VITE_FORMSPREE_ENROLLMENT_ENDPOINT', 'VITE_FORMSPREE_CONTACT_ENDPOINT') || 'https://formspree.io/f/xrpbqvjb';
 const enrollmentContactOptions = ['Phone call', 'Viber', 'Telegram', 'Messenger', 'Email'];
-const enrollmentPhoneCountries: EnrollmentPhoneCountry[] = [
-  { key: 'Myanmar', label: 'Myanmar', dialCode: '+95', placeholder: '09 541 4499', minDigits: 7, maxDigits: 11 },
-  { key: 'Thailand', label: 'Thailand', dialCode: '+66', placeholder: '081 234 5678', minDigits: 8, maxDigits: 10 },
-  { key: 'UAE', label: 'UAE', dialCode: '+971', placeholder: '50 949 1015', minDigits: 8, maxDigits: 10 },
-  { key: 'Singapore', label: 'Singapore', dialCode: '+65', placeholder: '8123 4567', minDigits: 8, maxDigits: 8 },
-  { key: 'Other', label: 'Other country', dialCode: '+', placeholder: 'Country code + phone number', minDigits: 8, maxDigits: 15 },
-];
 const enrollmentPaymentOptions: EnrollmentChoiceOption[] = [
   { value: 'Ready to pay', title: 'Ready to pay', detail: 'I will transfer after checking the payment account.' },
   { value: 'Payment already sent', title: 'Payment already sent', detail: 'Slip file must be attached before continuing.' },
@@ -2446,33 +2442,6 @@ function getCourseEnrollmentFee(courseTitle: string) {
 
 function getEnrollmentPaymentAccount(paymentAccountKey: string) {
   return enrollmentPaymentAccounts.find((account) => account.key === paymentAccountKey) || enrollmentPaymentAccounts[0];
-}
-
-function getEnrollmentPhoneCountry(phoneCountryKey: string) {
-  return enrollmentPhoneCountries.find((country) => country.key === phoneCountryKey) || enrollmentPhoneCountries[0];
-}
-
-function normalizePhoneDigits(phone: string) {
-  return phone.replace(/\D/g, '');
-}
-
-function isValidEnrollmentName(name: string) {
-  const trimmed = name.trim().replace(/\s+/g, ' ');
-  return trimmed.length >= 2 && /\p{L}/u.test(trimmed) && !/^\d+$/.test(trimmed);
-}
-
-function isValidEnrollmentPhone(phone: string, countryKey: string) {
-  const country = getEnrollmentPhoneCountry(countryKey);
-  const digits = normalizePhoneDigits(phone);
-  return digits.length >= country.minDigits && digits.length <= country.maxDigits;
-}
-
-function formatEnrollmentPhone(phone: string, countryKey: string) {
-  const country = getEnrollmentPhoneCountry(countryKey);
-  const digits = normalizePhoneDigits(phone);
-  if (!digits) return '';
-  if (country.dialCode === '+') return `+${digits}`;
-  return `${country.dialCode} ${digits.replace(/^0+/, '') || digits}`;
 }
 
 function formatFileSize(bytes: number) {
@@ -3561,6 +3530,10 @@ function CoursesPage({
         title="Available digital marketing courses."
         description="Choose a course, review the details, then log in to access the lessons assigned to your account."
       />
+      <section className="flex flex-wrap items-center justify-between gap-5 border-y border-emerald-300/25 py-6">
+        <div><p className="text-xs font-semibold text-amber-200">Starts 7 December 2026</p><h2 className="mt-2 text-xl font-bold text-white">Full Stack Digital Marketer</h2><p className="mt-2 text-sm text-slate-300">Live Session or Video Class · 900,000 MMK · 14 weeks</p></div>
+        <button type="button" onClick={() => go('Full Stack Registration')} className={ui.btnPrimary}>Register <ArrowRight className="h-4 w-4" /></button>
+      </section>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courseCards.map((course) => (
           <CourseCard key={course.title} course={course} onViewDetail={viewCourse} onEnroll={onEnroll} />
@@ -7380,7 +7353,7 @@ export default function App() {
   useEffect(() => {
     const path = buildCurrentPath(active, selectedCourseTitle, isEnrollmentOpen, enrollmentCourseTitle);
     const title = isEnrollmentOpen ? enrollmentCourseTitle : selectedCourseTitle;
-    trackPublicPage(isLoggedIn ? '/private' : path, {
+    trackPublicPage(isLoggedIn ? '/private' : path, active === 'Full Stack Registration' ? { id: fullStackCourse.id, name: fullStackCourse.name, fee: fullStackCourse.fee } : {
       id: getCourseRouteSlug(title), name: title, fee: getCourseEnrollmentFee(title),
     });
   }, [active, enrollmentCourseTitle, isEnrollmentOpen, isLoggedIn, selectedCourseTitle]);
@@ -7653,13 +7626,14 @@ export default function App() {
   }, [isLoggedIn]);
 
   return (
-    <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout} onEnroll={() => openEnrollment()}>
+    <Shell active={active} go={go} isLoggedIn={isLoggedIn} role={role} onLogout={logout} onEnroll={active === 'Full Stack Registration' ? () => document.getElementById('full-stack-registration')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : () => openEnrollment()}>
       {active === 'Home' && <HomePage go={go} onSelectCourse={setSelectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Courses' && <CoursesPage go={go} onSelectCourse={setSelectedCourseTitle} onEnroll={openEnrollment} />}
       {active === 'Teaching Method' && <TeachingMethodPage go={go} onEnroll={openEnrollment} />}
       {active === 'Growth Resources' && <GrowthResourcesPage go={go} onEnroll={openEnrollment} />}
       {active === 'Learning Path' && <LearningPathPage go={go} />}
       {active === 'Course Detail' && <CourseDetailPage go={go} courseTitle={selectedCourseTitle} onEnroll={openEnrollment} />}
+      {active === 'Full Stack Registration' && <FullStackRegistrationPage endpoint={registrationFormEndpoint} onBack={() => go('Courses')} />}
       {active === 'Admin Panel' && <AdminPanelPage go={go} meetings={liveMeetings} setMeetings={setLiveMeetings} onJoinMeeting={setActiveMeetingId} lessons={lessons} setLessons={setLessons} students={students} setStudents={setStudents} tuitionPayments={tuitionPayments} studentProgressById={studentProgressById} lessonComments={lessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
       {active === 'Student Dashboard' && <StudentDashboardPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} lessons={selectedCourseLessons} payment={currentStudent ? getStudentTuitionPayment(currentStudent, tuitionPayments) : undefined} />}
       {active === 'Lesson Player' && <LessonPlayerPage go={go} courseTitle={selectedCourseTitle} learningProgress={learningProgress} setLearningProgress={setLearningProgress} lessons={selectedCourseLessons} currentStudent={currentStudent} lessonComments={lessonComments} setLessonComments={setLessonComments} onUpdateComment={updateLessonComment} onDeleteComment={deleteLessonComment} />}
