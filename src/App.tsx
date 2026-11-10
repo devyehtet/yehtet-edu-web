@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { trackCourseEvent, trackPublicPage } from './marketingTracking';
 import { readAuthenticatedPayment } from './authenticatedPayment';
+import { getPublishedVideoUpdate, googleAdsEcosystemVideoUrl } from './lessonVideoUpdates';
 import { getEnrollmentTransport, getPaymentSlipError, paymentSlipAccept, submitEnrollmentRequest } from './enrollmentSubmission';
 import FullStackRegistrationPage from './FullStackRegistrationPage';
 import { fullStackCourse } from './fullStackRegistration';
@@ -122,6 +123,7 @@ type LearningProgress = {
 };
 type StudentProgressById = Record<string, LearningProgress>;
 type LessonRecord = {
+  videoRevision?: string;
   id: string;
   courseTitle: string;
   title: string;
@@ -558,7 +560,6 @@ const digitalMarketingLessons = [
   'Audience Targeting in Meta Ads',
   'Creative Strategy for Meta Ads',
   'TikTok Ads Overview and Creative Best Practices',
-  'TikTok Targeting and Scaling Strategy',
   'The Google Ads Ecosystem',
   'Search Intent and Keyword Strategy',
   'Google Ads Basics: Your Digital Storefront',
@@ -585,8 +586,8 @@ const modules: CourseModule[] = [
   { title: 'Module 01', name: 'Digital Marketing Foundation', status: 'Completed' as const, progress: 100, lessons: digitalMarketingLessons.slice(0, 12) },
   { title: 'Module 02', name: 'Content & Social Media Strategy', status: 'In progress' as const, progress: 65, lessons: digitalMarketingLessons.slice(12, 18) },
   { title: 'Module 03', name: 'Meta Ads Strategy & Campaign Setup', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(18, 35) },
-  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(35, 46) },
-  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(46, 56) },
+  { title: 'Module 04', name: 'TikTok, Google Ads, SEO & Analytics', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(35, 45) },
+  { title: 'Module 05', name: 'Optimization, Career Path & Capstone', status: 'Locked' as const, progress: 0, lessons: digitalMarketingLessons.slice(45, 55) },
 ];
 
 const mediaPlanningBuyingModules: CourseModule[] = [
@@ -781,7 +782,7 @@ const mediaPlanningBuyingLessonCount = getCourseLessonCount(mediaPlanningBuyingM
 const mediaPlanningBuyingModuleLabel = 'Intro + 11 modules';
 
 const courseCards: CourseCardRecord[] = [
-  { title: defaultCourseTitle, level: 'Beginner to Professional', lessons: '56 lessons', modules: '8 modules' },
+  { title: defaultCourseTitle, level: 'Beginner to Professional', lessons: `${digitalMarketingLessons.length} lessons`, modules: '8 modules' },
   { title: mediaPlanningBuyingCourseTitle, level: 'Intermediate to Professional', lessons: `${mediaPlanningBuyingLessonCount} topics`, modules: mediaPlanningBuyingModuleLabel },
   { title: capstoneSupportCourseTitle, level: 'Project-based', lessons: 'Portfolio project', modules: 'Capstone module' },
 ];
@@ -817,7 +818,7 @@ const courseDetailsByTitle: Record<string, CourseDetailConfig> = {
     modules,
     metrics: [
       { icon: BookOpen, label: 'Modules', value: '8+', detail: 'Structured roadmap' },
-      { icon: PlayCircle, label: 'Video lessons', value: '56', detail: 'Vimeo + progress tracking' },
+      { icon: PlayCircle, label: 'Video lessons', value: `${digitalMarketingLessons.length}`, detail: 'Vimeo + progress tracking' },
       { icon: CalendarDays, label: 'Next course', value: 'Media Buying', detail: 'Continue the path' },
     ],
   },
@@ -967,8 +968,8 @@ const stableLessonIdsByTitle: Record<string, string> = {
   'Your Future is Digital, Strategic, and Yours': 'm5-l10',
 };
 
-const retiredLessonIds = new Set(['m2-l2', 'm3-l2']);
-const retiredLessonTitles = new Set(['Mastering Social Media in 2025', 'Mastering Social Media in 2026', 'Campaign, Ad Set, and Ad Level Explained']);
+const retiredLessonIds = new Set(['m2-l2', 'm3-l2', 'm4-l1']);
+const retiredLessonTitles = new Set(['Mastering Social Media in 2025', 'Mastering Social Media in 2026', 'Campaign, Ad Set, and Ad Level Explained', 'TikTok Targeting and Scaling Strategy']);
 
 const lessonResourceUrlsByTitle: Record<string, string> = {
   [ecosystemMapTemplateTitle]: ecosystemMapTemplateResourceUrl,
@@ -1023,7 +1024,7 @@ function buildLessonCatalogForCourse(courseTitle: string, courseModules: CourseM
         practice: getLessonPractice(title),
         resource: resourceUrl ? title : `${module.name} checklist`,
         resourceUrl,
-        videoUrl: videoUrls[globalIndex] || sampleLessonVideoUrl,
+        videoUrl: courseTitle === defaultCourseTitle && title === 'The Google Ads Ecosystem' ? googleAdsEcosystemVideoUrl : videoUrls[globalIndex] || sampleLessonVideoUrl,
         requiredWatchPercentage: 80,
       };
     }),
@@ -1125,6 +1126,7 @@ function normalizeStoredLessons(value: unknown): LessonRecord[] {
         ...(shouldUseNewSecondLessonVideo ? { videoUrl: secondLessonVideoUrl } : {}),
         ...(shouldUseNewDefaultLessonVideo ? { videoUrl: defaultLessonVideoUrl } : {}),
         ...(enforcedLessonDuration ? { duration: enforcedLessonDuration } : {}),
+        ...getPublishedVideoUpdate(lesson.courseTitle, lesson.id, storedLesson?.videoRevision),
       }, lesson);
     });
     const defaultCustomLessonFallback = getCourseLessons(defaultCourseTitle, lessonCatalog).slice(-1)[0] || lessonCatalog[0];
@@ -1133,8 +1135,9 @@ function normalizeStoredLessons(value: unknown): LessonRecord[] {
         typeof item?.id === 'string'
         && !defaultsById.has(item.id)
         && !item.id.startsWith('dmpb-')
-        && !retiredLessonIds.has(item.id)
-        && !(typeof item.title === 'string' && retiredLessonTitles.has(item.title))
+        && !((item.courseTitle || defaultCourseTitle) === defaultCourseTitle && (
+          retiredLessonIds.has(item.id) || (typeof item.title === 'string' && retiredLessonTitles.has(item.title))
+        ))
       ))
       .map((item) => normalizeLessonRecord(item, defaultCustomLessonFallback))
       .filter(Boolean) as LessonRecord[];
@@ -1177,6 +1180,7 @@ function normalizeLessonRecord(value: Partial<LessonRecord>, fallback: LessonRec
     resource: typeof value.resource === 'string' && value.resource.trim() ? value.resource.trim() : fallback.resource,
     resourceUrl: sanitizeResourceUrl(value.resourceUrl || fallback.resourceUrl) || undefined,
     videoUrl: normalizeLessonVideoUrl(value.videoUrl || fallback.videoUrl),
+    videoRevision: typeof value.videoRevision === 'string' ? value.videoRevision : undefined,
     requiredWatchPercentage: normalizeRequiredWatchPercentage(value.requiredWatchPercentage),
   };
 }
@@ -1848,14 +1852,14 @@ function getModuleLearningState(moduleIndex: number, progress: LearningProgress,
 }
 
 const homeStats: Array<{ label: string; value: string; icon: IconType }> = [
-  { label: 'Lessons', value: '56', icon: PlayCircle },
+  { label: 'Lessons', value: `${digitalMarketingLessons.length}`, icon: PlayCircle },
   { label: 'Modules', value: '8+', icon: BookOpen },
   { label: 'Live Class', value: 'Weekly', icon: CalendarDays },
   { label: 'Next Course', value: 'Media Buying', icon: ArrowRight },
 ];
 
 const homeBenefits: Array<{ title: string; text: string; icon: IconType }> = [
-  { title: '56 structured lessons', text: 'Open your lesson list and continue from the next available video.', icon: BookOpen },
+  { title: `${digitalMarketingLessons.length} structured lessons`, text: 'Open your lesson list and continue from the next available video.', icon: BookOpen },
   { title: 'No skipping system', text: 'Watch the required video progress to unlock the next lesson.', icon: Lock },
   { title: 'Assignments & capstone', text: 'Download the task, finish your work, and submit it before the deadline.', icon: ClipboardCheck },
   { title: 'Next course path', text: 'Finish this course first, then continue to Digital Media Planning & Buying.', icon: Video },
@@ -4635,7 +4639,7 @@ const adminContent: Record<string, { title: string; description: string; primary
   Dashboard: { title: 'Admin Control Center', description: 'Choose a menu item on the left, then create, edit, review, or export the selected section.', primaryAction: 'Create Student', cards: [{ title: 'Student Management', items: ['Create student account', 'Assign one or multiple courses', 'Set start date and expiry date', 'Activate or suspend account'] }, { title: 'Course Builder', items: ['Create course and modules', 'Add Vimeo video lessons', 'Attach quiz, resource, and assignment', 'Set lesson unlock rules'] }, { title: 'Payments', items: ['Enrollment fee ledger', 'Paid amount and balance', 'Payment date', 'Course payment status'] }, { title: 'Meeting Control', items: ['Create live class', 'Control screen sharing', 'Start or stop recording', 'Check attendance history'] }] },
   Students: { title: 'Student Management', description: 'Create student accounts, assign courses, control access dates, and manage student status.', primaryAction: 'Add Student', cards: [] },
   Payments: { title: 'Enrollment Payment Ledger', description: 'Review student course fees, payment dates, paid amounts, and remaining balances.', primaryAction: 'Record Payment', cards: [] },
-  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: [defaultCourseTitle, '56 lessons', '8+ modules', 'Capstone project'] }, { title: mediaPlanningBuyingCourseTitle, items: [mediaPlanningBuyingModuleLabel, `${mediaPlanningBuyingLessonCount} topics`, 'Meta, Google & TikTok buying', 'Client-ready media plan'] }] },
+  Courses: { title: 'Course Management', description: 'Create and organize courses.', primaryAction: 'Create Course', cards: [{ title: 'Main Course', items: [defaultCourseTitle, `${digitalMarketingLessons.length} lessons`, '8+ modules', 'Capstone project'] }, { title: mediaPlanningBuyingCourseTitle, items: [mediaPlanningBuyingModuleLabel, `${mediaPlanningBuyingLessonCount} topics`, 'Meta, Google & TikTok buying', 'Client-ready media plan'] }] },
   Modules: { title: 'Module Builder', description: 'Organize course lessons into modules.', primaryAction: 'Add Module', cards: [{ title: 'Module Structure', items: ['Module title', 'Lesson order', 'Progress percentage', 'Locked or unlocked'] }, { title: 'Unlock Rules', items: ['Previous lesson required', 'Quiz pass required', 'Assignment required', 'Admin override'] }] },
   Lessons: { title: 'Lesson Manager', description: 'View the full lesson library, replace Vimeo video URLs, and control unlock behavior.', primaryAction: 'Add Lesson', cards: [{ title: 'Video Lesson', items: ['Vimeo embed URL', 'Watch progress rule', 'No skipping', 'Resume playback'] }, { title: 'Tracking', items: ['Watch time', 'Last position', 'Completed date', 'Device history'] }] },
   Quizzes: { title: 'Quiz Builder', description: 'Create lesson quizzes.', primaryAction: 'Create Quiz', cards: [{ title: 'Quiz Settings', items: ['Passing score', 'Max attempts', 'Show answers', 'Randomize questions'] }] },
